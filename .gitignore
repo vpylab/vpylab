@@ -27,3 +27,6 @@ scripts/compat/out/preprocessed.json
 scripts/compat/out/merged.json
 scripts/compat/out/*.partial.json
 .gstack/
+
+# wrangler pages dev 로컬 상태
+.wrangler/
