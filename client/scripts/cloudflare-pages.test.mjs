@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCloudflareConfig, toCloudflarePath, openEditionCsp } from './cloudflare-pages.mjs';
+import { buildCloudflareConfig, toCloudflarePath, openEditionCsp, spaExcludedDirs } from './cloudflare-pages.mjs';
 
 const clientRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const vercel = JSON.parse(readFileSync(resolve(clientRoot, '../vercel.json'), 'utf8'));
@@ -73,5 +73,14 @@ describe('vercel.json → Cloudflare', () => {
   it('Cloudflare 한도(줄 2,000자, 규칙 100개) 안에 있다', () => {
     expect(Math.max(...open.headers.split('\n').map((l) => l.length))).toBeLessThanOrEqual(2000);
     expect(Object.keys(blocks).length).toBeLessThanOrEqual(100);
+  });
+});
+
+describe('SPA 대체에서 뺀 폴더', () => {
+  it('vercel.json의 SPA rewrite 제외 목록에서 폴더만 고른다(파일·api 함수 경로 포함 판정은 main에서 폴더 존재로 거른다)', () => {
+    const dirs = spaExcludedDirs(vercel);
+    expect(dirs).toEqual(expect.arrayContaining(['assets', 'pyodide']));
+    expect(dirs).not.toContain('sw.js');
+    expect(dirs.every((d) => !d.includes('\\'))).toBe(true);
   });
 });

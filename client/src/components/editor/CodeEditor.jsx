@@ -1,7 +1,7 @@
 import { DEFAULT_CODE, getDefaultCode } from '../../data/default-code';
 import { useRef, useCallback, useEffect, useState } from 'react';
 import Editor, { loader } from '@monaco-editor/react';
-import * as monaco from 'monaco-editor';
+import * as monaco from './monaco-python';
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import useAppStore from '../../stores/appStore';
 import { vocabularyWord } from '../../data/code-vocabulary';

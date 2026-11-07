@@ -42,7 +42,13 @@ VITE_GOOGLE_CLIENT_ID=<클라이언트 ID> npm run build:open
 npx wrangler pages deploy dist --project-name vpylab
 ```
 
-Cloudflare는 `/drive-lab.html`을 `/drive-lab`으로 넘겨 제공합니다(깔끔한 주소). 그래서 변환기는 `/drive-lab` 경로에도 실험 페이지 전용 헤더를 걸고, 서비스 워커도 `/drive-lab`을 가로채지 않습니다. 404.html을 만들지 않아야 Cloudflare가 SPA 대체(index.html)를 해 줍니다.
+Cloudflare는 `/drive-lab.html`을 `/drive-lab`으로 넘겨 제공합니다(깔끔한 주소). 그래서 변환기는 `/drive-lab` 경로에도 실험 페이지 전용 헤더를 걸고, 서비스 워커도 `/drive-lab`을 가로채지 않습니다. 맨 위에 404.html을 만들지 않아야 Cloudflare가 SPA 대체(index.html)를 해 줍니다. 대신 `assets/`·`pyodide/`·`projects/`처럼 Vercel이 SPA 대체에서 빼 둔 폴더에는 변환기가 404.html을 넣습니다. 이 폴더의 없는 파일에 index.html이 1년 캐시로 나가지 않고 404가 나가게 하기 위해서입니다.
+
+## 속도 (2026-11-07 측정, 맥북 크롬)
+
+- 다시 방문하면 화면은 0.3초 만에 뜨고, 새로 받는 양은 5KB입니다.
+- Python 엔진은 파일이 캐시에 있어도 브라우저에서 띄우는 데 3~4초가 걸립니다. 그래서 첫 화면·문서를 보는 동안 엔진을 미리 띄웁니다(`client/src/engine/idle-prewarm.js`). 문서 화면에서 "만들기"로 들어가면 0.4초 만에 준비가 끝납니다.
+- 편집기는 Python 전용 Monaco(`client/src/components/editor/monaco-python.js`)를 사용합니다. 배포 크기는 33MB에서 24MB로 줄었습니다.
 
 로컬에서 Cloudflare 동작을 흉내 내 확인할 때:
 

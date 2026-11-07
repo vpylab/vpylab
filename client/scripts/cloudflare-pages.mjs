@@ -13,8 +13,11 @@
  *   - Cloudflare는 '/x.html'을 '/x'로 넘기고 '/x'에서 그 파일을 줍니다(깔끔한 주소). 그래서
  *     '.html' 경로의 헤더는 확장자 없는 경로에도 걸고, '/x → /x.html' 리디렉션은 옮기지 않습니다(서로 넘기는 무한 반복이 됨).
  *     공유·갤러리 미리보기 카드 함수(/s/:id, /gallery/:id → /api/og)는 Vercel 함수라 옮기지 않습니다.
+ *   - Vercel은 SPA rewrite에서 빼 둔 폴더(assets/, pyodide/ 등)의 없는 파일에 404를 줍니다. Cloudflare는 그런 요청에도
+ *     index.html을 200으로 주고, 그 폴더의 1년 캐시 헤더까지 붙습니다. 그래서 그 폴더마다 404.html을 넣어
+ *     가장 가까운 404.html이 404로 나가게 합니다. 맨 위 404.html은 만들지 않으므로 SPA 대체는 그대로입니다.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -75,6 +78,16 @@ export function buildCloudflareConfig(vercel, { edition = 'classroom' } = {}) {
   return { headers: `${lines.join('\n')}\n`, redirects: `${redirects.join('\n')}\n` };
 }
 
+/** SPA rewrite에서 뺀 폴더 이름들(예: assets, pyodide). 이 폴더의 없는 파일은 index.html이 아니라 404여야 합니다. */
+export function spaExcludedDirs(vercel) {
+  const spa = (vercel.rewrites || []).find((r) => r.destination === '/index.html' && r.source.includes('(?!'));
+  if (!spa) return [];
+  const inner = spa.source.match(/\(\?!([^)]*)\)/)?.[1] || '';
+  return inner.split('|').filter((part) => /^[\w-]+\/$/.test(part)).map((part) => part.slice(0, -1));
+}
+
+export const NOT_FOUND_HTML = '<!doctype html><meta charset="utf-8"><title>404</title><p>파일을 찾을 수 없습니다.</p>\n';
+
 function main() {
   const args = process.argv.slice(2);
   const outDir = resolve(args[0] || 'dist');
@@ -88,6 +101,10 @@ function main() {
   const { headers, redirects } = buildCloudflareConfig(vercel, { edition });
   writeFileSync(resolve(outDir, '_headers'), headers);
   writeFileSync(resolve(outDir, '_redirects'), redirects);
+  for (const dir of spaExcludedDirs(vercel)) {
+    const target = resolve(outDir, dir);
+    if (existsSync(target) && statSync(target).isDirectory()) writeFileSync(resolve(target, '404.html'), NOT_FOUND_HTML);
+  }
   console.log(`Cloudflare 설정을 만들었습니다: ${outDir}/_headers, _redirects (판: ${edition})`);
 }
 
