@@ -5,7 +5,7 @@ import {
 } from './google-auth.js';
 import {
   CHECKLIST, RESULT_LABELS, deviceId as getDeviceId, loadClientId, saveClientId, saveDraft, clearDraft,
-  clearDrafts, listDrafts, fileDrafts, clearFileDrafts, purgeOldDrafts, loadResults, saveResults, contactedOrigins, summarizeTimings, buildReport,
+  loadDraft, clearDrafts, listDrafts, fileDrafts, clearFileDrafts, purgeOldDrafts, loadResults, saveResults, contactedOrigins, summarizeTimings, buildReport,
 } from './lab-state.js';
 
 const ENV_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
@@ -62,6 +62,18 @@ function newTabId() {
 
 const deviceOf = (meta) => meta?.appProperties?.vpylabDevice || '알 수 없음';
 
+/** 코드를 .py 파일로 내려받습니다. 네트워크를 쓰지 않습니다. */
+function downloadCode(text, name) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/x-python' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name.toLowerCase().endsWith('.py') ? name : `${name}.py`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 /** 지금 편집기와 다른, 가장 최근의 새 코드 초안 */
 function latestOtherNewDraft(store, scope, ownKey, currentCode) {
   const found = listDrafts(store, scope).find(({ fileId, draft }) => fileId.startsWith('new-') && fileId !== ownKey && draft.code !== currentCode && draft.code !== STARTER);
@@ -82,7 +94,8 @@ function formatRemaining(ms) {
 export default function DriveLabApp({ storage: providedStorage, sessionStore: providedSession } = {}) {
   const storage = useMemo(() => providedStorage || safeStorage('localStorage'), [providedStorage]);
   const sessionStore = useMemo(() => providedSession || safeStorage('sessionStorage'), [providedSession]);
-  const [tabId] = useState(newTabId);
+  // 로그아웃·계정 전환 때 새로 정합니다. 그래야 앞 세션의 초안이 "다른 초안"으로 안내되고 이름이 겹치지 않습니다.
+  const [tabId, setTabId] = useState(newTabId);
   const newKey = `new-${tabId}`;
   const ownDraftKey = (fileId) => (fileId ? `${fileId}@${tabId}` : newKey);
   const device = useMemo(() => getDeviceId(storage), [storage]);
@@ -180,6 +193,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
   useEffect(() => {
     if (code === savedCode) {
       clearDraft(draftStore, scope, ownKey);
+      setDraftSaveFailed(false);
       return;
     }
     const ok = saveDraft(draftStore, scope, ownKey, { code, baseVersion: current?.version ?? null, name: current?.name ?? null });
@@ -187,15 +201,22 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     setDraftSaveFailed((prev) => (prev === !ok ? prev : !ok));
   }, [draftStore, scope, code, current, savedCode, ownKey]);
 
-  // 저장하지 않은 변경이 있으면 페이지를 떠나기 전에 묻습니다.
+  // 저장하지 않은 변경이 있거나, 탭을 닫으면 사라지는 로그인 전 초안이 있으면 페이지를 떠나기 전에 묻습니다.
+  const hasAnonDrafts = !account && listDrafts(sessionStore, 'anon').some(({ draft }) => draft.code !== STARTER);
+  const warnOnLeave = dirty || hasAnonDrafts;
   useEffect(() => {
-    if (!dirty) return undefined;
+    if (!warnOnLeave) return undefined;
     const warn = (event) => { event.preventDefault(); event.returnValue = ''; };
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  }, [warnOnLeave]);
 
-  async function run(label, task) {
+  /**
+   * retry: 권한 만료로 실패했을 때 "다시 승인" 뒤 이어서 할 작업 { fn, fileId }.
+   * 실행할 때마다 새로 정하므로, 앞서 실패한 다른 작업이 엉뚱하게 재시도되지 않습니다.
+   */
+  async function run(label, task, retry = null) {
+    pendingRef.current = retry;
     setBusy(true);
     try {
       await task();
@@ -227,10 +248,13 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
 
   /** 로그인 전에 쓴 새 코드 초안을 로그인한 계정의 초안으로 옮깁니다. 초안 이름이 서로 달라 기존 초안을 덮어쓰지 않습니다. */
   function adoptAnonDrafts(sub) {
+    let failed = 0;
     for (const { fileId, draft } of listDrafts(sessionStore, 'anon')) {
-      saveDraft(storage, sub, fileId, draft);
-      clearDraft(sessionStore, 'anon', fileId);
+      // 브라우저 저장 공간이 가득 차 옮기지 못하면 탭 저장소의 초안을 그대로 둡니다.
+      if (saveDraft(storage, sub, fileId, draft)) clearDraft(sessionStore, 'anon', fileId);
+      else failed += 1;
     }
+    return failed;
   }
 
   /**
@@ -254,17 +278,31 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
       const info = await fetchUserInfo(token.accessToken);
       if (account && account.sub !== info.sub) {
         // 공용 PC에서 다른 학생 계정이 승인된 경우: 앞 학생의 화면을 보이지 않게 비웁니다.
+        // 앞 계정의 편집 내용이 초안으로 저장되지 못했다면, 비우기 전에 파일로 내려받을 기회를 줍니다(브라우저 안에서만).
+        if (dirty && draftSaveFailed && window.confirm('앞 계정의 편집 중인 내용이 브라우저에 저장되지 않았습니다. 화면을 비우기 전에 이 코드를 .py 파일로 내려받을까요?')) {
+          downloadCode(codeRef.current, currentRef.current?.name || '저장하지 못한 코드.py');
+        }
         resetWorkspace();
+        setTabId(newTabId());
         setShowGoogleLogout(false);
         setAccount({ email: info.email, hd: info.hd || null, sub: info.sub });
         say(`다른 계정(${info.email})으로 바뀌어 화면을 비웠습니다. 앞 계정의 초안은 그 계정으로 로그인해야 보입니다.`, 'warn');
+        setDraftNotice(latestOtherNewDraft(storage, info.sub, newKey, STARTER));
+        setDraftsTick((t) => t + 1);
         if (!missing.length) await loadFiles();
         return;
       }
       setAccount({ email: info.email, hd: info.hd || null, sub: info.sub });
       setShowGoogleLogout(false);
+      let notMoved = 0;
       if (!account) {
-        adoptAnonDrafts(info.sub);
+        const anonDrafts = listDrafts(sessionStore, 'anon');
+        if (anonDrafts.length && !window.confirm(`이 탭에서 로그인 전에 쓴 코드 ${anonDrafts.length}개를 ${info.email} 계정의 초안으로 옮길까요? 다른 사람이 쓴 코드라면 "취소"를 누르세요. 취소하면 그 코드를 지웁니다.`)) {
+          for (const { fileId } of anonDrafts) clearDraft(sessionStore, 'anon', fileId);
+          if (!currentRef.current) setCode(STARTER);
+        } else {
+          notMoved = adoptAnonDrafts(info.sub);
+        }
         // 지난번에 파일로 만들지 못한 새 코드가 있으면 알려 줍니다(탭이 닫히거나 PC가 다시 켜진 경우).
         if (!currentRef.current) setDraftNotice(latestOtherNewDraft(storage, info.sub, newKey, codeRef.current));
         setDraftsTick((t) => t + 1);
@@ -273,9 +311,14 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
         say('드라이브 권한이 빠졌습니다. "드라이브 권한 다시 요청"을 눌러 드라이브 항목을 허용하세요.', 'warn');
         return;
       }
-      say(`${info.email}(으)로 승인되었습니다.`, 'ok');
+      if (notMoved) {
+        say(`로그인 전에 쓴 초안 ${notMoved}개를 브라우저 저장 공간이 가득 차 계정으로 옮기지 못했습니다. 이 탭을 닫으면 사라지니, 필요한 코드는 먼저 새 파일로 저장하세요.`, 'error');
+      } else {
+        say(`${info.email}(으)로 승인되었습니다.`, 'ok');
+      }
       await loadFiles();
-      if (retry) await retry();
+      // 실패했던 작업은 그 작업의 파일이 지금도 열려 있을 때만 이어서 합니다.
+      if (retry && retry.fileId === (currentRef.current?.id ?? null)) await retry.fn();
     });
   }
 
@@ -289,35 +332,59 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
    * 파일을 열 때 안내할 초안: 그 파일의 초안 가운데 드라이브 내용과 다른 가장 최근 것.
    * 드라이브와 같아진 초안은 정리합니다. 이 탭의 초안이면 편집으로 덮이지 않게 별도 이름으로 옮겨 둡니다.
    */
-  function pendingFileDraft(fileId, remote) {
-    const drafts = fileDrafts(storage, scope, fileId);
+  function pendingFileDraft(fileId, remote, preferKey = null) {
+    const own = ownDraftKey(fileId);
+    let drafts = fileDrafts(storage, scope, fileId);
     for (const { fileId: key, draft } of drafts) if (draft.code === remote) clearDraft(storage, scope, key);
-    const latest = drafts.find(({ draft }) => draft.code !== remote);
-    if (!latest) return null;
-    if (latest.fileId !== ownDraftKey(fileId)) return { ...latest.draft, fileId: latest.fileId };
-    const samePending = drafts.find((d) => d.fileId.startsWith(`${fileId}@pending-`) && d.draft.code === latest.draft.code);
-    if (samePending) {
-      clearDraft(storage, scope, latest.fileId);
-      return { ...samePending.draft, fileId: samePending.fileId };
+    drafts = drafts.filter(({ draft }) => draft.code !== remote);
+    // 이 탭의 초안은 가장 최근 초안이든 아니든 항상 보류 이름으로 옮깁니다. 열고 나면 이 탭 이름은 편집기 몫이 되어 지워지기 때문입니다.
+    const mine = drafts.find((d) => d.fileId === own);
+    let movedTo = null;
+    if (mine) {
+      const samePending = drafts.find((d) => d.fileId.startsWith(`${fileId}@pending-`) && d.draft.code === mine.draft.code);
+      if (samePending) {
+        movedTo = samePending.fileId;
+      } else {
+        movedTo = `${fileId}@pending-${newTabId()}`;
+        if (!saveDraft(storage, scope, movedTo, mine.draft)) {
+          // 저장 공간이 가득 차 따로 보관하지 못했습니다. 파일을 열면 이 탭의 초안이 지워지므로 열기를 멈춥니다.
+          throw new Error('브라우저 저장 공간이 가득 차 이 파일의 저장하지 않은 초안을 따로 보관하지 못했습니다. 초안 목록에서 필요 없는 초안을 버린 뒤 다시 여세요.');
+        }
+      }
+      clearDraft(storage, scope, own);
+      drafts = fileDrafts(storage, scope, fileId).filter(({ draft }) => draft.code !== remote);
     }
-    const pendingKey = `${fileId}@pending-${newTabId()}`;
-    saveDraft(storage, scope, pendingKey, latest.draft);
-    clearDraft(storage, scope, latest.fileId);
-    return { ...latest.draft, fileId: pendingKey };
+    const wanted = preferKey === own ? movedTo : preferKey;
+    const chosen = (wanted && drafts.find((d) => d.fileId === wanted)) || drafts[0];
+    return chosen ? { ...chosen.draft, fileId: chosen.fileId } : null;
+  }
+
+  /**
+   * 편집기를 다른 내용으로 바꾸기 전에 묻습니다. 초안이 브라우저에 저장되지 않은 상태라면 내용을 잃는다고 분명히 알립니다.
+   * 저장하지 않은 변경이 없으면 묻지 않고 true.
+   */
+  function confirmLeave(action) {
+    if (!dirty) return true;
+    if (draftSaveFailed) {
+      return window.confirm(`브라우저 저장 공간이 가득 차 지금 편집 중인 내용이 초안으로 저장되지 않았습니다. ${action} 이 내용을 잃습니다. 계속할까요?`);
+    }
+    return window.confirm(`저장하지 않은 변경이 있습니다. 초안은 이 브라우저에 남습니다. ${action}`);
   }
 
   /** 파일을 엽니다. 실제로 열었으면 true, 취소하거나 실패하면 false를 돌려줍니다. */
-  async function openFile(file) {
-    if (dirty && !window.confirm('저장하지 않은 변경이 있습니다. 초안은 이 브라우저에 남습니다. 다른 파일을 열까요?')) return false;
+  async function openFile(file, preferDraftKey = null) {
+    if (!confirmLeave('다른 파일을 열까요?')) return false;
     let opened = false;
     await run('열기', async () => {
       const { meta, code: remote } = await driveRef.current.open(file.id);
+      // 화면을 바꾸기 전에 초안을 정리합니다. 저장 공간 부족으로 보관하지 못하면 여기서 멈춰 아무것도 바꾸지 않습니다.
+      const notice = pendingFileDraft(meta.id, remote, preferDraftKey);
       setCurrent({ id: meta.id, name: meta.name, version: meta.version, savedCode: remote, appProperties: meta.appProperties || {} });
       setCode(remote);
       setConflict(null);
       setOverwritten(null);
       setRevisions([]);
-      setDraftNotice(pendingFileDraft(meta.id, remote));
+      setDraftNotice(notice);
       say(`${meta.name}을(를) 열었습니다. 드라이브 버전 ${meta.version}, 마지막 저장 기기 ${meta.appProperties?.vpylabDevice || '알 수 없음'}`, 'ok');
       opened = true;
     });
@@ -327,17 +394,25 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
 
   async function createFile() {
     const codeToSave = codeRef.current;
-    pendingRef.current = () => createFile();
+    const source = currentRef.current; // null이면 새 코드에서, 아니면 열린 파일의 내용으로 만듭니다.
     await run('새 파일', async () => {
       const meta = await driveRef.current.create({ name: newName, code: codeToSave, deviceId: device });
       pendingRef.current = null;
       setCurrent({ id: meta.id, name: meta.name, version: meta.version, savedCode: codeToSave });
-      clearDraft(storage, scope, newKey);
-      clearDraft(sessionStore, 'anon', newKey);
+      // 새 파일에 담긴 내용의 초안만 지웁니다. 새 코드에서 만들었으면 새 코드 초안, 파일에서 만들었으면 그 파일의 이 탭 초안.
+      if (!source) {
+        clearDraft(storage, scope, newKey);
+        clearDraft(sessionStore, 'anon', newKey);
+      } else {
+        clearDraft(storage, scope, ownDraftKey(source.id));
+      }
       setDraftNotice(null);
+      setConflict(null);
+      setOverwritten(null);
+      setRevisions([]);
       await loadFiles();
       say(`${meta.name}을(를) 드라이브 VPyLab 폴더에 만들었습니다.`, 'ok');
-    });
+    }, { fn: () => createFile(), fileId: source?.id ?? null });
   }
 
   async function saveFile({ force = false, expectVersion = null } = {}) {
@@ -349,7 +424,6 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     const withThisAttempt = [...attemptedCodes, codeToSave].slice(-3);
     currentRef.current = { ...target, attemptedCodes: withThisAttempt };
     setCurrent((c) => (c && c.id === target.id ? { ...c, attemptedCodes: withThisAttempt } : c));
-    pendingRef.current = () => saveFile({ force, expectVersion });
     await run('저장', async () => {
       const result = await driveRef.current.save({
         id: target.id, code: codeToSave, baseVersion: target.version, baseCode: target.savedCode ?? undefined, attemptedCodes, deviceId: device, force, expectVersion,
@@ -368,7 +442,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
         return;
       }
       say(result.status === 'unchanged' ? '드라이브 내용과 같아서 저장하지 않았습니다.' : `저장했습니다. 드라이브 버전 ${result.meta.version}`, 'ok');
-    });
+    }, { fn: () => saveFile({ force, expectVersion }), fileId: target.id });
   }
 
   /**
@@ -376,6 +450,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
    * 충돌 화면이 열려 있는 동안 "저장"은 막혀 있어, 고르지 않고 덮어쓸 수 없습니다.
    */
   function restoreDraft() {
+    pendingRef.current = null; // 편집기 내용이 바뀌므로, 실패했던 저장을 다시 승인 뒤 이어서 하지 않습니다.
     const draft = draftNotice;
     const target = draft.fileId.startsWith('new-') ? null : draft.fileId.split('@')[0];
     if ((target || null) !== (current?.id || null)) {
@@ -383,18 +458,31 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
       say('이 초안은 지금 편집기의 파일 것이 아니어서 불러오지 않았습니다. 초안 목록에서 다시 고르세요.', 'warn');
       return;
     }
+    if (dirty && !window.confirm('편집기에 저장하지 않은 내용이 있습니다. 지금 내용은 다른 초안으로 남겨 두고 이 초안을 불러올까요?')) return;
+    if (!keepEditAside()) return;
     setDraftNotice(null);
     setCode(draft.code);
-    // 안내한 초안은 편집기로 옮겨져 이 탭의 초안이 되므로 원래 이름의 것은 지웁니다.
-    clearDraft(draftStore, scope, draft.fileId);
+    // 안내한 초안을 이 탭의 초안으로 먼저 저장하고, 성공했을 때만 원래 이름의 것을 지웁니다.
+    const moved = saveDraft(draftStore, scope, ownKey, {
+      code: draft.code, baseVersion: draft.baseVersion ?? current?.version ?? null, name: draft.name ?? current?.name ?? null,
+    });
+    if (moved) clearDraft(draftStore, scope, draft.fileId);
+    else say('브라우저 저장 공간이 가득 차 원래 초안을 그대로 두었습니다. 드라이브에 저장하면 정리됩니다.', 'warn');
     setDraftsTick((t) => t + 1);
     if (!current || draft.baseVersion == null || String(draft.baseVersion) === String(current.version)) return;
-    setConflict({ meta: { version: current.version, appProperties: current.appProperties || {} }, code: current.savedCode });
+    // 충돌 화면이 이미 열려 있으면 그 화면의 드라이브 정보가 정확하므로 그대로 둡니다(current는 이미 초안 기준으로 바뀌어 있음).
+    if (!conflict) setConflict({ meta: { version: current.version, appProperties: current.appProperties || {} }, code: current.savedCode });
     setCurrent((c) => ({ ...c, version: String(draft.baseVersion), savedCode: null }));
-    say(`이 초안은 드라이브 버전 ${draft.baseVersion}에서 시작했는데, 그 뒤 다른 곳에서 저장했습니다(현재 버전 ${current.version}, 기기 ${deviceOf(current)}). 어느 쪽을 남길지 고르세요.`, 'warn');
+    const remoteVersion = conflict ? conflict.meta.version : current.version;
+    say(`이 초안은 드라이브 버전 ${draft.baseVersion}에서 시작했는데, 그 뒤 다른 곳에서 저장했습니다(현재 버전 ${remoteVersion}). 어느 쪽을 남길지 고르세요.`, 'warn');
   }
 
   function keepRemote() {
+    pendingRef.current = null;
+    if (typeof conflict.code !== 'string') {
+      say('드라이브 내용을 알 수 없어 불러오지 않았습니다. 파일을 다시 열어 주세요.', 'error');
+      return;
+    }
     if (!window.confirm('내 변경을 버리고 드라이브의 내용을 불러옵니다. 계속할까요?')) return;
     setCurrent((c) => ({ ...c, version: conflict.meta.version, savedCode: conflict.code }));
     setCode(conflict.code);
@@ -432,19 +520,51 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     });
   }
 
+  /** 편집 중 내용을 별도 초안(보류)으로 남깁니다. 저장 공간이 부족하면 false. */
+  function keepEditAside(content = codeRef.current) {
+    if (content === savedCode) return true;
+    const keep = current ? `${current.id}@pending-${newTabId()}` : `new-pending-${newTabId()}`;
+    if (!saveDraft(draftStore, scope, keep, { code: content, baseVersion: current?.version ?? null, name: current?.name ?? null })) {
+      say('브라우저 저장 공간이 가득 차 지금 편집 중인 내용을 따로 남기지 못해 멈췄습니다. 필요 없는 초안을 버리거나 드라이브에 저장한 뒤 다시 시도하세요.', 'error');
+      return false;
+    }
+    setDraftsTick((t) => t + 1);
+    return true;
+  }
+
   async function restoreRevision(revision) {
+    if (dirty && !window.confirm('편집기에 저장하지 않은 내용이 있습니다. 지금 내용은 다른 초안으로 남겨 두고 이전 버전을 불러올까요?')) return;
+    if (!keepEditAside()) return;
     await run('이전 버전 불러오기', async () => {
+      const before = codeRef.current;
       const text = await driveRef.current.revisionContent(current.id, revision.id);
+      // 받아오는 동안 더 입력했다면 그 내용도 따로 남깁니다.
+      if (codeRef.current !== before && !keepEditAside(codeRef.current)) return;
       setCode(text);
       say(`${new Date(revision.modifiedTime).toLocaleString()} 버전을 편집기에 불러왔습니다. 저장해야 드라이브에 반영됩니다.`, 'info');
     });
   }
 
+  /** 편집기를 새 코드로 바꿉니다. 이 탭에 남은 새 코드 초안이 있으면 그 내용을 다시 띄워 지워지지 않게 합니다. */
+  function switchToNewCode() {
+    pendingRef.current = null;
+    const own = loadDraft(draftStore, scope, newKey);
+    setCurrent(null);
+    setCode(own?.code ?? STARTER);
+    setConflict(null);
+    setOverwritten(null);
+    setRevisions([]);
+  }
+
   async function trashFile(file) {
-    if (!window.confirm(`${file.name}을(를) 드라이브 휴지통으로 옮길까요? 휴지통에서 복원할 수 있습니다.`)) return;
+    const known = fileDrafts(storage, scope, file.id);
+    const editingUnlisted = current?.id === file.id && dirty && !known.some((d) => d.fileId === ownDraftKey(file.id));
+    const unsaved = known.length + (editingUnlisted ? 1 : 0);
+    const warning = unsaved ? ` 이 파일의 저장하지 않은 초안 ${unsaved}개도 함께 지워집니다.` : '';
+    if (!window.confirm(`${file.name}을(를) 드라이브 휴지통으로 옮길까요? 휴지통에서 복원할 수 있습니다.${warning}`)) return;
     await run('휴지통으로 이동', async () => {
       await driveRef.current.trash(file.id);
-      if (current?.id === file.id) { setCurrent(null); setCode(STARTER); }
+      if (current?.id === file.id) switchToNewCode();
       if (draftNotice && !draftNotice.fileId.startsWith('new-') && draftNotice.fileId.split('@')[0] === file.id) setDraftNotice(null);
       clearFileDrafts(storage, scope, file.id);
       setDraftsTick((t) => t + 1);
@@ -482,13 +602,21 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
   }
 
   async function signOut({ revoke }) {
-    const clearLocal = window.confirm('이 브라우저에 남은 이 계정의 초안도 지울까요? 공용 컴퓨터라면 지우는 것이 안전합니다.');
-    if (revoke) await authRef.current?.revoke();
-    else authRef.current?.forget();
+    if (draftSaveFailed && dirty && !window.confirm('편집 중인 내용이 브라우저에 저장되지 않은 상태입니다. 로그아웃하면 이 내용을 잃습니다. 그래도 로그아웃할까요?')) return;
+    const editingNote = dirty ? ' 지금 편집기의 저장하지 않은 내용도 함께 지워집니다.' : '';
+    const clearLocal = window.confirm(`이 브라우저에 남은 이 계정의 초안도 지울까요? 공용 컴퓨터라면 지우는 것이 안전합니다.${editingNote}`);
+    setBusy(true);
+    try {
+      if (revoke) await authRef.current?.revoke();
+      else authRef.current?.forget();
+    } finally {
+      setBusy(false);
+    }
     const removed = clearLocal ? clearDrafts(storage, scope) : 0;
     setAccount(null);
     setTokenInfo(null);
     resetWorkspace();
+    setTabId(newTabId());
     setShowGoogleLogout(true);
     const tail = clearLocal ? ` 초안 ${removed}개를 지웠습니다.` : '';
     say(`${revoke ? '구글에 권한 철회를 요청했습니다.' : '로그아웃했습니다.'}${tail} 공용 컴퓨터에서는 구글 계정에서도 로그아웃하세요.`, 'info');
@@ -520,7 +648,9 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
       const file = files.find((f) => f.id === targetFile);
       if (!file) { say('이 초안의 파일이 목록에 없습니다. 휴지통으로 옮겨졌을 수 있습니다.', 'warn'); return; }
       // 열기를 취소하거나 실패하면 지금 열린 다른 파일에 이 초안을 안내하지 않습니다.
-      if (!(await openFile(file))) return;
+      // 열면서 초안 이름이 바뀔 수 있으므로(이 탭 초안 → 보류) 안내는 openFile이 고른 것을 그대로 씁니다.
+      await openFile(file, fileId);
+      return;
     }
     setDraftNotice({ ...draft, fileId });
   }
@@ -528,15 +658,20 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
   function discardDraft(fileId) {
     clearDraft(draftStore, scope, fileId);
     setDraftsTick((t) => t + 1);
+    retryOwnDraft();
+  }
+
+  /** 저장 공간이 생겼을 수 있으니, 저장하지 못했던 이 탭 초안을 다시 저장해 봅니다. */
+  function retryOwnDraft() {
+    if (!draftSaveFailed || code === savedCode) return;
+    const ok = saveDraft(draftStore, scope, ownKey, { code, baseVersion: current?.version ?? null, name: current?.name ?? null });
+    setDraftSaveFailed(!ok);
+    if (ok) say('공간이 생겨 편집 중인 내용을 초안으로 다시 저장했습니다.', 'ok');
   }
 
   function newCode() {
-    if (dirty && !window.confirm('저장하지 않은 변경이 있습니다. 초안은 이 브라우저에 남습니다. 새 코드로 바꿀까요?')) return;
-    setCurrent(null);
-    setCode(STARTER);
-    setConflict(null);
-    setOverwritten(null);
-    setRevisions([]);
+    if (!confirmLeave('새 코드로 바꿀까요?')) return;
+    switchToNewCode();
     setDraftNotice(null);
   }
   const signedIn = Boolean(account);
@@ -575,7 +710,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
       {reauth && (
         <div className="banner">
           <span>{reauth} 중 권한이 필요합니다.</span>
-          <button className="btn primary" disabled={busy} onClick={() => signIn('reauth', pendingRef.current || undefined)}>다시 승인</button>
+          <button className="btn primary" disabled={busy} onClick={() => signIn('reauth', pendingRef.current)}>다시 승인</button>
         </div>
       )}
 
@@ -658,8 +793,8 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
         {draftNotice && (
           <div className="banner">
             <span>이 브라우저에 저장하지 못한 초안이 있습니다: <strong>{draftNotice.name || '새 코드'}</strong> ({new Date(draftNotice.at).toLocaleString()})</span>
-            <button className="btn" onClick={restoreDraft}>초안 불러오기</button>
-            <button className="btn" onClick={() => { clearDraft(draftStore, scope, draftNotice.fileId); setDraftNotice(null); }}>초안 버리기</button>
+            <button className="btn" disabled={busy} onClick={restoreDraft}>초안 불러오기</button>
+            <button className="btn" disabled={busy} onClick={() => { if (window.confirm('이 초안을 버릴까요? 되돌릴 수 없습니다.')) { discardDraft(draftNotice.fileId); setDraftNotice(null); } }}>초안 버리기</button>
           </div>
         )}
         {otherDrafts.length > 0 && (
@@ -671,7 +806,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
                 <li key={entry.fileId}>
                   <span>{entry.draft.name || '새 코드'} · {entry.draft.at ? new Date(entry.draft.at).toLocaleString() : ''}</span>
                   <button className="btn small" disabled={busy} onClick={() => pickDraft(entry)}>살펴보기</button>
-                  <button className="btn small danger" onClick={() => discardDraft(entry.fileId)} aria-label={`${entry.draft.name || '새 코드'} 초안 버리기`}>버리기</button>
+                  <button className="btn small danger" disabled={busy} onClick={() => { if (window.confirm('이 초안을 버릴까요? 되돌릴 수 없습니다.')) discardDraft(entry.fileId); }} aria-label={`${entry.draft.name || '새 코드'} 초안 버리기`}>버리기</button>
                 </li>
               ))}
             </ul>
@@ -680,7 +815,8 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
         {draftSaveFailed && (
           <p className="status status-error" role="alert">브라우저 저장 공간이 가득 차 초안을 저장하지 못했습니다. 드라이브에 저장하기 전에는 창을 닫지 마세요. 초안 목록에서 필요 없는 초안을 버리면 공간이 생깁니다.</p>
         )}
-        <textarea className="code" value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} aria-label="코드" rows={10} />
+        {/* 구글 응답을 기다리는 동안(열기·저장·휴지통·이전 버전·승인 창)에는 입력을 막아, 기다리는 사이의 입력이 덮이지 않게 합니다. */}
+        <textarea className="code" value={code} onChange={(e) => setCode(e.target.value)} readOnly={busy} aria-busy={busy} spellCheck={false} aria-label="코드" rows={10} />
         <div className="row">
           <button className="btn primary" disabled={!current || busy || Boolean(conflict)} onClick={() => saveFile()}>저장</button>
           <button className="btn" disabled={!current || busy} onClick={loadRevisions}>버전 기록</button>

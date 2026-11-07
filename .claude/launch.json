@@ -4,51 +4,33 @@
     {
       "name": "vpylab-client",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev"
-      ],
+      "runtimeArgs": ["run", "dev"],
       "port": 4033,
       "cwd": "client"
     },
     {
       "name": "vpylab-classroom",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev:classroom"
-      ],
+      "runtimeArgs": ["run", "dev:classroom"],
       "port": 4043
     },
     {
       "name": "classroom-lan",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "classroom:lan",
-        "--",
-        "--skip-build",
-        "--no-qr"
-      ],
+      "runtimeArgs": ["run", "classroom:lan", "--", "--skip-build", "--no-qr"],
       "port": 4077
     },
     {
       "name": "vpylab-drive-lab",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "dev:drive-lab"
-      ],
+      "runtimeArgs": ["run", "dev:drive-lab"],
       "port": 4086,
       "cwd": "client"
     },
     {
       "name": "vpylab-deploy-preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": [
-        "run",
-        "preview:deploy"
-      ],
+      "runtimeArgs": ["run", "preview:deploy"],
       "port": 4086,
       "cwd": "client"
     }

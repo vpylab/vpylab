@@ -50,6 +50,13 @@ describe('lab-state', () => {
     expect(listDrafts(s, 'subA').map((d) => d.fileId)).toEqual(['new-x', 'f1']);
   });
 
+  it('깨진 초안 하나가 있어도 나머지 초안은 읽는다', () => {
+    const s = memory();
+    s.setItem('vpylab-drivelab:draft:subA:bad', '{oops');
+    s.setItem('vpylab-drivelab:draft:subA:good', JSON.stringify({ code: 'ok', at: '2026-11-05T00:00:00Z' }));
+    expect(listDrafts(s, 'subA').map((d) => d.fileId)).toEqual(['good']);
+  });
+
   it('14일이 지났거나 깨진 초안은 지운다', () => {
     const s = memory();
     const now = Date.parse('2026-11-20T00:00:00Z');

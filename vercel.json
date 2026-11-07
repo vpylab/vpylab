@@ -10,6 +10,13 @@
       "includeFiles": "client/.env.production"
     }
   },
+  "redirects": [
+    {
+      "source": "/drive-lab",
+      "destination": "/drive-lab.html",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/s/:id",

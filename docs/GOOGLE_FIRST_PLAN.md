@@ -60,6 +60,7 @@ VPyLab을 전 세계 학교가 사용하는 오픈소스 서비스로 키우려�
 - `drive-storage.js`를 본 앱의 저장 계층으로 옮기고, `codeStore`가 어댑터 인터페이스(`list`·`create`·`open`·`save`·`revisions`·`trash`)만 보도록 바꿉니다.
 - 저장 모드는 둘입니다. 로그인하지 않으면 브라우저(localStorage)에, 구글로 로그인하면 드라이브에 저장합니다.
 - 실험 페이지에서 검증한 초안 보존, 충돌 처리, 덮어쓰기 감지, 계정 전환 처리, 로그아웃 정리를 그대로 가져옵니다.
+- 본 앱의 CSP를 바꿉니다. 지금은 실험 페이지에만 전용 CSP가 있습니다. 본 앱 CSP의 `connect-src`에 `https://www.googleapis.com`, `https://oauth2.googleapis.com`을 넣고 `script-src`·`frame-src`에 구글 로그인(`https://accounts.google.com/gsi/`)을 넣습니다. Supabase와 Railway 주소는 4단계에서 뺍니다.
 - 기능 플래그(`VITE_STORAGE=drive`)로 켜고, 교실에서 한 학기 병행합니다.
 
 ### 3단계: 기능 정리

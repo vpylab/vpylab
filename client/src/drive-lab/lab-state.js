@@ -66,14 +66,17 @@ export function clearDraft(storage, scope, fileId) {
 export function listDrafts(storage, scope) {
   const prefix = `${PREFIX}:draft:${scope || 'anon'}:`;
   const found = [];
-  try {
-    for (let i = 0; i < storage.length; i += 1) {
+  let length = 0;
+  try { length = storage.length; } catch { return found; }
+  for (let i = 0; i < length; i += 1) {
+    // 한 항목이 깨져도 나머지 초안은 읽습니다.
+    try {
       const key = storage.key(i);
       if (!key || !key.startsWith(prefix)) continue;
       const draft = JSON.parse(storage.getItem(key));
-      if (draft) found.push({ fileId: key.slice(prefix.length), draft });
-    }
-  } catch { /* 무시 */ }
+      if (draft && typeof draft.code === 'string') found.push({ fileId: key.slice(prefix.length), draft });
+    } catch { /* 깨진 항목은 건너뜁니다(페이지를 열 때 정리됩니다) */ }
+  }
   return found.sort((a, b) => String(b.draft.at || '').localeCompare(String(a.draft.at || '')));
 }
 

@@ -28,6 +28,10 @@ describe('드라이브 실험 페이지 배포', () => {
     expect(pattern.test('/gallery')).toBe(true);
   });
 
+  it('/drive-lab 주소는 /drive-lab.html로 넘긴다', () => {
+    expect(vercel.redirects).toContainEqual({ source: '/drive-lab', destination: '/drive-lab.html', permanent: false });
+  });
+
   it('실험 페이지에는 전용 헤더 하나만 적용된다', () => {
     const matching = vercel.headers.filter((rule) => toRegExp(rule.source).test('/drive-lab.html'));
     expect(matching.map((rule) => rule.source)).toEqual(['/drive-lab.html']);

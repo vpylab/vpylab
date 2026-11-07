@@ -9,6 +9,7 @@ export const IDENTITY_SCOPES = ['openid', 'email', 'profile'];
 export const ALL_SCOPES = [...IDENTITY_SCOPES, DRIVE_FILE_SCOPE];
 /** 만료 직전 요청이 실패하지 않도록 남은 시간이 이보다 짧으면 만료로 봅니다. */
 export const EXPIRY_MARGIN_MS = 60_000;
+export const REVOKE_TIMEOUT_MS = 5_000;
 
 export class AuthRequiredError extends Error {
   constructor(message = '구글 권한 승인이 필요합니다.') {
@@ -144,7 +145,9 @@ export function createGoogleAuth({ clientId, gis, now = () => Date.now() }) {
       token = null;
       return new Promise((resolve) => {
         if (!value) return resolve();
-        gis.accounts.oauth2.revoke(value, () => resolve());
+        // 네트워크 오류로 콜백이 오지 않아도 로그아웃이 멈추지 않게 5초 뒤 끝냅니다.
+        const timer = setTimeout(resolve, REVOKE_TIMEOUT_MS);
+        gis.accounts.oauth2.revoke(value, () => { clearTimeout(timer); resolve(); });
       });
     },
     forget() {

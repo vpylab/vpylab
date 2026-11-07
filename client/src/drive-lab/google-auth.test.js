@@ -91,6 +91,26 @@ describe('createGoogleAuth', () => {
   });
 });
 
+describe('권한 철회', () => {
+  it('구글이 응답하지 않아도 시간 제한 뒤 끝난다', async () => {
+    vi.useFakeTimers();
+    const state = { config: null };
+    const gis = { accounts: { oauth2: {
+      initTokenClient: (config) => { state.config = config; return { requestAccessToken: () => {} }; },
+      revoke: () => { /* 콜백을 부르지 않음 */ },
+    } } };
+    const auth = createGoogleAuth({ clientId: 'cid', gis });
+    const p = auth.request();
+    state.config.callback({ access_token: 'A', expires_in: 3599 });
+    await p;
+    let done = false;
+    auth.revoke().then(() => { done = true; });
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(done).toBe(true);
+    vi.useRealTimers();
+  });
+});
+
 describe('다시 승인할 때 같은 계정 지정', () => {
   it('loginHint가 있으면 login_hint로 넘긴다', () => {
     const { gis, state } = fakeGis();
