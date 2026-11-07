@@ -16,7 +16,7 @@
 | 도움 축소와 독립 적용 | 변형 권고·자유 창작 | 대체로 명시되지 않음. 새로운 입력·상황에서 힌트 없이 적용하는 활동 필요. |
 | 사고 과정 기록 | v2의 예상·관찰·판단·다음 실험 양식 | 공통 기록 틀은 적절. 각 콘텐츠의 구체적 관찰 질문과 선수학습을 대신하지는 못함. |
 
-근거: [자료실의 코드·힌트·참고 풀이](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/CurriculumLibrary.jsx:33), [공통 사고 과정 양식](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/EvidenceForm.jsx:9), [차시 스키마](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:18), [튜토리얼 미션의 공통 설정](/Users/greatsong/greatsong-project/vpylab/client/src/data/missions.js:13).
+근거: [자료실의 코드·힌트·참고 풀이](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/CurriculumLibrary.jsx:33), [공통 사고 과정 양식](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/EvidenceForm.jsx:9), [차시 스키마](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:18), [튜토리얼 미션의 공통 설정](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/missions.js:13).
 
 ## 난이도를 낮게 유지하는 공통 설계
 
@@ -110,4 +110,4 @@
 
 후속 파일럿에서는 학생이 ① 편집할 곳을 스스로 찾는지 ② 바꿀 값과 결과를 예측하는지 ③ 필요한 도움을 선택하는지 ④ 도움을 줄인 새 조건에서도 설명·수정하는지 관찰합니다. 실제 학년·선수 경험과 교사의 수업 운영을 확인하기 전에는 완료 시간·성공률을 확정하지 않습니다.
 
-항목별 근거와 전수 판정은 [코스](/Users/greatsong/greatsong-project/vpylab/docs/content-review/2026-10-28/courses-review.md), [미션](/Users/greatsong/greatsong-project/vpylab/docs/content-review/2026-10-28/missions-review.md), [예제·API](/Users/greatsong/greatsong-project/vpylab/docs/content-review/2026-10-28/examples-reference-review.md)에 있습니다. 종합 판단과 정확성 문제는 [교육 적절성 종합 보고서](/Users/greatsong/greatsong-project/vpylab/docs/CONTENT_EDUCATIONAL_REVIEW_2026-10-28.md)를 참고합니다.
+항목별 근거와 전수 판정은 [코스](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/content-review/2026-10-28/courses-review.md), [미션](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/content-review/2026-10-28/missions-review.md), [예제·API](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/content-review/2026-10-28/examples-reference-review.md)에 있습니다. 종합 판단과 정확성 문제는 [교육 적절성 종합 보고서](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/CONTENT_EDUCATIONAL_REVIEW_2026-10-28.md)를 참고합니다.

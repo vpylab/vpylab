@@ -26,3 +26,4 @@ client/public/pyodide/
 scripts/compat/out/preprocessed.json
 scripts/compat/out/merged.json
 scripts/compat/out/*.partial.json
+.gstack/

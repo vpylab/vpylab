@@ -44,12 +44,15 @@ export default function WelcomeFriends({ko=true,lightSettings=null,onLightChange
    {!webgl&&<StillFriend id={selectedId}/>}
   </div>
   <div className="welcome-choices" role="group" aria-label={ko?'맞이할 친구 고르기':'Choose a welcome friend'}>{[...welcomeFriends,welcomeTogether].map(f=><button key={f.id} onClick={()=>{setManualMotion(false);setId(f.id);if(f.id===selectedId)runtime.current?.play();}} aria-pressed={f.id===selectedId}><span style={{background:f.color||'#b9d8ce'}} aria-hidden="true"/>{f.label[ko?'ko':'en'].replace(ui("친구"),'')}</button>)}</div>
-  <div className="welcome-actions"><button className="welcome-action-play" disabled={!webgl} aria-pressed={manualMotion} onClick={()=>{if(manualMotion)runtime.current?.stop();else runtime.current?.play(true);setManualMotion(active=>!active);}}>{selectedId==='friends'?(ko?'통통 튀기':'Bounce together'):welcomeActions[selectedId][ko?'ko':'en']} <span aria-hidden="true">{manualMotion?'■':'▶'}</span></button><button aria-pressed={stageOn} onClick={()=>setStageOn(on=>!on)}>{ko?'무대 조명':'Stage lights'} <span aria-hidden="true">{stageOn?'●':'○'}</span></button><Link to={'/tutorials/welcome-friend?step='+selectedId}>{ko?(selectedId==='friends'?'프렌즈, 내 코드로 만들기':'이 친구, 내 코드로 만들기'):'Build with code'} →</Link></div>
-  <p className="welcome-motion-status" aria-live="polite">{!webgl?(ko?'3D를 사용할 수 없어 정적인 친구를 보여드려요.':'Showing a still friend because 3D is unavailable.'):manualMotion?(ko?'변형 모션 재생 중 · 같은 버튼으로 멈춰요.':'Character action is playing. Press again to stop.'):(ko?(motionAllowed?'▶ 버튼으로 변형 모션을 반복해서 볼 수 있어요.':'자동 모션은 꺼져 있어요. ▶ 버튼을 누르면 직접 볼 수 있어요.'):'Press ▶ to repeat the character action.')}</p>
-  <p className="welcome-orbit-hint">{ko?'좌우로 끌어 돌려보세요.':'Drag sideways to rotate.'} <button type="button" disabled={!webgl} onClick={()=>setViewReset(n=>n+1)}>{ko?'시점 초기화':'Reset view'}</button></p>
-  <p className="welcome-motion-guide"><Link to={'/tutorials/welcome-friend?step='+selectedId+'-motion'}>{ko?'이 모션, 내 코드로 만들기':'Build this action with code'} →</Link></p>
-  <p className="welcome-light-label">{lightSettings?(ko?'내가 꾸민 조명':'My lighting'):lighting.label[ko?'ko':'en']}</p>
-  {onLightChange&&webgl&&<StageLightEditor settings={lightSettings} palette={lighting} onChange={onLightChange} ko={ko}/>}
-  <p className="welcome-note">{ko?'작은 도형을 모으면 친구가 돼요. 나도 만들어 볼까요?':'Small shapes make a friend. Try making one yourself.'}</p>
+  <div className="welcome-actions"><button className="welcome-action-play" disabled={!webgl} aria-pressed={manualMotion} onClick={()=>{if(manualMotion)runtime.current?.stop();else runtime.current?.play(true);setManualMotion(active=>!active);}}>{selectedId==='friends'?(ko?'통통 튀기':'Bounce together'):welcomeActions[selectedId][ko?'ko':'en']} <span aria-hidden="true">{manualMotion?'■':'▶'}</span></button><Link to={'/tutorials/welcome-friend?step='+selectedId}>{ko?(selectedId==='friends'?'프렌즈, 내 코드로 만들기':'이 친구, 내 코드로 만들기'):'Build with code'} →</Link></div>
+  {/* 주동작(친구 고르기·모션·코드로 만들기)만 펼쳐 두고, 시점·조명·모션 코드는 한 곳에 접습니다. */}
+  <p className={webgl?'sr-only':'welcome-motion-status'} aria-live="polite">{!webgl?(ko?'3D를 사용할 수 없어 정적인 친구를 보여드려요.':'Showing a still friend because 3D is unavailable.'):manualMotion?(ko?'변형 모션 재생 중 · 같은 버튼으로 멈춰요.':'Character action is playing. Press again to stop.'):(ko?(motionAllowed?'▶ 버튼으로 변형 모션을 반복해서 볼 수 있어요.':'자동 모션은 꺼져 있어요. ▶ 버튼을 누르면 직접 볼 수 있어요.'):'Press ▶ to repeat the character action.')}</p>
+  <details className="welcome-more">
+   <summary>{ko?'시점·조명 상세 설정':'View and lighting settings'}</summary>
+   <p className="welcome-orbit-hint">{ko?'좌우로 끌어 돌려보세요.':'Drag sideways to rotate.'} <button type="button" disabled={!webgl} onClick={()=>setViewReset(n=>n+1)}>{ko?'시점 초기화':'Reset view'}</button></p>
+   <p className="welcome-more-row"><button type="button" aria-pressed={stageOn} onClick={()=>setStageOn(on=>!on)}>{ko?'무대 조명':'Stage lights'} <span aria-hidden="true">{stageOn?'●':'○'}</span></button><span className="welcome-light-label">{lightSettings?(ko?'내가 꾸민 조명':'My lighting'):lighting.label[ko?'ko':'en']}</span></p>
+   {onLightChange&&webgl&&<StageLightEditor settings={lightSettings} palette={lighting} onChange={onLightChange} ko={ko}/>}
+   <p className="welcome-motion-guide"><Link to={'/tutorials/welcome-friend?step='+selectedId+'-motion'}>{ko?'이 모션, 내 코드로 만들기':'Build this action with code'} →</Link></p>
+  </details>
  </section>;
 }

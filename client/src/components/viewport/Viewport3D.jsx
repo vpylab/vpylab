@@ -48,6 +48,8 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
   const [showAxes, setShowAxes] = useState(false);
   const [cameraMode, setCameraMode] = useState('auto-fit');
   const [lockFollowZoom, setLockFollowZoom] = useState(false);
+  // WebGL을 만들 수 없는 컴퓨터에서는 화면 영역에만 안내를 표시하고 편집기·콘솔은 그대로 둡니다.
+  const [webglUnavailable, setWebglUnavailable] = useState(false);
   const startingCamera = useRef(initialCameraPosition);
   const theme = useAppStore((s) => s.theme);
 
@@ -84,11 +86,18 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
     cameraRef.current = camera;
 
     // 렌더러 — 저사양 대응
-    const renderer = new THREE.WebGLRenderer({
-      antialias: window.devicePixelRatio <= 1,
-      alpha: false,
-      preserveDrawingBuffer: true,
-    });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: window.devicePixelRatio <= 1,
+        alpha: false,
+        preserveDrawingBuffer: true,
+      });
+    } catch (error) {
+      console.warn('[VPyLab] WebGL을 시작하지 못했습니다.', error);
+      queueMicrotask(() => setWebglUnavailable(true));
+      return;
+    }
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
@@ -411,6 +420,20 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       <div className="relative w-full" style={{ height: extraCanvases.length ? (defaultHasObjects ? 320 : 0) : '100%', overflow: 'hidden' }}>
       <div ref={containerRef} className="w-full h-full" />
 
+      {webglUnavailable && (
+        <div
+          role="status"
+          className="absolute inset-0 flex items-center justify-center p-6 text-center"
+          style={{ backgroundColor: 'var(--color-bg-secondary)' }}
+          data-vpylab-webgl-unavailable=""
+        >
+          <div className="max-w-sm">
+            <p className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>{t('viewport.webglUnavailable')}</p>
+            <p className="mt-2 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{t('viewport.webglUnavailableHelp')}</p>
+          </div>
+        </div>
+      )}
+
       {/* 전체 화면 안의 실행·정지 — 부모 도구 모음이 가려지므로 여기서 그립니다. */}
       {fullscreen.active && controls && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2" data-vpylab-fullscreen-controls="">
@@ -438,7 +461,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       />
 
       {/* 카메라 모드 표시 + 옵션 토글 */}
-      <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+      {!webglUnavailable && <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
         {/* 전체 화면 */}
         <button
           type="button"
@@ -524,7 +547,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
           />
           {t('viewport.axes')}
         </label>
-      </div>
+      </div>}
       </div>
       {canvasId === 'scene' && <AudioNoteIndicator />}
       {extraCanvases.map(item => <div key={`${item.id}-${item.epoch}`} className="relative border-t" style={{ height: Math.max(180, Math.min(item.height || 320, 1000)), width: item.width ? Math.min(item.width, 1600) : '100%', maxWidth: '100%', borderColor: 'var(--color-border)' }}>

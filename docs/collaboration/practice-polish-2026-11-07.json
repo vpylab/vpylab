@@ -1,0 +1,89 @@
+{
+  "runtime": {
+    "base": "http://127.0.0.1:4135",
+    "results": [
+      {
+        "name": "editor-usable-during-init-and-preserved",
+        "passed": true
+      },
+      {
+        "name": "cooperative-route-handoff-reuses-worker-and-silences-audio",
+        "passed": true,
+        "returnToReadyMs": 45
+      },
+      {
+        "name": "new-screen-gets-fresh-student-globals",
+        "passed": true
+      },
+      {
+        "name": "noncooperative-stop-rebuilds-and-reruns",
+        "passed": true
+      },
+      {
+        "name": "runtime-status-visible-on-mobile",
+        "passed": true
+      },
+      {
+        "name": "init-failure-keeps-editor-and-supports-retry",
+        "passed": true
+      }
+    ],
+    "errors": []
+  },
+  "polish": {
+    "results": [
+      {
+        "name": "space-instrument-buttons-keyboard-and-audio-clock-indicator",
+        "passed": true
+      },
+      {
+        "name": "reference-tab-keeps-idle-engine",
+        "passed": true,
+        "backgroundVisibility": "visible"
+      },
+      {
+        "name": "glowing-arpeggio-eight-note-interaction",
+        "passed": true,
+        "notes": [
+          "C4",
+          "E4",
+          "G4",
+          "B4",
+          "G4",
+          "E4",
+          "C4",
+          "B4"
+        ]
+      },
+      {
+        "name": "static-drawing-reduced-camera-still-responsive",
+        "passed": true,
+        "idleDrawsIn1100ms": 2,
+        "cameraInteractionDraws": 40
+      },
+      {
+        "name": "real-web-audio-sequence-uses-absolute-times",
+        "passed": true,
+        "secondNoteLeadMs": 119
+      },
+      {
+        "name": "mobile-buttons-and-note-display",
+        "passed": true
+      }
+    ],
+    "errors": []
+  },
+  "clientTests": {
+    "files": 85,
+    "tests": 879,
+    "fullRunPassed": 878,
+    "fullRunTimedOut": 1,
+    "recheck": {
+      "files": 2,
+      "tests": 15,
+      "passed": true,
+      "note": "병렬 빌드가 끝난 뒤 문서 예제와 캔버스 회귀를 분리 실행했고 제한을 바꾸지 않았습니다."
+    }
+  },
+  "deployed": false
+}

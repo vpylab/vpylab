@@ -1,0 +1,141 @@
+{
+  "checkedAt": "2026-11-07T17:31:49.637173+09:00",
+  "sourceCommit": "937eb95ff6c3700eec493eb17639c6e5ffa4c4fe",
+  "production": "https://vpylab.vercel.app",
+  "deploymentId": "dpl_ANZxqJ87uARv5fPpJHBupXkKexkm",
+  "deploymentUrl": "https://vpylab-6r8o6jafi-greatsongs-projects.vercel.app",
+  "statuses": [
+    {
+      "context": "Vercel",
+      "state": "success",
+      "url": "https://vercel.com/greatsongs-projects/vpylab/ANZxqJ87uARv5fPpJHBupXkKexkm"
+    },
+    {
+      "context": "vpylab-server - vpylab-server",
+      "state": "success",
+      "url": "https://railway.com/project/42458484-09c1-4069-b88f-9cfdff8bac0d/service/4a24242d-852e-4930-bf4e-466bc55d85d4?id=8937ae89-7be4-4fd7-9e43-72553b9d5845&environmentId=2d7b134c-c3bd-4fa4-bf3c-249509a3ce0c"
+    }
+  ],
+  "ci": {
+    "url": "https://github.com/greatsong/vpylab/actions/runs/42355583844",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "린트 검증",
+        "conclusion": "success"
+      },
+      {
+        "name": "번역 키 검증",
+        "conclusion": "success"
+      },
+      {
+        "name": "보안 검사",
+        "conclusion": "success"
+      },
+      {
+        "name": "미션 다국어 필드 검증",
+        "conclusion": "success"
+      },
+      {
+        "name": "새 교실 저장·권한·GitHub 회귀 검증",
+        "conclusion": "success"
+      },
+      {
+        "name": "미션 데이터 검증",
+        "conclusion": "success"
+      },
+      {
+        "name": "빌드 검증",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "health": {
+    "status": "ok",
+    "commitSha": "937eb95ff6c3"
+  },
+  "clientTests": {
+    "files": 85,
+    "tests": 879,
+    "result": "isolated release workspace: all passed in one run"
+  },
+  "labBrowser": {
+    "results": [
+      {
+        "name": "space-instrument-buttons-keyboard-and-audio-clock-indicator",
+        "passed": true
+      },
+      {
+        "name": "reference-tab-keeps-idle-engine",
+        "passed": true,
+        "backgroundVisibility": "visible"
+      },
+      {
+        "name": "glowing-arpeggio-eight-note-interaction",
+        "passed": true,
+        "notes": [
+          "C4",
+          "E4",
+          "G4",
+          "B4",
+          "G4",
+          "E4",
+          "C4",
+          "B4"
+        ]
+      },
+      {
+        "name": "static-drawing-reduced-camera-still-responsive",
+        "passed": true,
+        "idleDrawsIn1100ms": 3,
+        "cameraInteractionDraws": 38
+      },
+      {
+        "name": "real-web-audio-sequence-uses-absolute-times",
+        "passed": true,
+        "secondNoteLeadMs": 119
+      },
+      {
+        "name": "mobile-buttons-and-note-display",
+        "passed": true
+      }
+    ],
+    "errors": []
+  },
+  "runtimeBrowser": {
+    "base": "https://vpylab.vercel.app",
+    "results": [
+      {
+        "name": "editor-usable-during-init-and-preserved",
+        "passed": true
+      },
+      {
+        "name": "cooperative-route-handoff-reuses-worker-and-silences-audio",
+        "passed": true,
+        "returnToReadyMs": 61
+      },
+      {
+        "name": "new-screen-gets-fresh-student-globals",
+        "passed": true
+      },
+      {
+        "name": "noncooperative-stop-rebuilds-and-reruns",
+        "passed": true
+      },
+      {
+        "name": "runtime-status-visible-on-mobile",
+        "passed": true
+      },
+      {
+        "name": "init-failure-keeps-editor-and-supports-retry",
+        "passed": true
+      }
+    ],
+    "errors": []
+  },
+  "limitations": [
+    "게스트 실습·로컬 브라우저만 사용했습니다. 계정 로그인·DB 저장·발행은 수행하지 않았습니다.",
+    "물리 스피커·Bluetooth·학교 기기 전력 검증은 하지 않았습니다.",
+    "headless의 다른 탭 열기에서도 visibilityState는 visible이었습니다. hidden·만료·계정 경계는 단위검사에서 확인했습니다."
+  ]
+}

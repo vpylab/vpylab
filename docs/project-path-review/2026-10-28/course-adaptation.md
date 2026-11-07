@@ -15,7 +15,7 @@
 | 코스 | `beg-shapes` / 도형 친구들 만나기 / level 1 |
 | 차시 | `beg-shapes-4` / 신호등 만들기 |
 | 원문 목표 | “세 개의 sphere를 위·중·아래로 쌓아 신호등을 표현한다.” |
-| 원문 위치 | [/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:86](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:86) |
+| 원문 위치 | [/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:86](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:86) |
 | 코드 규모 | 마지막 개행 제외 11줄. `box` 1개, `sphere` 3개. 이미 실행 가능한 완성 예제 |
 | 검토 시점 코드 SHA-256 | `f4f9c7f6ec2f3418c25d3e4b4d9e76034ff11002ac45086198fbd62871ab15c9` |
 | 학생 선수지식 | 함수 호출의 괄호, `pos=vector(x,y,z)`, `radius`, `color`; 숫자 하나를 바꾼 전후 비교 |
@@ -94,7 +94,7 @@
 
 ## 시작 코드 실행·저장·협업의 구분
 
-이 차시는 `lesson`이며 `mission`이 아닙니다. [Workspace.jsx:52](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/Workspace.jsx:52)에서 미션만 채점 자료로 선택하고, [Workspace.jsx:124](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/Workspace.jsx:124)에서 그 자료가 있을 때만 “학습 조건 확인”을 표시합니다. 따라서 **이 차시를 그대로 실행해서 자동 100점을 받는 경로는 없습니다.** 실행 완료 메시지는 도형이 실행되었다는 사실이며 학습목표 성취나 협업 완료 판정이 아닙니다.
+이 차시는 `lesson`이며 `mission`이 아닙니다. [Workspace.jsx:52](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/Workspace.jsx:52)에서 미션만 채점 자료로 선택하고, [Workspace.jsx:124](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/Workspace.jsx:124)에서 그 자료가 있을 때만 “학습 조건 확인”을 표시합니다. 따라서 **이 차시를 그대로 실행해서 자동 100점을 받는 경로는 없습니다.** 실행 완료 메시지는 도형이 실행되었다는 사실이며 학습목표 성취나 협업 완료 판정이 아닙니다.
 
 다른 미션의 시작 코드가 이미 조건을 만족하는지는 별도 미션 검토 사안입니다. 이 경로에서는 원문 실행, 의미 없는 값 변경, 같은 코드의 반복 저장, 모든 코드를 한 학생이 마지막에 일괄 저장한 일을 동료 검토를 거친 공동 문제 해결과 구분해야 합니다. 기준은 횟수나 코드 길이가 아니라 문제→예측→작은 변경→조건 비교→동료 질문→판단 수정이라는 연결입니다.
 
@@ -110,25 +110,25 @@ AI 미사용 수업은 원문·동료 질문·교사 힌트만으로 전 과정�
 
 ### P1 — 동료 검토 경로와 직접 팀 저장 경로가 공존한다
 
-근거: [Workspace.jsx:123](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/Workspace.jsx:123), [store.js:143](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:143), [store.js:162](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:162).
+근거: [Workspace.jsx:123](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/Workspace.jsx:123), [store.js:143](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:143), [store.js:162](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:162).
 
 편집자는 체크포인트 API로 동료 승인 없이 팀 코드를 바꿀 수 있습니다. 제안 병합 경로의 승인 규칙이 모든 팀 변경에 적용되는 것은 아닙니다. 수업용 완성 예제를 마지막에 한 번 저장하면 기록은 남지만, 작성·검토 역할 교대의 증거가 사라질 수 있습니다. 협업을 수업의 필수 과정으로 평가하려면 “이 수업은 제안으로만 확정” 정책을 제품에 추가하거나, 현재는 교사가 직접 저장을 협업 완료로 인정하지 않는 운영 규칙을 분명히 해야 합니다. 원문 코드에는 손대지 않고 적용할 수 있는 개선입니다.
 
 ### P2 — 출발 차시·학습목표·변경 기여를 버전으로 묶는 계약이 부족하다
 
-근거: [ClassroomApp.jsx:124](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/ClassroomApp.jsx:124), [app.js:19](/Users/greatsong/greatsong-project/vpylab/server/classroom/app.js:19), [store.js:124](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:124), [store.js:129](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:129), [github.js:155](/Users/greatsong/greatsong-project/vpylab/server/classroom/github.js:155).
+근거: [ClassroomApp.jsx:124](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/ClassroomApp.jsx:124), [app.js:19](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/app.js:19), [store.js:124](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:124), [store.js:129](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:129), [github.js:155](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/github.js:155).
 
 자료 ID·제목과 프로젝트의 시작 코드는 남습니다. 다만 차시 원문 코드 해시·콘텐츠 버전·원문 목표·교사 제공/학생 편집 범위를 고정하지 않고, 문제·성공 기준도 현재 값으로 갱신됩니다. GitHub PR 본문 역시 이 학습 출처를 자동 포함하지 않습니다. 차후 원문이 바뀌거나 학생이 애니메이션을 붙여 목표가 이동한 경우, 원문 재현과 학생의 새 기여를 화면만 보고 판단하기 어렵습니다. 시작 자료 스냅샷과 목표를 묶어 보존하고, 원문 대비 변경·그 변경의 학습 이유를 연결하는 기능이 필요합니다.
 
 ### P2 — 보완 요청 이후의 수정과 근거 있는 재검토를 자동 연결하지 않는다
 
-근거: [app.js:133](/Users/greatsong/greatsong-project/vpylab/server/classroom/app.js:133), [app.js:134](/Users/greatsong/greatsong-project/vpylab/server/classroom/app.js:134), [store.js:159](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:159), [store.js:161](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:161), [Workspace.jsx:187](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/Workspace.jsx:187).
+근거: [app.js:133](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/app.js:133), [app.js:134](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/app.js:134), [store.js:159](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:159), [store.js:161](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:161), [Workspace.jsx:187](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/Workspace.jsx:187).
 
 로컬 제안의 코드를 갱신하는 경로가 없으므로 수정 코드는 새 제안으로 제출해야 합니다. 이전 제안과 후속 제안 사이의 `supersedes`/관련 질문 연결은 없으며, 검토 의견이 비어 있어도 승인할 수 있습니다. 보완 요청의 철회 자체는 가능하지만 “무슨 실험을 다시 해보고 판단을 바꿨는가”가 필수 기록은 아닙니다. 현재 수업에서는 후속 제안 제목에 이전 제안과 고친 조건을 명시하고, 검토자는 실제 실행 조건을 한 문장 이상 쓰도록 안내해야 합니다.
 
 ### P3 — 범용 실험 기록은 있으나 차시별 점진적 도움과 전이 확인은 별도 수업 설계가 필요하다
 
-근거: [EvidenceForm.jsx:9](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/EvidenceForm.jsx:9), [CurriculumLibrary.jsx:35](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/CurriculumLibrary.jsx:35), [Workspace.jsx:172](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/Workspace.jsx:172).
+근거: [EvidenceForm.jsx:9](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/EvidenceForm.jsx:9), [CurriculumLibrary.jsx:35](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/CurriculumLibrary.jsx:35), [Workspace.jsx:172](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/Workspace.jsx:172).
 
 가설·관찰·이유·다음 계획 양식은 적절합니다. 이 차시에는 단계별 힌트·편집 범위·역할 교대·도움 축소/전이 과제가 구조화되어 있지 않습니다. 개방형 기록 4개를 처음부터 모두 작성하게 하면 11줄 예제보다 문서 작업이 더 큰 과제가 될 수 있습니다. 첫 라운드는 “바꿀 값/예상/실제” 세 문장, 두 번째 라운드부터 대안과 동료 질문을 추가하도록 교사가 안내하고, 이후 독립 설명을 확인하는 구성이 적절합니다.
 

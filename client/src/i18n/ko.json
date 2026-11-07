@@ -345,7 +345,9 @@
     "axes": "XYZ",
     "autoFitTip": "전체 물체가 화면에 담기도록 자동 줌",
     "followTip": "움직이는 물체 중심을 따라감",
-    "lockZoomTip": "카메라 줌 거리를 현재 상태로 고정합니다"
+    "lockZoomTip": "카메라 줌 거리를 현재 상태로 고정합니다",
+    "webglUnavailable": "이 컴퓨터에서는 3D 화면을 열 수 없습니다.",
+    "webglUnavailableHelp": "코드 편집과 콘솔 출력은 계속 사용할 수 있습니다. 브라우저 설정에서 하드웨어 가속을 켜거나 최신 크롬 또는 엣지에서 열면 3D 화면이 표시됩니다."
   },
   "sharedCode": {
     "loading": "코드 로딩 중...",

@@ -345,7 +345,9 @@
     "axes": "XYZ",
     "autoFitTip": "Zoom automatically so every object fits",
     "followTip": "Follow the center of moving objects",
-    "lockZoomTip": "Keep the current camera distance"
+    "lockZoomTip": "Keep the current camera distance",
+    "webglUnavailable": "The 3D view cannot open on this computer.",
+    "webglUnavailableHelp": "You can still edit code and read console output. Turn on hardware acceleration in your browser settings, or open VPyLab in a current version of Chrome or Edge, to see the 3D view."
   },
   "sharedCode": {
     "loading": "Loading code...",

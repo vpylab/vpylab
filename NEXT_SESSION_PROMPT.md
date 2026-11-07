@@ -7,8 +7,8 @@
 VPy Lab 프로젝트를 이어서 진행합니다.
 
 1. 먼저 다음 파일들을 읽어주세요:
-   - /Users/greatsong/greatsong-project/vpylab/PROGRESS.md
-   - /Users/greatsong/greatsong-project/vpylab/CLAUDE.md
+   - /Users/greatsong/greatsong-project/10_수업자료/vpylab/PROGRESS.md
+   - /Users/greatsong/greatsong-project/10_수업자료/vpylab/CLAUDE.md
 
 2. 현재 상태:
    - 엔진 코어 + 미션 16개 + 사운드/차트/카메라 + 채점 시스템 완성

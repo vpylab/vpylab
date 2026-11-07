@@ -35,13 +35,13 @@ P1은 수업 전에 해결해야 하는 실행·개념 정확성 오류, P2는 �
 
 `beg-patterns-2`는 `range(8)`인데 7색인 `무지개[i]`를 사용한다. 학생이 예제를 그대로 실행해도 마지막 반복에서 범위를 벗어난다. 코드가 낯선 학생에게 자신의 실수로 오인하게 할 수 있으므로 공개 수업 전에 정정해야 한다. `pro-toolkit-9`의 `scatter3d(x, y, z, color=...)`도 현재 API의 `scatter3d(points, colors=None, size=...)`와 맞지 않는다. 어려운 문법을 추가해서 학생이 우회하게 할 문제가 아니다.
 
-근거: [반복 횟수](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:161), [색 인덱스](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:164), [7색 정의](/Users/greatsong/greatsong-project/vpylab/client/src/engine/vpython-api.py:2303), [정수 인덱스 처리](/Users/greatsong/greatsong-project/vpylab/client/src/engine/vpython-api.py:2281), [산점도 호출](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:1023), [산점도 API](/Users/greatsong/greatsong-project/vpylab/client/src/engine/vpython-api.py:2111).
+근거: [반복 횟수](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:161), [색 인덱스](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:164), [7색 정의](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/vpython-api.py:2303), [정수 인덱스 처리](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/vpython-api.py:2281), [산점도 호출](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:1023), [산점도 API](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/vpython-api.py:2111).
 
 ### 2. P1 — 반음·화음 수업 목표와 실제 소리 경로가 불일치
 
 `beg-melody-2`의 `도#4`는 현재 한글 음 이름 변환에서 `도`가 먼저 일치해 `C4#4`가 된다. 함수 발췌를 Python으로 실행하여 이 문자열을 확인했다. 이후 JavaScript의 옥타브 해석은 `parseInt('4#4')=4`가 되므로 반음 높은 C#4가 아니라 C4로 해석된다. `pro-toolkit-10`은 화음에 음 이름 문자열을 전달하지만 Python `play_chord`는 이를 주파수 배열로 그대로 보내며, JavaScript `beep`는 숫자가 아닌 주파수를 건너뛴다. 예쁜 음색의 문제 이전에 음높이 비교·동시 발음이라는 목표가 성립하는지 정정·청취 검증해야 한다.
 
-근거: [샤프 예제](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:295), [먼저 일치하는 음 이름](/Users/greatsong/greatsong-project/vpylab/client/src/engine/vpython-api.py:1961), [접두사 변환](/Users/greatsong/greatsong-project/vpylab/client/src/engine/vpython-api.py:1977), [옥타브 해석](/Users/greatsong/greatsong-project/vpylab/client/src/engine/sound-system.js:549), [화음 예제](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:1034), [화음 전달](/Users/greatsong/greatsong-project/vpylab/client/src/engine/vpython-api.py:2031), [화음 재생](/Users/greatsong/greatsong-project/vpylab/client/src/engine/sound-system.js:573), [잘못된 주파수 무시](/Users/greatsong/greatsong-project/vpylab/client/src/engine/sound-system.js:469).
+근거: [샤프 예제](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:295), [먼저 일치하는 음 이름](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/vpython-api.py:1961), [접두사 변환](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/vpython-api.py:1977), [옥타브 해석](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/sound-system.js:549), [화음 예제](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:1034), [화음 전달](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/vpython-api.py:2031), [화음 재생](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/sound-system.js:573), [잘못된 주파수 무시](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/sound-system.js:469).
 
 ### 3. P2 — L1 반복 코스의 뒤 절반에서 선수지식이 급증
 
@@ -49,7 +49,7 @@ P1은 수업 전에 해결해야 하는 실행·개념 정확성 오류, P2는 �
 
 체스판은 좋은 선택 심화로 유지할 수 있다. 1줄 반복→2×2 격자→행별 다른 색→짝홀 규칙의 순서로 도움을 줄이면 기본 문법 조합으로 규칙을 발견하는 활동이 된다. 나선·꽃 정원은 좌표 계산 함수가 교사 제공이면 작품 탐구로 사용 가능하지만 함수 구현까지 입문 공통 목표로 삼지 않는다.
 
-근거: [L1 정의](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:10), [조건·이중 반복](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:193), [나선 좌표](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:214), [꽃 함수와 벡터 합](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:234).
+근거: [L1 정의](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:10), [조건·이중 반복](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:193), [나선 좌표](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:214), [꽃 함수와 벡터 합](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:234).
 
 ### 4. P1 — 시뮬레이션 시간 설명과 v-t 데이터의 시점이 맞지 않음
 
@@ -57,7 +57,7 @@ P1은 수업 전에 해결해야 하는 실행·개념 정확성 오류, P2는 �
 
 `fus-sci-7`은 v를 먼저 -g·dt만큼 갱신하고 아직 증가하지 않은 t에 찍는다. 따라서 초기 v=0인데 첫 점은 t=0, v=-0.49다. 수업용 데이터는 초기값을 먼저 찍거나 t와 v를 같은 시점으로 맞춰야 한다. 이 두 문제는 학생에게 수치해석 구현을 더 어렵게 요구할 이유가 아니라 교사 골격의 정확성을 보장할 이유다.
 
-근거: [시간 요약](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:537), [dt·갱신](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:544), [rate 구현](/Users/greatsong/greatsong-project/vpylab/client/src/engine/vpython-api.py:1900), [v-t 순서](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:693), [툴킷 종료 시간](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:879).
+근거: [시간 요약](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:537), [dt·갱신](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:544), [rate 구현](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/engine/vpython-api.py:1900), [v-t 순서](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:693), [툴킷 종료 시간](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:879).
 
 ### 5. P2 — 완성 코드가 풍부하지만 스캐폴딩의 설계 증거가 부족함
 
@@ -65,7 +65,7 @@ P1은 수업 전에 해결해야 하는 실행·개념 정확성 오류, P2는 �
 
 최소한 각 차시에 ① 예측 1문장 ② 바꿀 값 1~2개 ③ 비교 결과 표 ④ 막혔을 때의 개념 힌트 ⑤ 다음 시도에서는 힌트 없이 비슷한 문제 1개를 추가하는 편이 적절하다. 정답 코드 공개는 이 단계들을 대신하지 않는다.
 
-근거: [차시 스키마](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:18), [학생 자유 변형 주석](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:110), [툴킷 ★ 표시](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:874), [기존 차시 화면의 요약·코드](/Users/greatsong/greatsong-project/vpylab/client/src/pages/Courses.jsx:411), [v2의 실행 코드 표시](/Users/greatsong/greatsong-project/vpylab/client/src/classroom/CurriculumLibrary.jsx:34).
+근거: [차시 스키마](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:18), [학생 자유 변형 주석](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:110), [툴킷 ★ 표시](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:874), [기존 차시 화면의 요약·코드](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/pages/Courses.jsx:411), [v2의 실행 코드 표시](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/classroom/CurriculumLibrary.jsx:34).
 
 ### 6. P2 — 수학 학습을 위해 콜백·전역 상태 문법까지 작성하게 할 필요는 없음
 
@@ -73,19 +73,19 @@ P1은 수업 전에 해결해야 하는 실행·개념 정확성 오류, P2는 �
 
 교사는 작동하는 슬라이더 골격을 제공하고 학생은 `y=...` 한 식, 계수 범위, 예측·반례를 다루게 한다. 함수 정의를 배우는 수업은 별도 차시로 명시하고, 한 줄에 여러 명령을 쓰는 스타일은 교육용 설명에서 풀어 쓰는 것이 좋다. 콜백 코드를 짧게 보이게 만드는 것과 학습 난도를 낮추는 것은 다르다.
 
-근거: [기울기 콜백](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:400), [꼭짓점의 압축 문장](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:436), [세 사인 매개변수](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:475).
+근거: [기울기 콜백](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:400), [꼭짓점의 압축 문장](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:436), [세 사인 매개변수](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:475).
 
 ### 7. P2 — 융합 과목의 학년 표시보다 실제 개념 준비도를 확인해야 함
 
 “고1 수학”, “고1 통합과학”만으로 sin·cos·라디안·위상·각속도·진자의 이차 미분식·역제곱장의 벡터 가속도를 이미 안다고 간주하기 어렵다. 코드를 실행해 현상을 보는 것과 식을 유도·구현하는 것의 요구 수준 차이가 크다. 특히 진자와 궤도는 모형을 제공하고 L·초기 속도 하나만 바꾸며 관찰하는 선택 탐구로 두는 편이 적절하다. 고학년이라도 코딩 입문자는 별도 문법 도움이 필요하다.
 
-근거: [수학 대상](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:360), [사인·위상 목표](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:465), [과학 대상](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:527), [진자 미분식](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:624), [거리 세제곱 벡터식](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:673).
+근거: [수학 대상](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:360), [사인·위상 목표](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:465), [과학 대상](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:527), [진자 미분식](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:624), [거리 세제곱 벡터식](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:673).
 
 ### 8. P3 — 설명과 코드가 어긋나는 작은 표현은 관찰 목표를 약화함
 
 `fus-art-2`는 점·선·면과 `triangle`을 예고하지만 코드는 points와 curve만 사용한다. `fus-art-5`는 “색만 무작위”라고 하지만 높이도 무작위다. `beg-melody-4`는 “8마디”라고 적었지만 코드에는 패턴 4회와 쉼만 있고 박자표·마디 수의 정의가 없다. 코스 파일 머리말의 “입문3+융합4”도 실제 “입문3+융합3+툴킷1”과 다르다. 코드 복잡도를 늘리기보다 실제 활동에 맞게 목표 문장을 정리하면 된다.
 
-근거: [면·triangle 요약](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:739), [색만 무작위 요약](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:809), [무작위 높이](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:817), [8마디 주석](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:319), [코스 구성 주석](/Users/greatsong/greatsong-project/vpylab/client/src/data/courses.js:5).
+근거: [면·triangle 요약](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:739), [색만 무작위 요약](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:809), [무작위 높이](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:817), [8마디 주석](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:319), [코스 구성 주석](/Users/greatsong/greatsong-project/10_수업자료/vpylab/client/src/data/courses.js:5).
 
 ## 46차시 전수 판정
 
@@ -165,6 +165,6 @@ GitHub 기록은 두 모드 모두 `가설/계획 이슈 → 작은 변경 PR �
 
 ## 검증 한계
 
-이 보고서는 코드·설명·API 구현의 정적 검토와 한글 음 이름 변환 함수의 최소 발췌 실행에 기반한다. 총괄 검토자가 추가로 실제 Python API의 경량 계약 재현을 수행해 앞의 IndexError·TypeError와 음 이름·화음 전송 형식을 확인했고, 실제 JavaScript `noteToFreq` 결과도 별도로 확인했다. 결과 원문은 [API 계약 재현](/Users/greatsong/greatsong-project/vpylab/docs/content-review/2026-10-28/contract-checks.json), [소리 변환 격리 재현](/Users/greatsong/greatsong-project/vpylab/docs/content-review/2026-10-28/grading-sound-checks.json)에 있다. 이것은 발견 재현이며 정상 통과 테스트나 실제 청취 결과가 아니다.
+이 보고서는 코드·설명·API 구현의 정적 검토와 한글 음 이름 변환 함수의 최소 발췌 실행에 기반한다. 총괄 검토자가 추가로 실제 Python API의 경량 계약 재현을 수행해 앞의 IndexError·TypeError와 음 이름·화음 전송 형식을 확인했고, 실제 JavaScript `noteToFreq` 결과도 별도로 확인했다. 결과 원문은 [API 계약 재현](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/content-review/2026-10-28/contract-checks.json), [소리 변환 격리 재현](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/content-review/2026-10-28/grading-sound-checks.json)에 있다. 이것은 발견 재현이며 정상 통과 테스트나 실제 청취 결과가 아니다.
 
 이 담당자는 46차시 전체를 브라우저에서 실행하거나 소리를 청취하지 않았고, 실제 학습자·교사의 수업 관찰이나 사전·사후 평가를 하지 않았다. 따라서 적합 판정은 교육 설계 검토 의견이며 학습 효과·수업 시간·개별 학년 준비도를 실증한 결과가 아니다. API 불일치는 수업 전 실제 런타임·소리 출력에서 재검증해야 한다. 운영 서비스와 기존 콘텐츠 원문은 변경하지 않았다.

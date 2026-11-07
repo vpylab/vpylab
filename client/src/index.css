@@ -23,6 +23,12 @@
   --font-body: 'DM Sans', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, Consolas, monospace;
 
+  /* 실행·정지 버튼: 모든 테마에서 흰 글자 대비 4.5:1 이상 */
+  --color-run: #047857;
+  --color-run-hover: #065F46;
+  --color-stop: #B91C1C;
+  --color-stop-hover: #991B1B;
+
   /* Rectangular UI scale */
   --radius-sm: 0;
   --radius-md: 0;
@@ -47,14 +53,17 @@
   --color-bg-tertiary: #E5E7EB;
   --color-bg-panel: #FFFFFF;
   --color-text-primary: #111827;
-  --color-text-secondary: #6B7280;
-  --color-text-muted: #9CA3AF;
+  --color-text-secondary: #5F6672;
+  --color-text-muted: #676E7B;
   --color-accent: #2563EB;
   --color-accent-hover: #1D4ED8;
   --color-accent-bg: rgba(37, 99, 235, 0.06);
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
+  --color-success-text: #107D60;
+  --color-warning-text: #936417;
+  --color-error-text: #C73C3F;
   --color-border: #E5E7EB;
   --color-border-subtle: #F3F4F6;
 
@@ -69,13 +78,16 @@
   --color-bg-panel: #1E293B;
   --color-text-primary: #F8FAFC;
   --color-text-secondary: #94A3B8;
-  --color-text-muted: #64748B;
+  --color-text-muted: #8693A5;
   --color-accent: #3B82F6;
   --color-accent-hover: #60A5FA;
   --color-accent-bg: rgba(59, 130, 246, 0.12);
   --color-success: #34D399;
   --color-warning: #FBBF24;
   --color-error: #F87171;
+  --color-success-text: #34D399;
+  --color-warning-text: #FBBF24;
+  --color-error-text: #F87171;
   --color-border: #334155;
   --color-border-subtle: #1E293B;
 
@@ -90,13 +102,16 @@
   --color-bg-panel: #FFFFFF;
   --color-text-primary: #0C4A6E;
   --color-text-secondary: #0C6CA1;
-  --color-text-muted: #5B96B8;
+  --color-text-muted: #347194;
   --color-accent: #0284C7;
   --color-accent-hover: #0369A1;
   --color-accent-bg: rgba(2, 132, 199, 0.08);
   --color-success: #059669;
   --color-warning: #D97706;
   --color-error: #DC2626;
+  --color-success-text: #08796B;
+  --color-warning-text: #89652F;
+  --color-error-text: #CD292B;
   --color-border: #BAE6FD;
   --color-border-subtle: #E0F2FE;
 
@@ -111,13 +126,16 @@
   --color-bg-panel: #FFFFFF;
   --color-text-primary: #431407;
   --color-text-secondary: #78350F;
-  --color-text-muted: #B07A48;
+  --color-text-muted: #966238;
   --color-accent: #EA580C;
   --color-accent-hover: #C2410C;
   --color-accent-bg: rgba(234, 88, 12, 0.07);
   --color-success: #16A34A;
   --color-warning: #CA8A04;
   --color-error: #DC2626;
+  --color-success-text: #227E39;
+  --color-warning-text: #9B6105;
+  --color-error-text: #D62525;
   --color-border: #FDE6C4;
   --color-border-subtle: #FEF3E2;
 
@@ -132,13 +150,16 @@
   --color-bg-panel: #0D2818;
   --color-text-primary: #ECFDF5;
   --color-text-secondary: #A7D5BA;
-  --color-text-muted: #5E8A6E;
+  --color-text-muted: #6B947A;
   --color-accent: #10B981;
   --color-accent-hover: #34D399;
   --color-accent-bg: rgba(16, 185, 129, 0.12);
   --color-success: #4ADE80;
   --color-warning: #FBBF24;
   --color-error: #FB7185;
+  --color-success-text: #4ADE80;
+  --color-warning-text: #FBBF24;
+  --color-error-text: #FB7185;
   --color-border: #1A3F28;
   --color-border-subtle: #0D2818;
 
@@ -153,13 +174,16 @@
   --color-bg-panel: #FFFFFF;
   --color-text-primary: #3B0764;
   --color-text-secondary: #6B21A8;
-  --color-text-muted: #9E7DBF;
+  --color-text-muted: #7F58A3;
   --color-accent: #7C3AED;
   --color-accent-hover: #6D28D9;
   --color-accent-bg: rgba(124, 58, 237, 0.07);
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-error: #EF4444;
+  --color-success-text: #207576;
+  --color-warning-text: #9E5735;
+  --color-error-text: #C0344C;
   --color-border: #E9D5FF;
   --color-border-subtle: #F3E8FF;
 
@@ -174,13 +198,16 @@
   --color-bg-panel: #1E1033;
   --color-text-primary: #F5F3FF;
   --color-text-secondary: #B8A8D8;
-  --color-text-muted: #7B6A9E;
+  --color-text-muted: #8A7AAA;
   --color-accent: #A78BFA;
   --color-accent-hover: #C4B5FD;
   --color-accent-bg: rgba(167, 139, 250, 0.12);
   --color-success: #34D399;
   --color-warning: #FBBF24;
   --color-error: #FB7185;
+  --color-success-text: #34D399;
+  --color-warning-text: #FBBF24;
+  --color-error-text: #FB7185;
   --color-border: #2E1A4A;
   --color-border-subtle: #1E1033;
 
@@ -195,13 +222,16 @@
   --color-bg-panel: #FFFFFF;
   --color-text-primary: #4C0519;
   --color-text-secondary: #9F1239;
-  --color-text-muted: #B5707A;
+  --color-text-muted: #995360;
   --color-accent: #E11D48;
   --color-accent-hover: #BE123C;
   --color-accent-bg: rgba(225, 29, 72, 0.07);
   --color-success: #059669;
   --color-warning: #D97706;
   --color-error: #DC2626;
+  --color-success-text: #157657;
+  --color-warning-text: #A84F0D;
+  --color-error-text: #CB2224;
   --color-border: #FECDD3;
   --color-border-subtle: #FFE4E6;
 
@@ -223,6 +253,9 @@
   --color-success: #4ADE80;
   --color-warning: #FACC15;
   --color-error: #F43F5E;
+  --color-success-text: #4ADE80;
+  --color-warning-text: #FACC15;
+  --color-error-text: #F43F5E;
   --color-border: #1C1C2E;
   --color-border-subtle: #12121C;
 
@@ -511,15 +544,16 @@ code, pre { font-family: var(--font-mono); letter-spacing: 0; }
 .toolbar-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .toolbar-btn.--run {
-  background: var(--color-success);
-  border-color: var(--color-success);
+  background: var(--color-run);
+  border-color: var(--color-run);
   color: #fff;
   font-weight: 600;
 }
 
 .toolbar-btn.--run:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-success) 88%, #000);
-  border-color: color-mix(in srgb, var(--color-success) 88%, #000);
+  background: var(--color-run-hover);
+  border-color: var(--color-run-hover);
+  color: #fff;
 }
 
 .toolbar-btn.--run:disabled {
@@ -527,11 +561,18 @@ code, pre { font-family: var(--font-mono); letter-spacing: 0; }
   opacity: 0.5;
 }
 
-.toolbar-btn.--stop { color: var(--color-text-muted); }
+/* 실행 중에는 정지가 주 동작이므로 채운 빨간 버튼으로 표시합니다. */
+.toolbar-btn.--stop:not(:disabled) {
+  background: var(--color-stop);
+  border-color: var(--color-stop);
+  color: #fff;
+  font-weight: 600;
+}
 
 .toolbar-btn.--stop:hover:not(:disabled) {
-  color: var(--color-error);
-  border-color: rgba(255, 107, 107, 0.4);
+  background: var(--color-stop-hover);
+  border-color: var(--color-stop-hover);
+  color: #fff;
 }
 
 .toolbar-btn.--grade {

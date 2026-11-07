@@ -2,11 +2,11 @@
 
 최초 검토일: 2026-10-28 · 브랜치 `codex/classroom-v2` · 최초 검토는 제품 코드 변경 없이 실시했습니다. 후속 안정화에서 제품 코드를 수정했으며 원본 수업 자료와 운영 서비스는 보존했습니다.
 
-후속 안정화·외부 검토: `checkpointId` 없는 GitHub 전송을 409로 차단하고 기존 대기 작업도 재검증하도록 수정했습니다. 최신 리허설 결과는 아래를 참조하세요. [외부 검토 준비·안정화 보고서](/Users/greatsong/greatsong-project/vpylab/docs/CLASSROOM_V2_THREE_WAY_REVIEW_2026-10-28.md)
+후속 안정화·외부 검토: `checkpointId` 없는 GitHub 전송을 409로 차단하고 기존 대기 작업도 재검증하도록 수정했습니다. 최신 리허설 결과는 아래를 참조하세요. [외부 검토 준비·안정화 보고서](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/CLASSROOM_V2_THREE_WAY_REVIEW_2026-10-28.md)
 
 **세 경로 모두 개인 초안→변경 제안→동료 검토→팀 반영의 기본 기능은 사용할 수 있습니다.** 수업에서 동료 검토를 필수로 보장하는 정책, 보완 요청과 다음 제안의 연결, 공개 리믹스의 출처·라이선스·원작 계보를 자동 보존하는 기능은 보완이 필요합니다. 학생의 이해를 판단하려면 GitHub 기록과 함께 짧은 개별 설명을 확인하는 것이 적절합니다.
 
-세 담당 에이전트의 독립 검토와 합성 세 팀의 실제 Express HTTP API 리허설을 대조했습니다. 추가로 사용자가 알려 준 운영 중인 AI-TA 프로젝트를 확인해 [참조 검토·적용안](/Users/greatsong/greatsong-project/vpylab/docs/AI_TA_REFERENCE_REVIEW_2026-10-28.md)에 따로 정리했습니다.
+세 담당 에이전트의 독립 검토와 합성 세 팀의 실제 Express HTTP API 리허설을 대조했습니다. 추가로 사용자가 알려 준 운영 중인 AI-TA 프로젝트를 확인해 [참조 검토·적용안](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/AI_TA_REFERENCE_REVIEW_2026-10-28.md)에 따로 정리했습니다.
 
 ## 세 팀의 구체적인 출발점
 
@@ -18,7 +18,7 @@
 
 각 팀은 합성 학생 2명과 공통 교사 1명으로 구성했습니다. 실제 학생 6명을 모집하거나 서로 다른 GitHub 계정으로 인증한 것이 아닙니다. 기술 골격은 학생이 API 문법을 모두 새로 만들지 않고 문제·실험·판단에 집중하도록 제공한 것입니다.
 
-담당별 상세 검토: [순수 창작](/Users/greatsong/greatsong-project/vpylab/docs/project-path-review/2026-10-28/original-creation.md), [수업 코드 활용](/Users/greatsong/greatsong-project/vpylab/docs/project-path-review/2026-10-28/course-adaptation.md), [공개 프로젝트 리믹스](/Users/greatsong/greatsong-project/vpylab/docs/project-path-review/2026-10-28/public-remix.md).
+담당별 상세 검토: [순수 창작](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/project-path-review/2026-10-28/original-creation.md), [수업 코드 활용](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/project-path-review/2026-10-28/course-adaptation.md), [공개 프로젝트 리믹스](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/project-path-review/2026-10-28/public-remix.md).
 
 ## 리허설 결과
 
@@ -47,19 +47,19 @@
 
 | 우선 | 현재 동작과 영향 | 권고 |
 |---|---|---|
-| P1 · 동료 검토 필수 정책 | 일반 편집자는 `/checkpoints`로 제안·승인 없이 팀 버전을 직접 저장할 수 있음(201). 자유 실험 저장에는 유용하나 리뷰 필수 수업을 서버 정책으로 강제하지 못함 | 개인 실험 보존·자유 팀 저장·동료 검토 후 확정을 수업 정책에 따라 구분. [권한·직접 저장](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:143) |
-| 수정 완료 · 확정본만 GitHub PR로 보내는 경계 | 최초 검사에서는 ID 생략 시 202 수락. 후속 수정·재검사에서는 409 거부, 기존 출처 없는 대기 작업도 외부 쓰기 전에 차단 | 같은 프로젝트의 저장본·정확한 코드·버전을 서버에서 검증. 동료 검토 필수 수업 정책은 별도 미구현. [필수 검사](/Users/greatsong/greatsong-project/vpylab/server/classroom/github.js:318) |
-| P2 · 같은 제안에서 보완·재검토 | 제안 코드 수정 API는 404. 새 제안을 만들어야 하고 원래 제안은 열린 상태로 남음 | 제안 버전·이전 보완 요청·대체 제안의 연결, 검토한 코드 버전과 재승인 규칙 필요. [현재 API](/Users/greatsong/greatsong-project/vpylab/server/classroom/app.js:133) |
-| P2 · 승인 근거 | 의견이 빈 승인도 허용됨(201) | 장문의 글 대신 변경 한 곳·비교 조건·관찰·이유의 짧은 확인 틀. 실제 수행을 교사 질문으로 대조. [리뷰 입력](/Users/greatsong/greatsong-project/vpylab/server/classroom/app.js:136) |
-| P2 · 교사 예외 반영 | 교사는 동료 승인 없는 제안도 반영 가능(200). 의도된 예외이며 무권한 접근 오류는 아님 | 학생 검토를 대신한 이유·예외 표시를 남기고 교육 역할과 관리 권한을 구분. [반영 정책](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:162) |
-| P1 · 공개 리믹스 전용 출처 | `source.kind=public_remix`는 422. URL·고정 SHA·원작/교사/학생 기여·라이선스를 자동 보존하는 모델 없음 | 내부 example로 가장하지 않고 수동 출처 기록. 이후 공개 원작 계보·라이선스·변경 이력 모델 추가. [출처 계약](/Users/greatsong/greatsong-project/vpylab/server/classroom/app.js:19) |
-| P2 · 로컬 제안·구술 근거 연결 | 교사 피드백의 `evidenceIds`는 GitHub ledger ID를 요구. 로컬 제안 ID는 422이며 현재는 교사 글 안에 수동으로 설명해야 함 | GitHub 사건·로컬 제안/리뷰·학생 설명·교사 관찰을 구분한 참조 모델. 각 원문과 버전을 보존. [근거 검사](/Users/greatsong/greatsong-project/vpylab/server/classroom/store.js:178) |
+| P1 · 동료 검토 필수 정책 | 일반 편집자는 `/checkpoints`로 제안·승인 없이 팀 버전을 직접 저장할 수 있음(201). 자유 실험 저장에는 유용하나 리뷰 필수 수업을 서버 정책으로 강제하지 못함 | 개인 실험 보존·자유 팀 저장·동료 검토 후 확정을 수업 정책에 따라 구분. [권한·직접 저장](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:143) |
+| 수정 완료 · 확정본만 GitHub PR로 보내는 경계 | 최초 검사에서는 ID 생략 시 202 수락. 후속 수정·재검사에서는 409 거부, 기존 출처 없는 대기 작업도 외부 쓰기 전에 차단 | 같은 프로젝트의 저장본·정확한 코드·버전을 서버에서 검증. 동료 검토 필수 수업 정책은 별도 미구현. [필수 검사](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/github.js:318) |
+| P2 · 같은 제안에서 보완·재검토 | 제안 코드 수정 API는 404. 새 제안을 만들어야 하고 원래 제안은 열린 상태로 남음 | 제안 버전·이전 보완 요청·대체 제안의 연결, 검토한 코드 버전과 재승인 규칙 필요. [현재 API](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/app.js:133) |
+| P2 · 승인 근거 | 의견이 빈 승인도 허용됨(201) | 장문의 글 대신 변경 한 곳·비교 조건·관찰·이유의 짧은 확인 틀. 실제 수행을 교사 질문으로 대조. [리뷰 입력](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/app.js:136) |
+| P2 · 교사 예외 반영 | 교사는 동료 승인 없는 제안도 반영 가능(200). 의도된 예외이며 무권한 접근 오류는 아님 | 학생 검토를 대신한 이유·예외 표시를 남기고 교육 역할과 관리 권한을 구분. [반영 정책](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:162) |
+| P1 · 공개 리믹스 전용 출처 | `source.kind=public_remix`는 422. URL·고정 SHA·원작/교사/학생 기여·라이선스를 자동 보존하는 모델 없음 | 내부 example로 가장하지 않고 수동 출처 기록. 이후 공개 원작 계보·라이선스·변경 이력 모델 추가. [출처 계약](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/app.js:19) |
+| P2 · 로컬 제안·구술 근거 연결 | 교사 피드백의 `evidenceIds`는 GitHub ledger ID를 요구. 로컬 제안 ID는 422이며 현재는 교사 글 안에 수동으로 설명해야 함 | GitHub 사건·로컬 제안/리뷰·학생 설명·교사 관찰을 구분한 참조 모델. 각 원문과 버전을 보존. [근거 검사](/Users/greatsong/greatsong-project/10_수업자료/vpylab/server/classroom/store.js:178) |
 
 ## 공개 리믹스에서 별도로 확인한 것
 
-실제 원작은 공식 [VPython Bounce.py 고정 버전](https://github.com/vpython/vpython-jupyter/blob/3254f6e4b845fdf27d8730b66887a9806d1822b3/Demos_no_notebook/Bounce.py)입니다. 같은 커밋의 [라이선스 원문](https://github.com/vpython/vpython-jupyter/blob/3254f6e4b845fdf27d8730b66887a9806d1822b3/LICENSE.txt)을 함께 확인·보존했습니다. 고정 원문은 [로컬 사본](/Users/greatsong/greatsong-project/vpylab/docs/project-path-review/2026-10-28/upstream/Demos_no_notebook/Bounce.py), [라이선스 사본](/Users/greatsong/greatsong-project/vpylab/docs/project-path-review/2026-10-28/upstream/LICENSE.txt)에 있습니다.
+실제 원작은 공식 [VPython Bounce.py 고정 버전](https://github.com/vpython/vpython-jupyter/blob/3254f6e4b845fdf27d8730b66887a9806d1822b3/Demos_no_notebook/Bounce.py)입니다. 같은 커밋의 [라이선스 원문](https://github.com/vpython/vpython-jupyter/blob/3254f6e4b845fdf27d8730b66887a9806d1822b3/LICENSE.txt)을 함께 확인·보존했습니다. 고정 원문은 [로컬 사본](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/project-path-review/2026-10-28/upstream/Demos_no_notebook/Bounce.py), [라이선스 사본](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/project-path-review/2026-10-28/upstream/LICENSE.txt)에 있습니다.
 
-원문의 `color.gray(0.7)`은 VPyLab에서 vector 상수를 함수처럼 호출하게 되어 TypeError가 발생했습니다. 교사가 복사본의 그 한 줄만 `vector(0.7, 0.7, 0.7)`로 바꾼 뒤, 실제 Python API·대체 JS 전송·제한된 1,200회 반복에서 객체 6개와 축별 반사 방향 변화를 확인했습니다. 이는 CPython 계약 확인이며 브라우저에서의 카메라·궤적·속도·렌더링 검증은 아닙니다. [호환성 결과](/Users/greatsong/greatsong-project/vpylab/docs/project-path-review/2026-10-28/remix-compatibility.json)
+원문의 `color.gray(0.7)`은 VPyLab에서 vector 상수를 함수처럼 호출하게 되어 TypeError가 발생했습니다. 교사가 복사본의 그 한 줄만 `vector(0.7, 0.7, 0.7)`로 바꾼 뒤, 실제 Python API·대체 JS 전송·제한된 1,200회 반복에서 객체 6개와 축별 반사 방향 변화를 확인했습니다. 이는 CPython 계약 확인이며 브라우저에서의 카메라·궤적·속도·렌더링 검증은 아닙니다. [호환성 결과](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/project-path-review/2026-10-28/remix-compatibility.json)
 
 HTTP 리허설에서는 공개 원문을 v1, 교사의 호환 수정본을 v2로 따로 보존하고 두 학생의 변경을 v3/v4로 반영했습니다. 라이선스 파일은 준비 자료에 보존했지만, 제품의 `main.py` 다운로드·단일 파일 PR 기능이 이를 자동으로 동반 전달하지는 않습니다. 수업용 팀 저장소에 교사가 라이선스·출처 파일을 준비하는 현재 수동 절차와, 향후 제품 지원을 구분해야 합니다. 이는 리믹스 결과 전체에 대한 법적 라이선스 판정을 내린 것이 아닙니다.
 
@@ -75,16 +75,16 @@ HTTP 리허설에서는 공개 원문을 v1, 교사의 호환 수정본을 v2로
 
 교사는 질문을 사용·수정·숨김 처리하고 학생별 설명을 기록할 수 있어야 합니다. AI를 사용할 때는 근거 ID·기준 코드와 함께 질문·피드백 초안만 제안하고, 실제로 하지 않은 실험을 했다고 바꾸지 않습니다. AI 미사용 수업에서는 같은 질문·기록·피드백 흐름을 사람이 진행합니다. 녹음은 모든 활동의 필수 조건으로 두지 않습니다.
 
-AI-TA에서 이미 운영한 회차·팀/개인 루브릭 팩, 교사 확인 후 게시, 기기에 먼저 저장하고 재시도하는 방식은 참고 가치가 있습니다. 개인 맥·공유 토큰·마지막 저장값으로 덮어쓰는 방식을 VPyLab의 학교별 운영 구조에 그대로 옮기지는 않습니다. 상세 소스 근거와 도입 순서는 [AI-TA 참조 보고서](/Users/greatsong/greatsong-project/vpylab/docs/AI_TA_REFERENCE_REVIEW_2026-10-28.md)에 있습니다.
+AI-TA에서 이미 운영한 회차·팀/개인 루브릭 팩, 교사 확인 후 게시, 기기에 먼저 저장하고 재시도하는 방식은 참고 가치가 있습니다. 개인 맥·공유 토큰·마지막 저장값으로 덮어쓰는 방식을 VPyLab의 학교별 운영 구조에 그대로 옮기지는 않습니다. 상세 소스 근거와 도입 순서는 [AI-TA 참조 보고서](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/AI_TA_REFERENCE_REVIEW_2026-10-28.md)에 있습니다.
 
 ## 재현과 검증 범위
 
-실행 스크립트: [review-project-paths.mjs](/Users/greatsong/greatsong-project/vpylab/scripts/classroom/review-project-paths.mjs)
+실행 스크립트: [review-project-paths.mjs](/Users/greatsong/greatsong-project/10_수업자료/vpylab/scripts/classroom/review-project-paths.mjs)
 
 ```sh
 node scripts/classroom/review-project-paths.mjs
 ```
 
-매번 `.local/project-path-review/<새 UUID>/classroom.sqlite`를 만들어 기존 교실 DB를 열지 않습니다. 명시적 GitHub simulator와 loopback 임의 포트를 사용하고 종료합니다. 별도 토큰·AI 키를 읽지 않고 외부 GitHub에 이슈·PR·포크를 쓰지 않습니다. 결과는 [HTTP 호출·검사 전체 기록](/Users/greatsong/greatsong-project/vpylab/docs/project-path-review/2026-10-28/rehearsal-results.json)에 저장됩니다. 로컬 포트 열기가 제한된 환경에서는 해당 권한이 필요합니다.
+매번 `.local/project-path-review/<새 UUID>/classroom.sqlite`를 만들어 기존 교실 DB를 열지 않습니다. 명시적 GitHub simulator와 loopback 임의 포트를 사용하고 종료합니다. 별도 토큰·AI 키를 읽지 않고 외부 GitHub에 이슈·PR·포크를 쓰지 않습니다. 결과는 [HTTP 호출·검사 전체 기록](/Users/greatsong/greatsong-project/10_수업자료/vpylab/docs/project-path-review/2026-10-28/rehearsal-results.json)에 저장됩니다. 로컬 포트 열기가 제한된 환경에서는 해당 권한이 필요합니다.
 
 이 검토는 합성 사용자·API 통합·소스 검토입니다. 실제 학생 로그인, 세 팀의 브라우저 동시 수업, Pyodide·3D·청감, AI 응답, 실 GitHub 다중 계정·Webhook은 확인하지 않았습니다. 교차팀 검사는 GET 조회 격리 범위이며 외부 팀 쓰기·동시 다중 기기·새 기능의 운영 부하 시험까지 포함하지 않습니다. 앞서 실시한 실제 비공개 GitHub 검증과 이번 모의 세 팀 검증의 범위를 합쳐서 주장하지 않습니다.

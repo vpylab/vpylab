@@ -17,3 +17,7 @@
 ## 설계 검토
 
 사용자 요청에 따라 3-way 브리지를 통해 공개 MDN·Three.js 자료에 관한 Claude 일반 설계 자문을 받았습니다. 내부 코드 전송이나 Claude의 최종 코드 리뷰는 하지 않았습니다. 절대 오디오 시각·지연 후 밀린 음 생략·미래 소스 취소·출력 시각 표시·벽시계 만료 검사를 채택하고 실제 코드는 로컬에서 검증했습니다.
+
+## 운영 검증 완료
+
+커밋 `937eb95`의 Vercel production·Railway가 성공했습니다. 운영 별칭은 `dpl_ANZxqJ87uARv5fPpJHBupXkKexkm`을 가리키며 서버 health는 해당 커밋을 반환합니다. CI 7개 항목과 운영 브라우저 12개 검사를 통과했습니다. [증거](collaboration/light-sound-production-2026-11-07.json).

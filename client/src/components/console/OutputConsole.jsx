@@ -18,7 +18,7 @@ function ErrorExplanation({ item, t }) {
         fontFamily: 'var(--font-sans)',
       }}
     >
-      <div className="font-semibold" style={{ color: 'var(--color-error)' }}>
+      <div className="font-semibold" style={{ color: 'var(--color-error-text)' }}>
         <span style={{ marginRight: 4 }}>&#x2716;</span>
         {title}
       </div>
@@ -73,10 +73,12 @@ export default function OutputConsole({ outputs = [], onClear }) {
         <span className="font-medium">{t('console.title')}</span>
         <button
           onClick={onClear}
-          className="px-2 py-0.5 rounded text-xs cursor-pointer border-none transition-colors"
+          className="px-2 py-0.5 rounded text-xs cursor-pointer transition-colors"
           style={{
-            backgroundColor: 'var(--color-bg-tertiary)',
-            color: 'var(--color-text-muted)',
+            // 모든 테마에서 대비 4.5:1 이상이 되도록 패널 바탕 + 테두리로 구분합니다.
+            backgroundColor: 'var(--color-bg-panel)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text-secondary)',
           }}
         >
           {t('console.clear')}
@@ -101,12 +103,13 @@ export default function OutputConsole({ outputs = [], onClear }) {
               key={i}
               className="py-0.5 animate-slide-up"
               style={{
+                // 상태 글자색은 테마별로 대비 4.6:1 이상이 되도록 계산한 *-text 토큰을 사용합니다.
                 color: item.type === 'error'
-                  ? 'var(--color-error)'
+                  ? 'var(--color-error-text)'
                   : item.type === 'warning'
-                    ? 'var(--color-warning)'
+                    ? 'var(--color-warning-text)'
                     : item.type === 'success'
-                      ? 'var(--color-success)'
+                      ? 'var(--color-success-text)'
                       : 'var(--color-text-primary)',
               }}
             >

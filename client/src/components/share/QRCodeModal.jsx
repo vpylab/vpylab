@@ -73,7 +73,7 @@ export default function QRCodeModal({ url, title, onClose }) {
           />
         )}
         <code className="text-xs break-all text-center" style={{ color: '#6B7280', fontFamily: 'var(--font-mono, monospace)' }} data-testid="qr-url">{url}</code>
-        <p className="m-0 text-xs text-center" style={{ color: '#9CA3AF' }}>{t('qr.hint')}</p>
+        <p className="m-0 text-xs text-center" style={{ color: 'var(--color-text-muted)' }}>{t('qr.hint')}</p>
         <div className="flex flex-wrap gap-2 justify-center">
           <button type="button" onClick={copyLink} className="toolbar-btn" style={{ color: '#111827', background: '#F3F4F6', borderColor: '#E5E7EB' }}>
             {copied ? `✓ ${t('qr.copied')}` : t('qr.copyLink')}
