@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, configure } from '@testing-library/react';
 import DriveLabApp from './DriveLabApp.jsx';
 import { createFakeGoogle, memoryStorage } from './fake-google.js';
 import { saveDraft, loadDraft, listDrafts, fileDrafts } from './lab-state.js';
+
+// 전체 테스트를 함께 돌릴 때(무거운 Python 예제 테스트와 동시 실행) 기다림이 1초를 넘을 수 있어 한도를 늘립니다.
+configure({ asyncUtilTimeout: 5000 });
 
 const CLIENT_ID = '123456789012-abcdefghij.apps.googleusercontent.com';
 

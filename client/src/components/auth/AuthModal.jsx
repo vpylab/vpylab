@@ -3,10 +3,33 @@ import { useI18n } from '../../i18n/useI18n';
 import useAuthStore from '../../stores/authStore';
 import useAppStore from '../../stores/appStore';
 import { BrandMark } from '../shared/BrandLogo';
+import { OPEN_EDITION } from '../../lib/api-base.js';
+
+/**
+ * 오픈소스 판에는 운영 서버 로그인이 없습니다. 코드는 학생 본인의 구글 드라이브에 저장할 예정이며(docs/GOOGLE_FIRST_PLAN.md 2단계),
+ * 그 전까지는 지금 쓸 수 있는 방법을 안내합니다.
+ */
+function OpenEditionSaveNotice({ ko, onClose }) {
+  return (
+    <>
+      <h2 id="auth-dialog-title" className="auth-title">{ko ? '저장 기능 준비 중' : 'Saving is coming soon'}</h2>
+      <p className="auth-desc">
+        {ko
+          ? '오픈소스 VPyLab은 코드를 운영 서버가 아닌 학생 본인의 구글 드라이브에 저장합니다. 편집기 저장은 준비 중입니다. 지금은 "도구" 메뉴의 "HTML 내려받기"로 작품을 저장하세요.'
+          : 'Open-source VPyLab saves code to each student\'s own Google Drive, not to our servers. Saving from the editor is coming soon. For now, use "Download HTML" in the Tools menu.'}
+      </p>
+      <div className="auth-buttons">
+        <a className="auth-btn auth-btn-google" href="/drive-lab" target="_blank" rel="noopener">{ko ? '드라이브 저장 실험 열기' : 'Try Drive saving (lab)'}</a>
+        <button className="auth-btn auth-btn-github" onClick={onClose}>{ko ? '닫기' : 'Close'}</button>
+      </div>
+    </>
+  );
+}
 
 export default function AuthModal() {
   const ui = useUiText();
   const theme = useAppStore((state) => state.theme);
+  const locale = useAppStore((state) => state.locale);
   const { authModalOpen, setAuthModalOpen, signInWithGoogle, signInWithGitHub, githubAuthError } = useAuthStore();
   const { t } = useI18n();
 
@@ -27,6 +50,7 @@ export default function AuthModal() {
           <BrandMark size={44} inverse={theme === 'deep-dark'} />
         </div>
 
+        {OPEN_EDITION ? <OpenEditionSaveNotice ko={locale === 'ko'} onClose={() => setAuthModalOpen(false)} /> : <>
         <h2 id="auth-dialog-title" className="auth-title">VPyLab {t('auth.login')}</h2>
         <p className="auth-desc">{t('auth.loginDescription')}</p>
         {githubAuthError && <p role="alert" className="auth-desc">{ui(githubAuthError)}</p>}
@@ -53,6 +77,7 @@ export default function AuthModal() {
 
         {/* 안내 */}
         <p className="auth-notice">{t('auth.notice')}</p>
+        </>}
       </div>
 
       <style>{`

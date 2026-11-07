@@ -59,7 +59,10 @@ function shellKeyFor(url) {
 }
 
 // 앱 셸이 아닌 독립 HTML 페이지(예: /drive-lab.html)는 앱 셸 캐시를 덮어쓰지 않도록 가로채지 않습니다.
+// Cloudflare Pages는 '/drive-lab.html'을 확장자 없는 '/drive-lab'으로 넘겨 제공하므로 그 주소도 함께 둡니다.
+const STANDALONE_PAGES = new Set(['/drive-lab']);
 function isStandaloneDocument(url) {
+  if (STANDALONE_PAGES.has(url.pathname)) return true;
   return url.pathname.endsWith('.html') && url.pathname !== `/${APP_SHELL}`;
 }
 

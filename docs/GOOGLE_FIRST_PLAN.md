@@ -22,6 +22,8 @@ VPyLab을 전 세계 학교가 사용하는 오픈소스 서비스로 키우려�
 
 오픈소스 저장소는 2026-11-07에 수업용 저장소의 `main`(2b318cb)에서 시작했습니다. 아래 단계는 오픈소스 저장소에서 진행합니다.
 
+같은 날 "코드 하나, 배포 둘"로 정했습니다. 저장소는 `vpylab/vpylab` 하나로 합치고, 판 설정(`VITE_EDITION`)으로 수업용(Vercel)과 오픈소스(Cloudflare Pages)를 나눠 배포합니다. 절차는 [DEPLOY_TWO_EDITIONS.md](DEPLOY_TWO_EDITIONS.md)에 있습니다.
+
 ## 3. 현재와 목표
 
 | 영역 | 현재 | 목표 |

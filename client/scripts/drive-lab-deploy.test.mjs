@@ -73,6 +73,8 @@ describe('Service Worker의 독립 페이지 처리', () => {
   it('실험 페이지 이동은 가로채지 않아 앱 셸 캐시를 덮어쓰지 않는다', () => {
     const intercepts = loadWorker();
     expect(intercepts('https://vpylab.vercel.app/drive-lab.html')).toBe(false);
+    // Cloudflare Pages가 제공하는 확장자 없는 주소
+    expect(intercepts('https://vpylab.pages.dev/drive-lab')).toBe(false);
   });
 
   it('본 앱 경로와 앱 셸 이동은 그대로 가로챈다', () => {
