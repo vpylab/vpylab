@@ -27,9 +27,8 @@ Paste this into **Create** and press **Run**. A glowing red sphere and a label a
 
 VPyLab is in active development. In the open edition (vpylab.pages.dev):
 
-- **Saving is not built into the editor yet.** The **Save** button opens a "Saving is coming soon" notice. To keep your work, use **Tools → Download HTML** in Create.
+- **Save goes to the student's own Google Drive.** In Create, **Save** (or Ctrl/Cmd+S) signs in with Google once, asks for a file name, and saves to a `VPyLab` folder in the student's Drive. Later saves go to the same file. **My Drive** in the toolbar lists and reopens files. If another tab or device saved first, you choose: save a copy, load the Drive version, or overwrite. **Tools → Download HTML** still works.
 - **Short share links**: **Tools → Share** creates a short link such as `vpylab.pages.dev/s/k7x2p9`, or `vpylab.pages.dev/s/your-name` if you choose a name (3–30 lowercase letters, numbers or hyphens; first come, first served). The link or its QR code opens straight to the running view (tap to start; the top-left button shows the source), and an embed code is available. Only the code and its title are stored, in Cloudflare D1. No sign-in is needed.
-- **Saving to Google Drive is an experiment**, on a separate page: https://vpylab.pages.dev/drive-lab. It is not part of the main editor. See [Saving to Google Drive (experiment)](#saving-to-google-drive-experiment).
 
 ## Two editions, one codebase
 
@@ -79,19 +78,19 @@ Guides:
 - Third-party requests: web fonts from Google Fonts and Fontshare. The Python runtime is served from vpylab.pages.dev; jsDelivr or unpkg is used only if that fails.
 - A downloaded HTML file loads Pyodide and Three.js from jsDelivr or unpkg when opened.
 
-**Drive experiment** (https://vpylab.pages.dev/drive-lab)
+**Saving to Google Drive** (Save in Create, and the test page https://vpylab.pages.dev/drive-lab)
 
-- The page talks only to Google and to itself. Its Content Security Policy blocks every other origin.
+- The Google sign-in script loads only when you open the save or My Drive window. The Content Security Policy of Create adds only the Google sign-in and Drive API origins; the test page talks only to Google and to itself.
 - It asks for `openid email profile` and `drive.file`. With `drive.file`, the app can see only the files it created, not the rest of your Drive.
 - Files go to a `VPyLab` folder in the student's own Google Drive. VPyLab maintainers cannot see them.
-- The Google access token stays in page memory and is gone after a reload. Unsaved drafts stay in the browser, per account. Drafts older than 14 days are removed the next time the page is opened on that computer.
-- To remove access, press **권한 철회** (Revoke) on the page or go to https://myaccount.google.com/connections.
+- The Google access token stays in page memory and is gone after a reload. Unsaved drafts stay in the browser, per account. Drafts older than 14 days are removed the next time the save window is opened on that computer.
+- To remove access, press **Revoke access** in the My Drive window or go to https://myaccount.google.com/connections. Signing out offers to delete this account's drafts from the browser (do this on shared computers).
 
 The classroom edition stores accounts and code in Supabase; see its in-app privacy page.
 
-## Saving to Google Drive (experiment)
+## Saving to Google Drive
 
-The goal is that each student's code lives in their own Google Drive and the project keeps no student data ([plan](docs/GOOGLE_FIRST_PLAN.md)). The experiment page tests this with Google Identity Services (token model) and the `drive.file` scope. It has a plain text box for code and does not run Python.
+The goal is that each student's code lives in their own Google Drive and the project keeps no student data ([plan](docs/GOOGLE_FIRST_PLAN.md)). Save in Create uses Google Identity Services (token model) and the `drive.file` scope. The same modules were first tested on a separate page, https://vpylab.pages.dev/drive-lab, which stays available for testing.
 
 Tested on 2026-11-08 with a personal Gmail account:
 
@@ -120,11 +119,11 @@ Testing VPyLab at another school: [docs/TESTERS.ko.md](docs/TESTERS.ko.md) (Kore
 | The app | `vpylab.pages.dev` |
 | Web fonts (optional; the app falls back to system fonts) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
 | Python runtime fallback, and downloaded HTML files | `cdn.jsdelivr.net`, `unpkg.com` |
-| Drive experiment only | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
+| Saving to Google Drive | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
 
-Allow pop-ups from `vpylab.pages.dev` for the Drive experiment; Google approval opens in a pop-up.
+Allow pop-ups from `vpylab.pages.dev`; Google approval opens in a pop-up.
 
-**Google Workspace accounts (Drive experiment)**
+**Google Workspace accounts (saving to Google Drive)**
 
 - In the Admin console, add the app by its OAuth client ID under **Security → Access and data control → API controls → App access control**, and set it to **Limited** or **Trusted**. If your domain marks Drive as a restricted service, it must be **Trusted**. Menu names differ between console versions.
 - In Google Workspace for Education, users designated as under 18 cannot use third-party apps the admin has not configured.

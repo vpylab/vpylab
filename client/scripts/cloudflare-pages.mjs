@@ -41,6 +41,28 @@ export function openEditionCsp(value) {
   }).filter(Boolean).join('; ');
 }
 
+/**
+ * 오픈소스 판 본 앱(만들기 화면)은 구글 드라이브에 저장합니다. 구글 로그인(GIS)과 드라이브 API 주소를 CSP에 더합니다.
+ * 수업용 판·임베드·정적 폴더에는 더하지 않습니다. 드라이브 실험 페이지(/drive-lab)는 자기 CSP에 이미 있습니다.
+ */
+const GOOGLE_SIGN_IN = {
+  'script-src': ['https://accounts.google.com/gsi/client'],
+  'style-src': ['https://accounts.google.com/gsi/style'],
+  'connect-src': ['https://www.googleapis.com', 'https://oauth2.googleapis.com', 'https://accounts.google.com/gsi/'],
+  'frame-src': ['https://accounts.google.com/gsi/'],
+};
+export function withGoogleSignIn(value) {
+  return value.split(';').map((directive) => {
+    const parts = directive.trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return '';
+    const extra = GOOGLE_SIGN_IN[parts[0]];
+    if (!extra) return parts.join(' ');
+    const sources = parts.slice(1).filter((token) => token !== "'none'");
+    for (const host of extra) if (!sources.includes(host)) sources.push(host);
+    return [parts[0], ...sources].join(' ');
+  }).filter(Boolean).join('; ');
+}
+
 export function buildCloudflareConfig(vercel, { edition = 'classroom' } = {}) {
   const rules = (vercel.headers || []).flatMap((rule) => {
     const path = toCloudflarePath(rule.source);
@@ -62,7 +84,9 @@ export function buildCloudflareConfig(vercel, { edition = 'classroom' } = {}) {
       }
     }
     for (const { key, value } of rule.headers) {
-      const v = edition === 'open' && key.toLowerCase() === 'content-security-policy' ? openEditionCsp(value) : value;
+      const isCsp = key.toLowerCase() === 'content-security-policy';
+      let v = edition === 'open' && isCsp ? openEditionCsp(value) : value;
+      if (edition === 'open' && isCsp && rule.path === '/*') v = withGoogleSignIn(v);
       lines.push(`  ${key}: ${v}`);
     }
   }

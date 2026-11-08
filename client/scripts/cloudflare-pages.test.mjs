@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCloudflareConfig, toCloudflarePath, openEditionCsp, spaExcludedDirs } from './cloudflare-pages.mjs';
+import { buildCloudflareConfig, toCloudflarePath, openEditionCsp, spaExcludedDirs, withGoogleSignIn } from './cloudflare-pages.mjs';
 
 const clientRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const vercel = JSON.parse(readFileSync(resolve(clientRoot, '../vercel.json'), 'utf8'));
@@ -33,6 +33,13 @@ describe('openEditionCsp', () => {
   it('Supabase·Railway 주소만 빼고 나머지는 그대로 둔다', () => {
     const csp = "default-src 'self'; connect-src 'self' https://*.supabase.co https://cdn.jsdelivr.net wss://*.supabase.co https://vpylab-server-production.up.railway.app blob:; img-src 'self'";
     expect(openEditionCsp(csp)).toBe("default-src 'self'; connect-src 'self' https://cdn.jsdelivr.net blob:; img-src 'self'");
+  });
+});
+
+describe('withGoogleSignIn', () => {
+  it('구글 로그인·드라이브 주소를 더하고 frame-src의 none을 바꾼다', () => {
+    const csp = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'none'";
+    expect(withGoogleSignIn(csp)).toBe("default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; img-src 'self' https:; frame-src https://accounts.google.com/gsi/");
   });
 });
 
@@ -82,5 +89,15 @@ describe('SPA 대체에서 뺀 폴더', () => {
     expect(dirs).toEqual(expect.arrayContaining(['assets', 'pyodide']));
     expect(dirs).not.toContain('sw.js');
     expect(dirs.every((d) => !d.includes('\\'))).toBe(true);
+  });
+  it('오픈소스 판 본 앱 CSP에만 구글 로그인을 더하고, 수업용 판·임베드에는 더하지 않는다', () => {
+    const blocks = parse(buildCloudflareConfig(vercel, { edition: 'open' }).headers);
+    const classroom = buildCloudflareConfig(vercel, { edition: 'classroom' });
+    const openMain = blocks['/*'].find((l) => l.startsWith('Content-Security-Policy:'));
+    expect(openMain).toContain('https://accounts.google.com/gsi/client');
+    expect(openMain).not.toContain("frame-src 'none'");
+    const openEmbed = blocks['/embed/*'].find((l) => l.startsWith('Content-Security-Policy:'));
+    expect(openEmbed).not.toContain('accounts.google.com');
+    expect(classroom.headers.split('\n').find((l) => l.includes('Content-Security-Policy') && !l.includes('drive')) ).not.toContain('accounts.google.com/gsi/client');
   });
 });
