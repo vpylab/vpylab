@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd client && npm install && npx vite build",
+  "buildCommand": "cd client && npm install && npm run build:deploy",
   "outputDirectory": "client/dist",
   "framework": "vite",
   "functions": {
@@ -10,6 +10,13 @@
       "includeFiles": "client/.env.production"
     }
   },
+  "redirects": [
+    {
+      "source": "/drive-lab",
+      "destination": "/drive-lab.html",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/s/:id",
@@ -20,7 +27,7 @@
       "destination": "/api/og?kind=gallery&id=:id"
     },
     {
-      "source": "/((?!api/|assets/|projects/|pyodide/|sw\\.js$|manifest\\.webmanifest$).*)",
+      "source": "/((?!api/|assets/|projects/|pyodide/|sw\\.js$|manifest\\.webmanifest$|drive-lab\\.html$).*)",
       "destination": "/index.html"
     }
   ],
@@ -93,7 +100,44 @@
       ]
     },
     {
-      "source": "/((?!assets/|pyodide/|embed/).*)",
+      "source": "/drive-lab.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/ https://*.googleusercontent.com; frame-src https://accounts.google.com/gsi/; img-src 'self' data: https://*.googleusercontent.com; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin-allow-popups"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        }
+      ]
+    },
+    {
+      "source": "/((?!assets/|pyodide/|embed/|drive-lab\\.html$).*)",
       "headers": [
         {
           "key": "Cache-Control",

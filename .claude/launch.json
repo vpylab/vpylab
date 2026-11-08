@@ -19,6 +19,20 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "classroom:lan", "--", "--skip-build", "--no-qr"],
       "port": 4077
+    },
+    {
+      "name": "vpylab-drive-lab",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:drive-lab"],
+      "port": 4086,
+      "cwd": "client"
+    },
+    {
+      "name": "vpylab-deploy-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview:deploy"],
+      "port": 4086,
+      "cwd": "client"
     }
   ]
 }

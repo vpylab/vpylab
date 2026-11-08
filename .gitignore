@@ -17,6 +17,7 @@ client/dist-classroom/
 client/dist-month-projects/
 client/dist-teacher-training/
 client/dist-lan/
+client/dist-drive-lab/
 
 # Pyodide 핵심 파일은 빌드 때 npm 패키지에서 복사합니다(client/scripts/pyodide-assets.mjs)
 client/public/pyodide/

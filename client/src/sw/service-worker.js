@@ -14,6 +14,7 @@
  *   - 글꼴(Google Fonts·Fontshare) 요청은 건드리지 않습니다. sw.js의 CSP connect-src에 글꼴 출처가
  *     없어 Service Worker 안에서 fetch하면 막히고, 페이지에 ERR_FAILED로 전달됩니다.
  *   - 페이지 이동(navigate): 네트워크 우선, 끊기면 저장한 앱 셸. /embed/ 경로는 헤더가 달라 별도 키에 저장
+ *     앱 셸이 아닌 독립 HTML(/drive-lab.html 등)은 가로채지 않습니다(앱 셸 캐시를 덮어쓰지 않게).
  *   - 그 밖의 요청(API, Supabase 등)은 건드리지 않습니다.
  *
  * Pyodide Worker 안에서 fetch를 지우는 보안 정책은 Worker 전역에만 적용되며,
@@ -55,6 +56,11 @@ const EMBED_SHELL = '__vpylab-embed-shell__';
 
 function shellKeyFor(url) {
   return url.pathname.startsWith('/embed/') ? EMBED_SHELL : APP_SHELL;
+}
+
+// 앱 셸이 아닌 독립 HTML 페이지(예: /drive-lab.html)는 앱 셸 캐시를 덮어쓰지 않도록 가로채지 않습니다.
+function isStandaloneDocument(url) {
+  return url.pathname.endsWith('.html') && url.pathname !== `/${APP_SHELL}`;
 }
 
 async function networkFirstShell(request, shellKey = APP_SHELL) {
@@ -115,6 +121,7 @@ self.addEventListener('fetch', (event) => {
   if (isPyodideUrl(url)) { event.respondWith(cacheFirst(PYODIDE_CACHE, request)); return; }
   if (url.origin !== self.location.origin) return;
 
+  if (request.mode === 'navigate' && isStandaloneDocument(url)) return;
   if (request.mode === 'navigate') { event.respondWith(networkFirstShell(request, shellKeyFor(url))); return; }
   if (url.pathname.startsWith('/assets/')) { event.respondWith(cacheFirst(APP_CACHE, request)); return; }
   if (PRECACHE_MANIFEST.some(({ url: path }) => url.pathname === `/${path}`)) { event.respondWith(cacheFirst(APP_CACHE, request)); }
