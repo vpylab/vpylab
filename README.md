@@ -1,325 +1,223 @@
-# VPyLab — 3D 프로그래밍 교육 플랫폼
+# VPyLab
 
-> Python으로 3D 세상을 만드는 교육 플랫폼. Pyodide + Three.js + Web Audio.
+**A 3D Python lab for schools, with light and sound, that runs in the browser.**
 
-> **새 교실 로컬 검토 (`codex/classroom-v2`)**: `npm run dev:classroom`으로 별도 포트에서 실행합니다. [직접 테스트하는 방법](docs/CLASSROOM_V2_LOCAL_TEST.md) · [새 시스템 설계와 승인 후 교체 기준](docs/CLASSROOM_V2_ARCHITECTURE.md). 기존 운영 진입점과 수업 자료는 유지합니다.
+VPyLab lets students write VPython-style Python and see it as 3D shapes, light and sound right away. Python runs in the browser with Pyodide, so there is nothing to install. The open edition needs no account.
 
-학생·교사는 [서비스 사용 안내](https://vpylab.vercel.app/guide) 또는 [대장간·포크·캐릭터 학습 가이드](docs/USER_GUIDE_KO.md)에서 시작하세요. 아래 내용은 운영자를 위한 배포 안내입니다.
+English · [한국어](README.ko.md)
 
----
+**Try it:** https://vpylab.pages.dev (English interface: https://vpylab.pages.dev/?lang=en)
 
-## 이 문서는 누구를 위한 건가요?
-
-**프로그래밍을 잘 모르는 선생님**도 VPyLab을 직접 배포해서 수업에 사용할 수 있도록 안내합니다.  
-모든 단계를 **스크린샷 없이도 따라할 수 있게** 최대한 쉽게 설명했습니다.
-
-AI에게 배포를 맡기고 싶다면 이 README 전체를 보여주고, Supabase/Render/Vercel 계정 정보는 직접 확인하면서 진행하세요.
-
----
-
-## 목차
-
-1. [전체 구조 이해하기](#1-전체-구조-이해하기)
-2. [사전 준비](#2-사전-준비)
-3. [Step 1: Supabase 데이터베이스 만들기](#step-1-supabase-데이터베이스-만들기)
-4. [Step 2: 백엔드 서버 배포하기 (Render)](#step-2-백엔드-서버-배포하기-render)
-5. [Step 3: 프론트엔드 배포하기 (Vercel)](#step-3-프론트엔드-배포하기-vercel)
-6. [Step 4: 동작 확인하기](#step-4-동작-확인하기)
-7. [문제가 생겼을 때](#문제가-생겼을-때)
-8. [업데이트하기](#업데이트하기)
-
----
-
-## 1. 전체 구조 이해하기
-
-VPyLab은 세 부분으로 나뉩니다:
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  프론트엔드  │────▶│   백엔드    │────▶│ 데이터베이스 │
-│  (화면)     │     │  (서버)     │     │  (저장소)    │
-│  Vercel     │     │  Render     │     │  Supabase   │
-│  무료       │     │  무료       │     │  무료        │
-└─────────────┘     └─────────────┘     └─────────────┘
-```
-
-| 구성 요소 | 하는 일 | 배포할 곳 | 비용 |
-|-----------|---------|-----------|------|
-| 프론트엔드 | 학생이 보는 화면 (에디터, 3D 뷰어) | Vercel | 무료 |
-| 백엔드 | 코드 공유, 작품 발행 | Render | 무료 |
-| 데이터베이스 | 학급, 학생, 코드 저장 | Supabase | 무료 |
-
-**무료 한도 참고:**
-- Vercel: 월 100GB 트래픽 (학교 한 곳이면 충분)
-- Render: 무료 인스턴스는 15분 미사용 시 절전 (첫 요청에 30초 대기)
-- Supabase: 500MB 저장, 월 5만 API 호출
-
----
-
-## 2. 사전 준비
-
-아래 계정을 **무료로** 만들어주세요. 이메일 하나로 모두 가입 가능합니다.
-
-| 서비스 | 가입 주소 | 필요한 이유 |
-|--------|-----------|-------------|
-| GitHub | https://github.com/signup | 코드 저장소 + 로그인 |
-| Supabase | https://supabase.com | 데이터베이스 |
-| Render | https://render.com | 백엔드 서버 |
-| Vercel | https://vercel.com | 프론트엔드 화면 |
-
-> **팁:** GitHub 계정이 있으면 나머지 서비스도 "Sign in with GitHub" 버튼으로 바로 가입됩니다.
-
-### 내 컴퓨터에 GitHub 리포지토리 준비하기
-
-1. https://github.com/greatsong/vpylab 에 접속합니다
-2. 우측 상단 **Fork** 버튼을 클릭합니다
-3. "Create fork" 버튼을 클릭합니다
-4. 이제 `https://github.com/내아이디/vpylab` 형태의 내 저장소가 생겼습니다
-
----
-
-## Step 1: Supabase 데이터베이스 만들기
-
-### 1-1. 프로젝트 생성
-
-1. https://supabase.com/dashboard 에 접속합니다
-2. **New Project** 클릭
-3. 아래와 같이 입력합니다:
-   - **Name:** `vpylab` (아무 이름이나 괜찮습니다)
-   - **Database Password:** 안전한 비밀번호 입력 (메모해두세요)
-   - **Region:** `Northeast Asia (Seoul)` 선택
-4. **Create new project** 클릭
-5. 1~2분 기다리면 프로젝트가 만들어집니다
-
-### 1-2. 테이블 만들기
-
-운영 프로젝트는 기존처럼 마이그레이션 스크립트로 적용합니다. Supabase Personal Access Token(PAT)을 준비한 뒤 실행하세요.
-
-```bash
-export SUPABASE_ACCESS_TOKEN=sbp_xxxxxxxxxxxxxxxxx
-node scripts/apply-migrations.mjs
-```
-
-특정 파일만 적용해야 할 때는 파일명을 넘깁니다.
-
-```bash
-node scripts/apply-migrations.mjs 014_gallery_project_links.sql
-```
-
-PAT이 없으면 스크립트가 SQL Editor URL과 실행할 SQL을 출력합니다. 이 경우 아래 파일들을 **순서대로** SQL Editor에서 실행하세요.
-
-```
-supabase/migrations/001_vpylab_schema.sql
-supabase/migrations/002_gallery.sql
-supabase/migrations/003_shares.sql
-supabase/migrations/004_shares_rls_fix.sql
-supabase/migrations/005_gallery_search_index.sql
-supabase/migrations/006_gallery_collaboration.sql
-supabase/migrations/007_admin_features.sql
-supabase/migrations/008_code_shares.sql
-supabase/migrations/009_code_revisions.sql
-supabase/migrations/010_team_projects.sql
-supabase/migrations/011_github_sync.sql
-supabase/migrations/012_fix_rls_recursion.sql
-supabase/migrations/014_gallery_project_links.sql
-```
-
-> **주의 1:** 반드시 001 → 002 → ... → 012 → 014 순서대로 실행해야 합니다.
-> 각 파일을 실행할 때마다 "Success" 메시지가 나오면 다음 파일로 넘어가세요.
->
-> **주의 2:** `013_reset_for_project_centric.sql` 은 **개발/테스트용 데이터 리셋 스크립트**입니다. 신규 설치 시에는 실행하지 마세요. 기존 데이터를 모두 지우고 프로젝트 중심 모델로 초기화할 때만 사용합니다.
->
-> **마이그레이션 009~012가 없으면** 프로젝트(팀 협업), 코드 이력(revision), GitHub 동기화 기능이 동작하지 않습니다.
-> **마이그레이션 014가 없으면** 갤러리 작품이 어느 VPyLab 프로젝트에서 발행되었는지 추적할 수 없습니다.
-
-### 1-3. API 키 메모하기
-
-1. 왼쪽 메뉴에서 **Settings** → **API** 클릭
-2. 아래 3가지를 메모장에 복사해 둡니다:
-
-| 이름 | 어디에 있나요 | 용도 |
-|------|---------------|------|
-| **Project URL** | 상단에 `https://xxxx.supabase.co` 형태 | 프론트 + 백엔드 모두 사용 |
-| **anon public** | `Project API keys` 섹션 | 프론트엔드에서 사용 (공개 가능) |
-| **service_role** | `Project API keys` 섹션 (눈 아이콘 클릭) | 백엔드에서만 사용 (**절대 공개 금지**) |
-
----
-
-## Step 2: 백엔드 서버 배포하기 (Render)
-
-### 2-1. Render에서 서비스 만들기
-
-1. https://dashboard.render.com 에 접속합니다
-2. **New** → **Web Service** 클릭
-3. **Build and deploy from a Git repository** 선택 → **Next**
-4. GitHub 연동이 안 되어 있으면 **Connect GitHub** 클릭하여 연결
-5. 내 `vpylab` 리포지토리를 찾아 **Connect** 클릭
-
-### 2-2. 서비스 설정
-
-| 설정 항목 | 입력할 값 |
-|-----------|-----------|
-| **Name** | `vpylab-server` |
-| **Region** | `Singapore` (한국에서 가까움) |
-| **Branch** | `main` |
-| **Root Directory** | `server` |
-| **Runtime** | `Node` |
-| **Build Command** | `npm install` |
-| **Start Command** | `node index.js` |
-| **Instance Type** | `Free` 선택 |
-
-### 2-3. 환경변수 설정
-
-아래쪽 **Environment Variables** 섹션에서 **Add Environment Variable**을 클릭하여 하나씩 추가합니다:
-
-| Key | Value |
-|-----|-------|
-| `PORT` | `10000` |
-| `ALLOWED_ORIGINS` | (Step 3 완료 후 Vercel 주소 입력. 일단 `https://vpylab.vercel.app` 으로 넣어두세요) |
-| `SUPABASE_URL` | Step 1에서 메모한 **Project URL** |
-| `SUPABASE_SERVICE_ROLE_KEY` | Step 1에서 메모한 **service_role** 키 |
-| `NODE_ENV` | `production` |
-
-> AI 힌트 기능은 현재 버전에서 제외되어 있으므로 `UPSTAGE_API_KEY`는 필요하지 않습니다.
-
-### 2-4. 배포 시작
-
-**Create Web Service** 버튼을 클릭합니다.
-
-5~10분 후 배포가 완료되면 상단에 URL이 표시됩니다:  
-`https://vpylab-server-xxxx.onrender.com`
-
-이 URL을 메모해 두세요. 프론트엔드에서 사용합니다.
-
-### 2-5. 동작 확인
-
-브라우저에서 아래 주소를 열어보세요:  
-`https://vpylab-server-xxxx.onrender.com/api/health`
-
-아래와 같은 응답이 나오면 성공입니다:
-```json
-{"status":"ok","timestamp":"2026-...","version":"0.1.0"}
-```
-
----
-
-## Step 3: 프론트엔드 배포하기 (Vercel)
-
-### 3-1. Vercel에서 프로젝트 만들기
-
-1. https://vercel.com/dashboard 에 접속합니다
-2. **Add New...** → **Project** 클릭
-3. **Import Git Repository**에서 `vpylab` 리포지토리를 찾아 **Import** 클릭
-
-### 3-2. 빌드 설정
-
-| 설정 항목 | 입력할 값 |
-|-----------|-----------|
-| **Framework Preset** | `Vite` |
-| **Root Directory** | `client` (Edit 클릭하여 변경) |
-| **Build Command** | `npm install && npx vite build` |
-| **Output Directory** | `dist` |
-
-### 3-3. 환경변수 설정
-
-**Environment Variables** 섹션에서 아래를 추가합니다:
-
-| Key | Value |
-|-----|-------|
-| `VITE_SUPABASE_URL` | Step 1에서 메모한 **Project URL** |
-| `VITE_SUPABASE_ANON_KEY` | Step 1에서 메모한 **anon public** 키 |
-| `VITE_API_URL` | Step 2에서 받은 Render URL (예: `https://vpylab-server-xxxx.onrender.com`) |
-
-### 3-4. 배포
-
-**Deploy** 버튼을 클릭합니다. 2~3분 후 배포가 완료됩니다.
-
-완료되면 URL이 표시됩니다: `https://vpylab-xxxx.vercel.app`
-
-### 3-5. Render 환경변수 업데이트
-
-이제 실제 Vercel URL을 알았으니, Render로 돌아가서 수정합니다:
-
-1. Render 대시보드 → `vpylab-server` → **Environment** 탭
-2. `ALLOWED_ORIGINS` 값을 실제 Vercel URL로 변경
-3. **Save Changes** → 자동으로 재배포됩니다
-
-> **커스텀 도메인을 사용한다면:**  
-> `ALLOWED_ORIGINS`에 쉼표로 구분하여 추가합니다:  
-> `https://vpylab-xxxx.vercel.app,https://myschool.com`
-
----
-
-## Step 4: 동작 확인하기
-
-1. Vercel에서 받은 URL을 브라우저에서 엽니다
-2. 에디터가 보이면 아래 코드를 입력하고 **실행** 버튼을 누릅니다:
+<!-- TODO screenshot: Create screen running the sample below (editor on the left, red glowing sphere with "Hello!" on the right). Suggested file: docs/screenshots/readme-create.png -->
+> Screenshot coming soon.
 
 ```python
 from vpython import *
 
-scene.background = 색상['검정']
-sphere(color=색상['빨강'], emissive=True)
-label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
-음표("도4", 0.3)
-음표("미4", 0.3)
-음표("솔4", 0.5)
+scene.background = color.black
+sphere(color=color.red, emissive=True)
+label(pos=vector(0, 1.2, 0), text="Hello!", color=color.white, height=20)
+play_note_and_wait("C4", 0.3)
+play_note_and_wait("E4", 0.3)
+play_note_and_wait("G4", 0.5)
 ```
 
-3. 3D 화면에 빛나는 빨간 구와 라벨이 나타나고 도-미-솔 소리가 나면 **성공**입니다!
+Paste this into **Create** and press **Run**. A glowing red sphere and a label appear, and you hear C, E and G. `play_note_and_wait` is a VPyLab extension. Shapes, vectors, `label` and `color` follow the official VPython API.
 
-> **API 레퍼런스**: 객체·메서드·VPython 대비 차이는 [docs/VPYTHON_API.md](docs/VPYTHON_API.md)를 참고하세요.
+## Status
 
-### 추가 확인 (선택)
+VPyLab is in active development. In the open edition (vpylab.pages.dev):
 
-- [ ] 코드 저장 → 불러오기가 되는지 확인
-- [ ] 코드 공유 버튼 → 공유 링크 생성 확인
-- [ ] 갤러리 페이지가 로드되는지 확인
+- **Saving is not built into the editor yet.** The **Save** button opens a "Saving is coming soon" notice. To keep your work, use **Tools → Download HTML** in Create.
+- **Share links** work in the open edition without a server: **Tools → Share** compresses the code into the link itself. Long programs make long links (very long ones may not fit in a QR code), and there is no embed code.
+- **Saving to Google Drive is an experiment**, on a separate page: https://vpylab.pages.dev/drive-lab. It is not part of the main editor. See [Saving to Google Drive (experiment)](#saving-to-google-drive-experiment).
 
----
+## Two editions, one codebase
 
-## 문제가 생겼을 때
+The same code is built two ways. The `VITE_EDITION` build setting picks the edition ([details](docs/DEPLOY_TWO_EDITIONS.md)).
 
-### "사이트가 로딩되지 않아요"
+| | Open edition | VPyLab Classroom |
+|---|---|---|
+| Address | https://vpylab.pages.dev | https://vpylab.vercel.app |
+| Hosting | Cloudflare Pages (static files only) | Vercel + Railway (Express server) |
+| Server and database | None | Supabase |
+| Login | None | Google or GitHub (Supabase Auth) |
+| Saving | Download HTML today; Google Drive in testing | Projects, version history, GitHub sync |
+| Gallery, teams, teacher tools | Off | On |
+| Build setting | `VITE_EDITION=open` | default (`classroom`) |
 
-- Vercel 대시보드에서 빌드 로그를 확인합니다
-- 환경변수 `VITE_SUPABASE_URL`과 `VITE_SUPABASE_ANON_KEY`가 정확한지 확인합니다
+The classroom edition is used in classes at Danggok High School. Its deployments are still connected to `greatsong/vpylab-classroom` while they move to this repository.
 
-### "로그인/회원가입이 안 돼요"
+## For students and teachers
 
-- Supabase 대시보드 → **Authentication** → **URL Configuration**
-- **Site URL**을 Vercel 배포 URL로 설정합니다
-- **Redirect URLs**에도 같은 URL을 추가합니다
+Start at https://vpylab.pages.dev. The top menu follows a suggested order:
 
-### "코드 공유가 안 돼요"
+| Menu | What you do there |
+|---|---|
+| **Training** | An 8-lesson foundation course, *Your first light and sound project*: predict, run, change one thing, explain. Then an optional 6-step practice on variables, loops, conditions and lists, with automatic checks. |
+| **Create** | Write and run Python. Editor, 3D view and console side by side (tabs on a phone). **Stop** also ends scheduled sounds. |
+| **Tutorials** | Four short experiences (3D, light and sound, motion, a button), then small projects to explore by making. |
+| **Forge** | Shape one reusable 3D object with sliders, then copy its code or download a `.py` file. |
+| **Docs** | 97 reference entries in 12 categories: shapes, vectors, scene, events, widgets, graphs, colors, materials, sound and more. |
+| **Guide** | In-app instructions. |
 
-- Render 대시보드에서 서버 로그를 확인합니다
-- `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`가 정확한지 확인합니다
+More: 57 examples in 8 categories under **Create → Tools → Examples**. Editor completion and word help work without AI, and your code is not sent to an AI service. Switch language and theme under **More**.
 
-### "Render 서버가 느려요"
+Guides:
 
-- 무료 인스턴스는 15분 미사용 시 절전 모드에 들어갑니다
-- 첫 요청 시 30초 정도 대기가 발생합니다 (이후는 빠릅니다)
-- 수업 시작 전에 미리 사이트를 한 번 열어두면 좋습니다
+- [docs/GUIDE.ko.md](docs/GUIDE.ko.md): guide for teachers and students on the open edition (Korean).
+- [docs/USER_GUIDE_EN.md](docs/USER_GUIDE_EN.md): student guide written for the classroom edition. It covers login, gallery and team features that the open edition does not have.
 
-### "SQL 실행 시 에러가 나요"
+<!-- TODO screenshots: Training page (docs/screenshots/readme-training.png) and Forge with a character (docs/screenshots/readme-forge.png) -->
 
-- 마이그레이션 파일을 순서대로 실행했는지 확인합니다
-- 이미 실행한 파일을 다시 실행하면 "already exists" 에러가 나올 수 있습니다 — 이건 정상입니다
+## Privacy
 
----
+**Open edition**
 
-## 업데이트하기
+- There is no VPyLab server or database. The site is static files on Cloudflare Pages.
+- Your code runs in your browser. No VPyLab service stores it.
+- Progress, theme, language and home settings are kept in your browser (localStorage). Practice drafts are kept in the browser tab (sessionStorage). Clearing browser data removes them, and they do not move to other devices.
+- Third-party requests: web fonts from Google Fonts and Fontshare. The Python runtime is served from vpylab.pages.dev; jsDelivr or unpkg is used only if that fails.
+- A downloaded HTML file loads Pyodide and Three.js from jsDelivr or unpkg when opened.
 
-원본 프로젝트에 업데이트가 있을 때:
+**Drive experiment** (https://vpylab.pages.dev/drive-lab)
 
-1. 내 GitHub 리포지토리에서 **Sync fork** → **Update branch** 클릭
-2. Vercel과 Render가 자동으로 재배포합니다
+- The page talks only to Google and to itself. Its Content Security Policy blocks every other origin.
+- It asks for `openid email profile` and `drive.file`. With `drive.file`, the app can see only the files it created, not the rest of your Drive.
+- Files go to a `VPyLab` folder in the student's own Google Drive. VPyLab maintainers cannot see them.
+- The Google access token stays in page memory and is gone after a reload. Unsaved drafts stay in the browser, per account. Drafts older than 14 days are removed the next time the page is opened on that computer.
+- To remove access, press **권한 철회** (Revoke) on the page or go to https://myaccount.google.com/connections.
 
----
+The classroom edition stores accounts and code in Supabase; see its in-app privacy page.
 
-## 라이선스
+## Saving to Google Drive (experiment)
 
-- 코드: AGPL v3
-- 미션 콘텐츠: CC BY-NC-SA 4.0
-- 포함한 외부 코드(MIT): `shapes`·`paths` 구현은 [vpython-jupyter](https://github.com/vpython/vpython-jupyter)의 `shapespaths.py`를 가져왔고, `compound`의 좌표 변환과 `text`의 위치 계산식은 같은 저장소의 `vpython.py`에서 이식했다(Copyright (C) 2015 John Coady, Ruth Chabay, Bruce Sherwood). `group`은 [GlowScript](https://github.com/vpython/glowscript)의 `lib/glow/primitives.js`(MIT)를 명세로 삼았다. 출처와 허가 문구는 `client/src/engine/vpython-api.py`의 해당 절에 있다.
+The goal is that each student's code lives in their own Google Drive and the project keeps no student data ([plan](docs/GOOGLE_FIRST_PLAN.md)). The experiment page tests this with Google Identity Services (token model) and the `drive.file` scope. It has a plain text box for code and does not run Python.
+
+Tested on 2026-11-08 with a personal Gmail account:
+
+- save and reopen, Drive version history
+- re-approval after the token expired, with the draft kept
+- 30 saves in a row: average 3.0 seconds, 0 errors
+- network requests only to Google and the page itself
+
+A wider stability run on the same day added a real one-hour token expiry, access revoked from outside the app, the Drive box left unchecked on Google's consent screen, two tabs and two devices editing the same file, injected network failures, timeouts, 429/5xx responses and lost responses, a file or the whole VPyLab folder moved to the Drive trash, and a teacher account on a school Google Workspace domain (approved without any admin setting). Saves never silently lost an edit; every failure kept a draft and explained what to do next.
+
+Limits today:
+
+- The Google OAuth app is in **Testing** status. Only accounts added as test users (Google allows up to 100) can approve it. Other accounts get a Google error, `403 access_denied`.
+- School Google Workspace accounts may need the Workspace admin to allow the app first. A teacher account at one school (danggok.hs.kr) worked without any admin change; student accounts have not been checked yet.
+- Google's consent screen leaves the Drive box **unchecked** by default. Tell students to tick it, or the page will ask them to approve again.
+- A Google access token lasts about one hour, and the token model gives no refresh token. When it expires, the page keeps your code as a draft and asks you to approve again.
+
+Setup and test checklist: [docs/DRIVE_LAB.md](docs/DRIVE_LAB.md) (Korean). Full stability results and the defects fixed: [docs/DRIVE_LAB_RESULTS_2026-11-08.md](docs/DRIVE_LAB_RESULTS_2026-11-08.md) (Korean).
+
+## For school IT
+
+**Domains to allow**
+
+| Purpose | Domains |
+|---|---|
+| The app | `vpylab.pages.dev` |
+| Web fonts (optional; the app falls back to system fonts) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
+| Python runtime fallback, and downloaded HTML files | `cdn.jsdelivr.net`, `unpkg.com` |
+| Drive experiment only | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
+
+Allow pop-ups from `vpylab.pages.dev` for the Drive experiment; Google approval opens in a pop-up.
+
+**Google Workspace accounts (Drive experiment)**
+
+- In the Admin console, add the app by its OAuth client ID under **Security → Access and data control → API controls → App access control**, and set it to **Limited** or **Trusted**. If your domain marks Drive as a restricted service, it must be **Trusted**. Menu names differ between console versions.
+- In Google Workspace for Education, users designated as under 18 cannot use third-party apps the admin has not configured.
+- Parental consent, where the law requires it, is the school's responsibility under Google's policy.
+- While the app is in Testing, accounts also have to be registered as test users. Ask the VPyLab maintainers through [GitHub issues](https://github.com/vpylab/vpylab/issues).
+- To avoid both limits inside one school, a school can host its own copy with its own OAuth client set to **Internal** audience. Internal clients need no test users, but only accounts in that domain can use them. See [docs/DRIVE_LAB.md](docs/DRIVE_LAB.md).
+
+## For developers
+
+**Stack:** React 19, Vite 8, Tailwind CSS 4, Monaco Editor, Three.js, Pyodide 0.27 (in a Web Worker), Web Audio. Classroom edition only: Express 5 server and Supabase.
+
+**Requirements:** Node.js 20 or later (CI runs Node 20 and 24).
+
+```bash
+git clone https://github.com/vpylab/vpylab.git
+cd vpylab
+npm install
+cd client && npm install && cd ..
+cd server && npm install && cd ..
+```
+
+**Run the open edition** (no server, no database):
+
+```bash
+cd client
+VITE_EDITION=open npm run dev        # http://localhost:4033
+```
+
+**Run the classroom edition** (needs Supabase values in `.env` files; see `.env.example`, `client/.env.example`, `server/.env.example`):
+
+```bash
+npm run dev                          # client 4033 + server 4034
+```
+
+**Other commands**
+
+| Command | What it does |
+|---|---|
+| `npm --prefix client run test:run` | Vitest unit tests |
+| `npm --prefix client run lint` | ESLint |
+| `cd client && npm run build:open` | Build the open edition into `client/dist` (clears server addresses, writes Cloudflare `_headers` and `_redirects`) |
+| `cd client && npm run build:deploy` | Build the classroom edition (main app + drive lab), as `vercel.json` does |
+| `cd client && npm run dev:drive-lab` | Drive experiment at http://localhost:4086/drive-lab.html |
+| `npx wrangler pages dev client/dist --port 4087` | Check a built open edition with Cloudflare Pages behavior |
+| `npm run classroom:lan` | Classroom LAN server mode ([docs](docs/CLASSROOM_LAN_MODE.md)) |
+| `npm run compat:check` | GlowScript compatibility checks ([report](docs/GLOWSCRIPT_COMPAT_REPORT.md)) |
+
+**Ports**
+
+| Port | Use |
+|---|---|
+| 4033 | Vite dev server (main app) |
+| 4034 | Express server (classroom edition) |
+| 4077 | Classroom LAN mode |
+| 4086 | Drive experiment (fixed; registered as an OAuth origin) |
+| 4087 | Local Cloudflare Pages check |
+
+**Repository layout**
+
+| Path | Contents |
+|---|---|
+| `client/` | React app, Python engine (`src/engine/`), lessons and docs data (`src/data/`), drive experiment (`src/drive-lab/`) |
+| `server/` | Express server for the classroom edition |
+| `api/` | Vercel functions (link preview cards) for the classroom edition |
+| `supabase/migrations/` | Database schema for the classroom edition |
+| `docs/` | Design notes, deployment and test reports |
+
+**Deploying**
+
+- Both editions: [docs/DEPLOY_TWO_EDITIONS.md](docs/DEPLOY_TWO_EDITIONS.md)
+- Drive experiment and your own Google OAuth client: [docs/DRIVE_LAB.md](docs/DRIVE_LAB.md)
+- Step-by-step classroom deployment for teachers (Supabase + server + Vercel, Korean): [docs/DEPLOY_CLASSROOM.ko.md](docs/DEPLOY_CLASSROOM.ko.md)
+- VPython API supported by VPyLab: [docs/VPYTHON_API.md](docs/VPYTHON_API.md)
+
+New features that need the server or the database must be wrapped in `SERVER_FEATURES` (`client/src/lib/api-base.js`), so they stay off in the open edition.
+
+## Contributing
+
+Teachers, students and developers are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+- Lessons and missions: [docs/MISSION_SCHEMA.md](docs/MISSION_SCHEMA.md)
+- Translations: [docs/I18N_GUIDE.md](docs/I18N_GUIDE.md). The interface is in Korean and English today.
+- Bugs and ideas: [GitHub issues](https://github.com/vpylab/vpylab/issues)
+- Security problems: please do not post them in a public issue. Contact the maintainers privately.
+  <!-- TODO (maintainers): enable GitHub private vulnerability reporting for vpylab/vpylab and update .github/SECURITY.md; its email domain vpylab.org does not resolve yet. -->
+
+## License
+
+- **Code:** GNU Affero General Public License v3 ([LICENSE](LICENSE)). Copyright (C) 2026 석리송 (Seok Ri-song) / 당곡고등학교 수리정보교육부.
+- **Mission content:** CC BY-NC-SA 4.0.
+- **Included MIT code:** the `shapes` and `paths` implementations come from `shapespaths.py` in [vpython-jupyter](https://github.com/vpython/vpython-jupyter). The `compound` coordinate transforms and the `text` positioning were ported from `vpython.py` in the same repository (Copyright (C) 2015 John Coady, Ruth Chabay, Bruce Sherwood). `group` follows `lib/glow/primitives.js` in [GlowScript](https://github.com/vpython/glowscript) (MIT) as its specification. Notices are in the matching sections of `client/src/engine/vpython-api.py`.
+
+## Acknowledgments
+
+VPyLab follows the VPython API created by the GlowScript and VPython projects (David Scherer, Bruce Sherwood, Ruth Chabay, John Coady and contributors). It is built on [Pyodide](https://pyodide.org), [Three.js](https://threejs.org), [Monaco Editor](https://microsoft.github.io/monaco-editor/) and [React](https://react.dev).

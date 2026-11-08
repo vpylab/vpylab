@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createDriveStorage, DriveError } from './drive-storage.js';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createDriveStorage, DriveError, uniqueFileName } from './drive-storage.js';
 import {
   loadGis, createGoogleAuth, fetchUserInfo, missingScopes, AuthRequiredError,
 } from './google-auth.js';
@@ -32,15 +32,17 @@ const GOOGLE_LOGOUT_URL = 'https://accounts.google.com/Logout';
 
 const REASON_TEXT = {
   auth: '권한이 만료되었거나 철회되었습니다.',
-  scope: '드라이브 권한이 없습니다. 승인 화면에서 드라이브 항목을 허용해야 합니다.',
+  scope: '드라이브 권한이 없습니다. 승인 화면에서 "Google Drive 파일" 항목의 체크 상자를 직접 체크한 뒤 계속을 눌러야 합니다.',
   policy: '학교 관리자 정책이 이 앱의 드라이브 사용을 막고 있습니다. 정보 담당 선생님께 문의하세요.',
   storageFull: '구글 드라이브 저장 공간이 가득 찼습니다.',
   rate: '구글이 요청 속도를 제한했습니다. 잠시 뒤 다시 시도하세요.',
   forbidden: '구글이 요청을 거부했습니다. 학교 관리자 정책일 수 있습니다.',
   notFound: '파일을 찾을 수 없습니다. 휴지통으로 옮겨졌거나 권한이 사라졌을 수 있습니다.',
+  trashed: '이 파일은 다른 탭이나 기기에서 휴지통으로 옮겨졌습니다. 코드는 이 브라우저에 초안으로 남아 있습니다. "편집기 내용으로 새 파일"로 새 파일에 저장하거나, 드라이브 휴지통에서 파일을 되살린 뒤 다시 저장하세요.',
   network: '네트워크 연결에 실패했습니다. 코드는 이 브라우저에 초안으로 남아 있습니다.',
   timeout: '구글 응답이 너무 늦습니다. 저장됐는지 확인하려면 파일을 다시 여세요. 코드는 초안으로 남아 있습니다.',
   tooLarge: '코드가 100KB를 넘습니다.',
+  folderTrashed: 'VPyLab 폴더가 드라이브 휴지통에 있습니다. 그대로 두면 안의 파일이 30일 뒤 지워집니다. 아래 "VPyLab 폴더 되살리기"를 누르세요.',
   server: '구글 서버 오류입니다. 잠시 뒤 다시 시도하세요.',
 };
 
@@ -119,7 +121,9 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
   // draftNotice: { code, baseVersion, at, fileId } 화면에 아직 불러오지 않은 초안
   const [draftNotice, setDraftNotice] = useState(() => latestOtherNewDraft(sessionStore, 'anon', null, STARTER));
   const [reauth, setReauth] = useState(null); // 재승인 뒤 다시 할 작업 이름
+  const [folderTrashed, setFolderTrashed] = useState(false); // VPyLab 폴더가 드라이브 휴지통에 있음
   const [busy, setBusy] = useState(false);
+  const inFlightRef = useRef(new Set()); // 진행 중인 저장·만들기(겹쳐 실행 방지)
   const [message, setMessage] = useState(() => ({
     tone: 'info',
     text: clientId || ALLOW_CLIENT_ID_INPUT ? '구글 로그인을 누르세요.' : '이 배포에는 구글 클라이언트 ID(VITE_GOOGLE_CLIENT_ID)가 설정되지 않았습니다.',
@@ -142,8 +146,9 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
   const dirty = code !== savedCode;
 
   // 다시 승인 뒤 이어 가는 작업이 실패 시점이 아닌 최신 편집 내용을 사용하도록 ref에 둡니다.
-  useEffect(() => { codeRef.current = code; }, [code]);
-  useEffect(() => { currentRef.current = current; }, [current]);
+  // 화면을 그린 직후(동기) ref를 맞춥니다. useEffect로 두면 느린 기기에서 파일을 연 직후의 클릭이 지난 값을 읽을 수 있습니다.
+  useLayoutEffect(() => { codeRef.current = code; }, [code]);
+  useLayoutEffect(() => { currentRef.current = current; }, [current]);
 
   const say = (text, tone = 'info') => setMessage({ text, tone });
 
@@ -226,7 +231,13 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
         say(`${REASON_TEXT.auth} ${draftSaveFailed ? '브라우저 저장 공간이 가득 차 초안도 저장하지 못했습니다. 창을 닫지 마세요.' : '코드는 이 브라우저에 초안으로 남아 있습니다.'} "다시 승인"을 누르면 이어서 진행합니다.`, 'warn');
       } else {
         pendingRef.current = null;
-        say(`${label} 실패: ${describeError(error)}`, 'error');
+        if (error instanceof DriveError && error.reason === 'folderTrashed') {
+          // 로그인 자체는 됐으므로 "로그인 실패"라고 하지 않고 폴더 상태만 알립니다.
+          setFolderTrashed(true);
+          say(REASON_TEXT.folderTrashed, 'warn');
+        } else {
+          say(`${label} 실패: ${describeError(error)}`, 'error');
+        }
       }
     } finally {
       setBusy(false);
@@ -243,7 +254,10 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     setRevisions([]);
     setDraftNotice(null);
     setTruncated(false);
+    setFolderTrashed(false);
     pendingRef.current = null;
+    // 공용 PC에서 다음 계정이 앞 계정의 VPyLab 폴더 ID를 쓰지 않게 합니다.
+    driveRef.current?.resetFolder?.();
   }
 
   /** 로그인 전에 쓴 새 코드 초안을 로그인한 계정의 초안으로 옮깁니다. 초안 이름이 서로 달라 기존 초안을 덮어쓰지 않습니다. */
@@ -308,7 +322,8 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
         setDraftsTick((t) => t + 1);
       }
       if (missing.length) {
-        say('드라이브 권한이 빠졌습니다. "드라이브 권한 다시 요청"을 눌러 드라이브 항목을 허용하세요.', 'warn');
+        // 구글 승인 화면은 드라이브 체크 상자가 처음에 비어 있어, 그대로 계속을 누르면 이 상태가 됩니다(실측 2026-11-08).
+        say('드라이브 권한이 빠졌습니다. "드라이브 권한 다시 요청"을 누르고, 승인 화면에서 "Google Drive 파일" 항목의 체크 상자를 직접 체크한 뒤 계속을 누르세요.', 'warn');
         return;
       }
       if (notMoved) {
@@ -319,6 +334,16 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
       await loadFiles();
       // 실패했던 작업은 그 작업의 파일이 지금도 열려 있을 때만 이어서 합니다.
       if (retry && retry.fileId === (currentRef.current?.id ?? null)) await retry.fn();
+    });
+  }
+
+  async function restoreFolder() {
+    await run('폴더 되살리기', async () => {
+      const restored = await driveRef.current.restoreFolder();
+      setFolderTrashed(false);
+      await loadFiles();
+      // 드라이브는 폴더 안 파일의 휴지통 상태를 몇 초 뒤에 풀어 줍니다(실측 2026-11-08).
+      say(restored ? 'VPyLab 폴더를 휴지통에서 되살렸습니다. 안의 파일이 목록에 다시 보이기까지 몇 초 걸릴 수 있습니다. 보이지 않으면 "목록 새로 고침"을 누르세요.' : '휴지통에 VPyLab 폴더가 없습니다. 목록을 새로 불러왔습니다.', 'ok');
     });
   }
 
@@ -393,10 +418,17 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
   }
 
   async function createFile() {
+    // 버튼이 비활성화되기 전에 여러 번 눌려도 파일을 두 개 만들지 않습니다.
+    if (inFlightRef.current.has('create')) return;
+    inFlightRef.current.add('create');
+    try { await createFileOnce(); } finally { inFlightRef.current.delete('create'); }
+  }
+
+  async function createFileOnce() {
     const codeToSave = codeRef.current;
     const source = currentRef.current; // null이면 새 코드에서, 아니면 열린 파일의 내용으로 만듭니다.
     await run('새 파일', async () => {
-      const meta = await driveRef.current.create({ name: newName, code: codeToSave, deviceId: device });
+      const meta = await driveRef.current.create({ name: uniqueFileName(newName, files.map((f) => f.name)), code: codeToSave, deviceId: device });
       pendingRef.current = null;
       setCurrent({ id: meta.id, name: meta.name, version: meta.version, savedCode: codeToSave });
       // 새 파일에 담긴 내용의 초안만 지웁니다. 새 코드에서 만들었으면 새 코드 초안, 파일에서 만들었으면 그 파일의 이 탭 초안.
@@ -415,7 +447,14 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     }, { fn: () => createFile(), fileId: source?.id ?? null });
   }
 
-  async function saveFile({ force = false, expectVersion = null } = {}) {
+  async function saveFile(options = {}) {
+    // 같은 저장이 겹쳐 실행되지 않게 합니다(빠른 연속 클릭).
+    if (inFlightRef.current.has('save')) return;
+    inFlightRef.current.add('save');
+    try { await saveFileOnce(options); } finally { inFlightRef.current.delete('save'); }
+  }
+
+  async function saveFileOnce({ force = false, expectVersion = null, expectRevisionId = null } = {}) {
     const target = currentRef.current;
     if (!target) return;
     const codeToSave = codeRef.current;
@@ -426,15 +465,18 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     setCurrent((c) => (c && c.id === target.id ? { ...c, attemptedCodes: withThisAttempt } : c));
     await run('저장', async () => {
       const result = await driveRef.current.save({
-        id: target.id, code: codeToSave, baseVersion: target.version, baseCode: target.savedCode ?? undefined, attemptedCodes, deviceId: device, force, expectVersion,
+        id: target.id, code: codeToSave, baseVersion: target.version, baseCode: target.savedCode ?? undefined, attemptedCodes, deviceId: device, force, expectVersion, expectRevisionId,
       });
       pendingRef.current = null;
       if (result.status === 'conflict') {
         setConflict(result.remote);
-        say(`다른 기기가 먼저 저장했습니다(드라이브 버전 ${result.remote.meta.version}, 기기 ${deviceOf(result.remote.meta)}). 어느 쪽을 남길지 고르세요.`, 'warn');
+        // 같은 브라우저의 다른 탭에서 저장한 경우에는 "다른 기기"라고 하지 않습니다(기기 표식이 같음).
+        const where = deviceOf(result.remote.meta) === device ? '이 브라우저의 다른 탭(창)에서' : `다른 기기(${deviceOf(result.remote.meta)})가`;
+        say(`${where} 먼저 저장했습니다(드라이브 버전 ${result.remote.meta.version}). 어느 쪽을 남길지 고르세요.`, 'warn');
         return;
       }
-      setCurrent((c) => (c && c.id === target.id ? { ...c, version: result.meta.version, savedCode: codeToSave, attemptedCodes: [], appProperties: result.meta.appProperties || c.appProperties } : c));
+      // 드라이브에서 이름을 바꿨을 수 있으므로 저장 응답의 이름으로 맞춥니다.
+      setCurrent((c) => (c && c.id === target.id ? { ...c, name: result.meta.name || c.name, version: result.meta.version, savedCode: codeToSave, attemptedCodes: [], appProperties: result.meta.appProperties || c.appProperties } : c));
       setConflict(null);
       if (result.overwritten) {
         setOverwritten({ fileId: target.id, fileName: target.name, revisionId: result.overwritten.revisionId });
@@ -442,7 +484,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
         return;
       }
       say(result.status === 'unchanged' ? '드라이브 내용과 같아서 저장하지 않았습니다.' : `저장했습니다. 드라이브 버전 ${result.meta.version}`, 'ok');
-    }, { fn: () => saveFile({ force, expectVersion }), fileId: target.id });
+    }, { fn: () => saveFile({ force, expectVersion, expectRevisionId }), fileId: target.id });
   }
 
   /**
@@ -494,7 +536,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     const mine = code;
     const original = current;
     await run('사본 저장', async () => {
-      const meta = await driveRef.current.create({ name: `${original.name.replace(/\.py$/, '')} (충돌 사본 ${device})`, code: mine, deviceId: device });
+      const meta = await driveRef.current.create({ name: uniqueFileName(`${original.name.replace(/\.py$/i, '')} (충돌 사본 ${device})`, files.map((f) => f.name)), code: mine, deviceId: device });
       setConflict(null);
       clearDraft(storage, scope, ownDraftKey(original.id)); // 원래 파일의 이 탭 초안은 사본에 담겼습니다.
       setCurrent({ id: meta.id, name: meta.name, version: meta.version, savedCode: mine });
@@ -507,7 +549,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
     const info = overwritten;
     await run('덮어쓴 버전 되살리기', async () => {
       const text = await driveRef.current.revisionContent(info.fileId, info.revisionId);
-      const meta = await driveRef.current.create({ name: `${info.fileName.replace(/\.py$/, '')} (덮어쓴 버전)`, code: text, deviceId: device });
+      const meta = await driveRef.current.create({ name: uniqueFileName(`${info.fileName.replace(/\.py$/i, '')} (덮어쓴 버전)`, files.map((f) => f.name)), code: text, deviceId: device });
       setOverwritten(null);
       await loadFiles();
       say(`덮어쓴 내용을 ${meta.name}(으)로 되살렸습니다.`, 'ok');
@@ -707,6 +749,12 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
 
       <p className={`status status-${message.tone}`} role="status" aria-live="polite">{message.text}</p>
 
+      {folderTrashed && (
+        <div className="banner">
+          <span>VPyLab 폴더가 드라이브 휴지통에 있습니다.</span>
+          <button className="btn primary" disabled={busy} onClick={restoreFolder}>VPyLab 폴더 되살리기</button>
+        </div>
+      )}
       {reauth && (
         <div className="banner">
           <span>{reauth} 중 권한이 필요합니다.</span>
@@ -832,7 +880,7 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
             <div className="row">
               <button className="btn" onClick={saveAsCopy} disabled={busy}>내 코드를 사본으로 저장</button>
               <button className="btn" onClick={keepRemote} disabled={busy}>드라이브 내용 사용</button>
-              <button className="btn danger" onClick={() => saveFile({ force: true, expectVersion: conflict.meta.version })} disabled={busy}>내 코드로 덮어쓰기</button>
+              <button className="btn danger" onClick={() => saveFile({ force: true, expectVersion: conflict.meta.version, expectRevisionId: conflict.meta.headRevisionId ?? null })} disabled={busy}>내 코드로 덮어쓰기</button>
             </div>
           </div>
         )}

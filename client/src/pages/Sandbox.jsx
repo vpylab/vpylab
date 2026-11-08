@@ -851,7 +851,8 @@ export default function Sandbox() {
       setShareMsg(t('share.copyLink'));
     }
     setTimeout(() => setShareMsg(''), 2000);
-    setShareDialog({ url, id: url.slice(url.lastIndexOf('/s/') + 3), title });
+    // 주소에 코드를 담은 링크(#code=)에는 공유 ID가 없어 임베드 코드를 만들지 않습니다.
+    setShareDialog({ url, id: url.includes('/s/') ? url.slice(url.lastIndexOf('/s/') + 3) : null, title });
   };
 
   const handleExport = async () => {

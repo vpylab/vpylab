@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   createDriveStorage, classifyError, backoffDelay, retryAfterMs, multipartBody, pickBoundary, normalizeFileName,
-  escapeQuery, contentHash, DriveError,
+  escapeQuery, contentHash, DriveError, uniqueFileName,
 } from './drive-storage.js';
 
 function json(status, body, headers = {}) {
@@ -79,6 +79,13 @@ describe('보조 함수', () => {
     expect(normalizeFileName('  ')).toBe('이름 없음.py');
     expect(normalizeFileName('x'.repeat(300))).toHaveLength(123);
   });
+  it('같은 이름이 있으면 번호를 붙인다(대소문자 무시)', () => {
+    expect(uniqueFileName('첫 실험', ['다른.py'])).toBe('첫 실험.py');
+    expect(uniqueFileName('첫 실험', ['첫 실험.py'])).toBe('첫 실험 (2).py');
+    expect(uniqueFileName('첫 실험.py', ['첫 실험.py', '첫 실험 (2).py'])).toBe('첫 실험 (3).py');
+    expect(uniqueFileName('Ball', ['ball.py'])).toBe('Ball (2).py');
+  });
+
   it('같은 내용은 같은 해시를 낸다', async () => {
     expect(await contentHash('abc')).toBe('ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
   });
@@ -121,6 +128,52 @@ describe('폴더와 목록', () => {
     const drive = base(fetchImpl);
     await expect(drive.ensureFolder()).rejects.toMatchObject({ reason: 'notFound' });
     expect(await drive.ensureFolder()).toBe('F2');
+  });
+
+  it('표식 폴더가 휴지통에만 있으면 새 폴더를 만들지 않고 folderTrashed로 멈춘다', async () => {
+    const { fetchImpl, calls } = scripted([json(200, { files: [{ id: 'old', mimeType: 'application/vnd.google-apps.folder', trashed: true }] })]);
+    await expect(base(fetchImpl).list()).rejects.toMatchObject({ reason: 'folderTrashed', detail: { folderId: 'old' } });
+    expect(calls.some((c) => c.init.method === 'POST')).toBe(false);
+  });
+
+  it('기억해 둔 폴더가 그사이 휴지통으로 가면 목록과 새 파일 만들기를 멈춘다', async () => {
+    const { fetchImpl, calls } = scripted([
+      json(200, { files: [{ id: 'root', mimeType: 'application/vnd.google-apps.folder' }] }),
+      json(200, { files: [] }),
+      json(200, { id: 'root', trashed: true }),
+      json(200, { files: [{ id: 'root', mimeType: 'application/vnd.google-apps.folder', trashed: true }] }),
+    ]);
+    const drive = base(fetchImpl);
+    await drive.list();
+    await expect(drive.create({ name: 'a', code: 'x' })).rejects.toMatchObject({ reason: 'folderTrashed' });
+    await expect(drive.list()).rejects.toMatchObject({ reason: 'folderTrashed' });
+    expect(calls.some((c) => c.url.includes('/upload/'))).toBe(false);
+  });
+
+  it('되살리기는 휴지통의 표식 폴더를 꺼내고 다음 목록에서 그 폴더를 쓴다', async () => {
+    const { fetchImpl, calls } = scripted([
+      json(200, { files: [{ id: 'root', mimeType: 'application/vnd.google-apps.folder', trashed: true }] }),
+      json(200, { id: 'root', trashed: false }),
+      json(200, { files: [{ id: 'root', mimeType: 'application/vnd.google-apps.folder' }] }),
+      json(200, { files: [{ id: 'f1' }] }),
+    ]);
+    const drive = base(fetchImpl);
+    expect(await drive.restoreFolder()).toBe('root');
+    expect(JSON.parse(calls[1].init.body)).toEqual({ trashed: false });
+    expect((await drive.list()).files).toHaveLength(1);
+  });
+
+  it('기억해 둔 폴더를 찾을 수 없으면(다른 계정 등) 이 계정의 폴더를 다시 찾는다', async () => {
+    const { fetchImpl } = scripted([
+      json(200, { files: [{ id: 'a-root', mimeType: 'application/vnd.google-apps.folder' }] }),
+      json(200, { files: [] }),
+      json(404, {}),
+      json(200, { files: [{ id: 'b-root', mimeType: 'application/vnd.google-apps.folder' }] }),
+      json(200, { files: [{ id: 'b1' }] }),
+    ]);
+    const drive = base(fetchImpl);
+    await drive.list();
+    expect((await drive.list()).files).toEqual([{ id: 'b1' }]);
   });
 
   it('목록은 다음 페이지 토큰을 따라 끝까지 읽는다', async () => {
@@ -346,6 +399,49 @@ describe('저장', () => {
     const result = await base(fetchImpl).save({ id: 'x', code: 'new', baseVersion: '5', baseCode: 'base' });
     expect(result).toMatchObject({ status: 'conflict', remote: { code: 'other device' } });
     expect(calls.filter((c) => c.init.method === 'PATCH')).toHaveLength(1);
+  });
+
+  it('쓰기 실패 뒤 version 숫자만 오르고 내용(headRevisionId)이 그대로면 충돌로 보지 않고 다시 보낸다', async () => {
+    // 드라이브는 저장 몇 초 뒤 내용 변경 없이 version을 올리기도 합니다(실측 2026-11-08).
+    const { fetchImpl, calls } = scripted([
+      json(200, { id: 'x', version: '5', headRevisionId: 'h5' }),
+      () => { throw new TypeError('Failed to fetch'); },
+      json(200, { id: 'x', version: '6', headRevisionId: 'h5' }),
+      json(200, { id: 'x', version: '7', headRevisionId: 'h7' }),
+      json(200, { revisions: [{ id: 'h5' }, { id: 'h7' }] }),
+    ]);
+    const result = await base(fetchImpl).save({ id: 'x', code: 'new', baseVersion: '5', baseCode: 'base' });
+    expect(result).toMatchObject({ status: 'saved', overwritten: null });
+    expect(calls.filter((c) => c.init.method === 'PATCH')).toHaveLength(2);
+  });
+
+  it('덮어쓰기는 본 뒤 version 숫자만 올랐고 내용 버전(headRevisionId)이 같으면 그대로 덮어쓴다', async () => {
+    const { fetchImpl, calls } = scripted([
+      json(200, { id: 'x', version: '9', headRevisionId: 'h8' }),
+      json(200, { id: 'x', version: '10', headRevisionId: 'h10' }),
+      json(200, { revisions: [{ id: 'h8' }, { id: 'h10' }] }),
+    ]);
+    const result = await base(fetchImpl).save({ id: 'x', code: 'mine', baseVersion: '5', force: true, expectVersion: '8', expectRevisionId: 'h8' });
+    expect(result).toMatchObject({ status: 'saved' });
+    expect(calls[1].init.method).toBe('PATCH');
+  });
+
+  it('덮어쓰기는 본 뒤 내용 버전이 바뀌었으면 하지 않는다', async () => {
+    const { fetchImpl, calls } = scripted([json(200, { id: 'x', version: '9', headRevisionId: 'h9' }), text(200, 'third device')]);
+    const result = await base(fetchImpl).save({ id: 'x', code: 'mine', baseVersion: '5', force: true, expectVersion: '9', expectRevisionId: 'h8' });
+    expect(result.status).toBe('conflict');
+    expect(calls.some((c) => c.init.method === 'PATCH')).toBe(false);
+  });
+
+  it('휴지통에 있는 파일에는 저장하지 않고 trashed 오류를 낸다', async () => {
+    const { fetchImpl, calls } = scripted([json(200, { id: 'x', version: '5', headRevisionId: 'h5', trashed: true })]);
+    await expect(base(fetchImpl).save({ id: 'x', code: 'new', baseVersion: '5', baseCode: 'base' })).rejects.toMatchObject({ reason: 'trashed' });
+    expect(calls.some((c) => c.init.method === 'PATCH')).toBe(false);
+  });
+
+  it('휴지통에 있는 파일은 열지 않는다(오래된 목록)', async () => {
+    const { fetchImpl } = scripted([json(200, { id: 'x', version: '5', trashed: true })]);
+    await expect(base(fetchImpl).open('x')).rejects.toMatchObject({ reason: 'trashed' });
   });
 
   it('100KB를 넘는 코드는 보내지 않는다', async () => {

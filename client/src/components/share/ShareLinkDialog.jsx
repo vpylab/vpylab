@@ -66,9 +66,11 @@ export default function ShareLinkDialog({ url, shareId, title, onClose }) {
           <button type="button" onClick={() => setShowQr(true)} className="toolbar-btn" style={buttonStyle} data-testid="share-show-qr">
             ▦ {t('qr.show')}
           </button>
-          <button type="button" onClick={copyEmbed} className="toolbar-btn" style={buttonStyle} data-testid="share-copy-embed">
-            {copied === 'embed' ? `✓ ${t('qr.copied')}` : `<> ${t('embed.copyEmbed')}`}
-          </button>
+          {shareId && (
+            <button type="button" onClick={copyEmbed} className="toolbar-btn" style={buttonStyle} data-testid="share-copy-embed">
+              {copied === 'embed' ? `✓ ${t('qr.copied')}` : `<> ${t('embed.copyEmbed')}`}
+            </button>
+          )}
           <a href={url} target="_blank" rel="noopener noreferrer" className="toolbar-btn no-underline" style={buttonStyle}>
             ↗ {t('shareLink.open')}
           </a>
