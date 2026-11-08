@@ -21,5 +21,5 @@ export const API_BASE = OPEN_EDITION ? '' : import.meta.env.VITE_API_URL || (LAN
  *   none: 교실 LAN 모드. 저장소가 없어 코드를 주소(#code=)에 담습니다.
  */
 export const SHARE_BACKEND = LAN_MODE ? 'none' : OPEN_EDITION ? 'pages' : 'server';
-/** 공유 주소의 이름을 정할 수 있는지. 지금은 오픈소스 판 저장소(pages)만 지원합니다. */
-export const SHARE_NAMES = SHARE_BACKEND === 'pages';
+/** 공유 주소의 이름을 정할 수 있는지. 두 판의 저장소가 모두 지원합니다(규칙: server/shared/share-names.js). */
+export const SHARE_NAMES = SHARE_BACKEND !== 'none';

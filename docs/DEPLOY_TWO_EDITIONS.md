@@ -46,7 +46,7 @@ Cloudflare는 `/drive-lab.html`을 `/drive-lab`으로 넘겨 제공합니다(깔
 
 ## 짧은 공유 주소 (오픈소스 판, `/s/<이름>`)
 
-오픈소스 판의 공유 주소는 Cloudflare Pages 함수(`functions/api/share/`)가 만들고 읽으며, 규칙은 `cloudflare/share-core.js` 한 곳에 있습니다. 저장소는 D1 데이터베이스 `vpylab-shares`(아시아·태평양 지역)이고, `wrangler.toml`에서 `DB`라는 이름으로 연결합니다. 따로 운영하는 서버는 없고, 정적 파일과 함께 배포됩니다. IP 주소를 변환할 때 섞는 비밀값 `SHARE_SALT`는 Pages 비밀값으로 넣어 둡니다. 저장소가 응답하지 않으면 앱은 코드를 주소에 담은 링크(`#code=`)로 대신하므로 공유가 막히지 않습니다. 수업용 판은 지금처럼 Railway 서버가 Supabase에 무작위 8자 주소로 저장하며, 이름 정하기는 아직 지원하지 않습니다.
+오픈소스 판의 공유 주소는 Cloudflare Pages 함수(`functions/api/share/`)가 만들고 읽으며, 규칙은 `cloudflare/share-core.js` 한 곳에 있습니다. 저장소는 D1 데이터베이스 `vpylab-shares`(아시아·태평양 지역)이고, `wrangler.toml`에서 `DB`라는 이름으로 연결합니다. 따로 운영하는 서버는 없고, 정적 파일과 함께 배포됩니다. IP 주소를 변환할 때 섞는 비밀값 `SHARE_SALT`는 Pages 비밀값으로 넣어 둡니다. 저장소가 응답하지 않으면 앱은 코드를 주소에 담은 링크(`#code=`)로 대신하므로 공유가 막히지 않습니다. 수업용 판은 Railway 서버(`server/routes/share.js`)가 Supabase `vpylab_shares`에 저장합니다. 이름을 정하지 않으면 무작위 8자가 붙고, 이름 규칙은 두 판이 `server/shared/share-names.js` 한 파일을 함께 사용합니다. 수정 열쇠의 해시는 서버만 읽을 수 있는 `vpylab_share_keys` 표에 둡니다(`supabase/migrations/021_share_names.sql`, 2026-11-09 운영 DB 반영).
 
 표 구조는 `cloudflare/migrations/` 폴더에 있고, 바꾼 뒤에는 원격 데이터베이스에 반영하는 명령을 실행합니다. 부적절한 공유 주소나 삭제 요청이 들어온 주소는 지우는 명령으로 처리하며, 명령은 Cloudflare 계정에 로그인한 컴퓨터에서 실행합니다. 무료 사용량은 하루에 쓰기 10만 건, 읽기 500만 건이며 학교 수업 규모로는 비용이 들지 않습니다.
 

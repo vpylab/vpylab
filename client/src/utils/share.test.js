@@ -117,3 +117,27 @@ describe('이름 정하기(오픈소스 판)', () => {
     expect((await loadSharedCode('nobody')).error).toMatch(/찾을 수 없습니다/);
   });
 });
+
+describe('이름 정하기(수업용 판)', () => {
+  it('이름을 모르는 예전 서버가 무작위 주소를 돌려주면 성공으로 보이지 않는다', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(200, { id: 'AbC_12xY', url: '/s/AbC_12xY' })));
+    const { claimShareName } = await loadShare('');
+    expect(await claimShareName('x', 't', 'solar')).toMatchObject({ url: null, errorCode: 'server_error' });
+  });
+
+  it('Railway 서버(VITE_API_URL)에 이름으로 만들고, 대소문자가 섞인 무작위 주소의 열쇠도 찾는다', async () => {
+    vi.stubEnv('VITE_API_URL', 'https://api.example.test');
+    const fetchSpy = vi.fn(async (url) => (String(url).endsWith('/api/share')
+      ? jsonResponse(201, { id: 'solar', url: '/s/solar', editKey: 'secret-secret-secret-2', named: true })
+      : jsonResponse(200, {})));
+    vi.stubGlobal('fetch', fetchSpy);
+    const { claimShareName, createShareLink, hasEditKey } = await loadShare('');
+    const named = await claimShareName('sphere()', '태양', 'solar');
+    expect(named.url).toBe(`${window.location.origin}/s/solar`);
+    expect(fetchSpy.mock.calls[0][0]).toBe('https://api.example.test/api/share');
+
+    fetchSpy.mockImplementationOnce(async () => jsonResponse(200, { id: 'AbC_12xY', url: '/s/AbC_12xY', editKey: 'secret-secret-secret-3', named: false }));
+    await createShareLink('box()', '상자');
+    expect(hasEditKey('AbC_12xY')).toBe(true);
+  });
+});

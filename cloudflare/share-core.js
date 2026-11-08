@@ -15,6 +15,8 @@
  * D1 바인딩 이름은 DB(wrangler.toml), IP 해시 소금은 비밀값 SHARE_SALT(없으면 고정 문자열)입니다.
  */
 
+import { RESERVED_NAMES, SHARE_NAME_MESSAGES, SHARE_NAME_PATTERN, checkShareName } from '../server/shared/share-names.js';
+
 export const MAX_CODE_SIZE = 50_000;
 export const MAX_TITLE = 200;
 export const MAX_BODY_BYTES = 256 * 1024;
@@ -22,23 +24,10 @@ export const RATE_PER_MINUTE = 60;
 export const RANDOM_ID_LENGTH = 6;
 export const RANDOM_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
-const NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$/;
+const NAME_PATTERN = SHARE_NAME_PATTERN;
 const RANDOM_PATTERN = new RegExp(`^[${RANDOM_ALPHABET}]{${RANDOM_ID_LENGTH}}$`);
 
-/** 시스템 경로나 사칭에 쓰일 수 있는 이름 */
-export const RESERVED_NAMES = new Set([
-  'admin', 'administrator', 'api', 'app', 'assets', 'about', 'blog', 'docs', 'drive-lab', 'edit', 'embed', 'error',
-  'gallery', 'help', 'home', 'index', 'login', 'logout', 'new', 'null', 'official', 'privacy', 'pyodide', 'root',
-  'sandbox', 'security', 'settings', 'share', 'signin', 'signup', 'staff', 'support', 'system', 'teacher', 'terms',
-  'undefined', 'vpylab', 'vpylab-official', 'www',
-]);
-
-/** 이름에 들어가면 안 되는 말(영어·한국어 로마자 표기). 학교에서 쓰는 서비스라 보수적으로 막습니다. */
-const BLOCKED_WORDS = [
-  'fuck', 'shit', 'bitch', 'cunt', 'dick', 'pussy', 'porn', 'sex', 'nigg', 'fag', 'rape', 'whore', 'slut',
-  'sibal', 'ssibal', 'shibal', 'sibbal', 'ssibbal', 'gaesaekki', 'gaesaeki', 'gaeseki', 'byungsin', 'byeongsin',
-  'jiral', 'jiraal', 'bozi', 'tlqkf', 'qudtls', 'rotorl',
-];
+export { RESERVED_NAMES };
 
 export class ShareError extends Error {
   constructor(status, code, message) {
@@ -48,18 +37,11 @@ export class ShareError extends Error {
   }
 }
 
-/** 이름 정규화와 검사. 통과하면 소문자 이름, 아니면 ShareError */
+/** 이름 정규화와 검사(규칙은 server/shared/share-names.js). 통과하면 소문자 이름, 아니면 ShareError */
 export function normalizeName(raw) {
-  const name = String(raw ?? '').trim().toLowerCase();
-  if (!NAME_PATTERN.test(name) || name.includes('--')) {
-    throw new ShareError(400, 'name_invalid', '이름이 규칙에 맞지 않습니다. 이름은 영어 소문자, 숫자, 하이픈(-)으로 3~30자여야 하며, 하이픈으로 시작하거나 끝날 수 없습니다.');
-  }
-  if (RESERVED_NAMES.has(name)) throw new ShareError(400, 'name_reserved', '이 이름은 사용할 수 없습니다. 다른 이름을 정하십시오.');
-  const flat = name.replace(/-/g, '');
-  if (BLOCKED_WORDS.some((word) => flat.includes(word))) {
-    throw new ShareError(400, 'name_blocked', '이 이름은 사용할 수 없습니다. 다른 이름을 정하십시오.');
-  }
-  return name;
+  const result = checkShareName(raw);
+  if (result.error) throw new ShareError(400, result.error, SHARE_NAME_MESSAGES[result.error]);
+  return result.name;
 }
 
 /** 주소에서 받은 id가 가능한 모양인지(정한 이름 또는 무작위 6자) */
@@ -135,7 +117,7 @@ export async function createShare(db, { code, title, name }, { random } = {}) {
     try {
       await insert(id, true);
     } catch (error) {
-      if (isUniqueViolation(error)) throw new ShareError(409, 'name_taken', '이미 다른 사람이 사용하는 이름입니다. 다른 이름을 정하십시오.');
+      if (isUniqueViolation(error)) throw new ShareError(409, 'name_taken', SHARE_NAME_MESSAGES.name_taken);
       throw error;
     }
     return { id, url: `/s/${id}`, editKey, named: true };
