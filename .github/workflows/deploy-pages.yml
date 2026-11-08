@@ -58,15 +58,15 @@ jobs:
           fi
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.settings.outputs.ready == 'true'
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.settings.outputs.ready == 'true'
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           cache-dependency-path: client/package-lock.json
 
@@ -85,11 +85,11 @@ jobs:
       - name: Deploy to Cloudflare Pages
         id: deploy
         if: steps.settings.outputs.ready == 'true'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4.82.2"
+          wranglerVersion: "4.158.0"
           command: pages deploy client/dist --project-name=vpylab --branch=main --commit-hash=${{ env.DEPLOY_SHA }}
 
       - name: Smoke test
