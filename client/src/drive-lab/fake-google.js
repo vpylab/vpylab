@@ -54,8 +54,11 @@ export function createFakeGoogle({ accounts = [{ sub: 'subA', email: 'a@school.e
 
   function addFile({ id, name, content, owner = 'subA' }) {
     const rev = `${id}-r1`;
-    state.files.set(id, { id, name, version: '1', headRevisionId: rev, appProperties: {}, content, revs: [{ id: rev, content }], owner, modifiedTime: new Date(0).toISOString() });
+    state.files.set(id, { id, name, version: '1', headRevisionId: rev, appProperties: {}, content, revs: [{ id: rev, content }], owner, parents: [`folder-${owner}`], modifiedTime: new Date(0).toISOString() });
   }
+
+  /** 실제 드라이브처럼 휴지통 폴더 안의 파일도 휴지통에 있는 것으로 봅니다. */
+  const isTrashed = (file) => Boolean(file.trashed || (file.parents || []).some((p) => state.files.get(p)?.trashed));
 
   async function fetchImpl(url, init = {}) {
     const u = new URL(String(url));
@@ -68,10 +71,11 @@ export function createFakeGoogle({ accounts = [{ sub: 'subA', email: 'a@school.e
 
     if (u.pathname === '/drive/v3/files' && method === 'GET') {
       const q = u.searchParams.get('q') || '';
-      if (q.includes("key='vpylabRoot'")) return ok({ files: mine.filter((f) => f.folder).map(pub) });
+      if (q.includes("key='vpylabRoot'")) return ok({ files: mine.filter((f) => f.folder && (!q.includes('trashed=false') || !f.trashed)).map(pub) });
       const created = q.match(/key='vpylabCreateId' and value='([^']+)'/);
       if (created) return ok({ files: mine.filter((f) => f.appProperties?.vpylabCreateId === created[1]).map(pub) });
-      return ok({ files: mine.filter((f) => !f.folder && !f.trashed).map(pub) });
+      const parent = q.match(/'([^']+)' in parents/)?.[1];
+      return ok({ files: mine.filter((f) => !f.folder && !isTrashed(f) && (!parent || (f.parents || []).includes(parent))).map(pub) });
     }
     if (u.pathname === '/drive/v3/files' && method === 'POST') {
       const id = `folder-${account.sub}`;
@@ -82,7 +86,7 @@ export function createFakeGoogle({ accounts = [{ sub: 'subA', email: 'a@school.e
       const { meta, content } = parseMultipart(init.body);
       const id = `f${state.files.size + 1}`;
       const rev = `${id}-r1`;
-      state.files.set(id, { id, name: meta.name, version: '1', headRevisionId: rev, appProperties: meta.appProperties, content, revs: [{ id: rev, content }], owner: account.sub, modifiedTime: new Date().toISOString() });
+      state.files.set(id, { id, name: meta.name, version: '1', headRevisionId: rev, appProperties: meta.appProperties, content, revs: [{ id: rev, content }], owner: account.sub, parents: meta.parents || [], modifiedTime: new Date().toISOString() });
       return ok(pub(state.files.get(id)));
     }
     const upload = u.pathname.match(/^\/upload\/drive\/v3\/files\/([\w-]+)$/);
@@ -100,9 +104,13 @@ export function createFakeGoogle({ accounts = [{ sub: 'subA', email: 'a@school.e
       if (!file || file.owner !== account.sub) return fail(404);
       if (m[2] && m[3]) return ok(file.revs.find((r) => r.id === m[3]).content);
       if (m[2]) return ok({ revisions: file.revs.map((r) => ({ id: r.id, modifiedTime: new Date(0).toISOString() })) });
-      if (method === 'PATCH') { file.trashed = true; return ok({ id: file.id, trashed: true }); }
+      if (method === 'PATCH') {
+        const body = init.body ? JSON.parse(init.body) : {};
+        file.trashed = body.trashed !== false;
+        return ok({ id: file.id, trashed: file.trashed });
+      }
       if (u.searchParams.get('alt') === 'media') return ok(file.content);
-      return ok(pub(file));
+      return ok({ ...pub(file), trashed: isTrashed(file) });
     }
     return fail(404);
   }

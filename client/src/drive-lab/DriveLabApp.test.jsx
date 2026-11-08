@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, configure } from '@testing-library/react';
 import DriveLabApp from './DriveLabApp.jsx';
 import { createFakeGoogle, memoryStorage } from './fake-google.js';
 import { saveDraft, loadDraft, listDrafts, fileDrafts } from './lab-state.js';
+
+// 전체 테스트를 함께 돌릴 때(무거운 Python 예제 테스트와 동시 실행) 기다림이 1초를 넘을 수 있어 한도를 늘립니다.
+configure({ asyncUtilTimeout: 5000 });
 
 const CLIENT_ID = '123456789012-abcdefghij.apps.googleusercontent.com';
 
@@ -138,6 +141,71 @@ describe('DriveLabApp', () => {
     expect(copy.content).toBe('mine');
     expect(screen.getByRole('heading', { name: /충돌 사본/ })).toBeInTheDocument();
     expect(fileDraftCodes('f1')).toEqual([]);
+  });
+
+  it('VPyLab 폴더가 드라이브 휴지통으로 가면 알리고, 되살리기를 누르면 파일이 돌아온다', async () => {
+    setup();
+    google.addFile({ id: 'f1', name: '공.py', content: 'base' });
+    await signIn();
+    await screen.findByRole('button', { name: '공.py' });
+    google.state.files.get('folder-subA').trashed = true;
+    fireEvent.click(screen.getByRole('button', { name: '목록 새로 고침' }));
+    await waitFor(() => expect(status()).toHaveTextContent('VPyLab 폴더가 드라이브 휴지통에 있습니다'));
+    fireEvent.click(screen.getByRole('button', { name: 'VPyLab 폴더 되살리기' }));
+    await waitFor(() => expect(status()).toHaveTextContent('되살렸습니다'));
+    expect(google.state.files.get('folder-subA').trashed).toBe(false);
+    expect(screen.getByRole('button', { name: '공.py' })).toBeInTheDocument();
+  });
+
+  it('같은 탭에서 다른 계정으로 바뀌면 그 계정의 폴더를 새로 찾아 목록을 보여 주고 파일을 만들 수 있다', async () => {
+    setup({ accounts: [{ sub: 'subA', email: 'a@school.example' }, { sub: 'subB', email: 'b@school.example' }] });
+    google.addFile({ id: 'fa', name: 'A의 파일.py', content: 'a', owner: 'subA' });
+    google.addFile({ id: 'fb', name: 'B의 파일.py', content: 'b', owner: 'subB' });
+    await signIn();
+    await screen.findByRole('button', { name: 'A의 파일.py' });
+    fireEvent.click(screen.getByRole('button', { name: '로그아웃' }));
+    await waitFor(() => expect(status()).toHaveTextContent('로그아웃했습니다'));
+    await signIn();
+    expect(await screen.findByRole('button', { name: 'B의 파일.py' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'A의 파일.py' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '편집기 내용으로 새 파일' }));
+    await waitFor(() => expect(status()).toHaveTextContent('드라이브 VPyLab 폴더에 만들었습니다'));
+    const created = [...google.state.files.values()].find((f) => f.owner === 'subB' && f.name === '첫 실험.py');
+    expect(created.parents).toEqual(['folder-subB']);
+  });
+
+  it('같은 이름의 파일이 있으면 새 파일 이름에 번호를 붙인다', async () => {
+    setup();
+    google.addFile({ id: 'f1', name: '첫 실험.py', content: 'old' });
+    await signIn();
+    await screen.findByRole('button', { name: '첫 실험.py' });
+    fireEvent.click(screen.getByRole('button', { name: '편집기 내용으로 새 파일' }));
+    await waitFor(() => expect(status()).toHaveTextContent('첫 실험 (2).py을(를) 드라이브 VPyLab 폴더에 만들었습니다'));
+  });
+
+  it('다른 탭에서 휴지통으로 옮긴 파일에는 저장하지 않고 초안을 남긴 채 알린다', async () => {
+    setup();
+    google.addFile({ id: 'f1', name: '공.py', content: 'base' });
+    await signIn();
+    await openFile('공.py');
+    google.state.files.get('f1').trashed = true;
+    fireEvent.change(editor(), { target: { value: 'mine' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(status()).toHaveTextContent('휴지통으로 옮겨졌습니다'));
+    expect(google.state.files.get('f1').content).toBe('base');
+    expect(fileDraftCodes('f1')).toEqual(['mine']);
+  });
+
+  it('같은 브라우저의 다른 탭이 먼저 저장했으면 "다른 기기"라고 하지 않는다', async () => {
+    setup();
+    google.addFile({ id: 'f1', name: '공.py', content: 'base' });
+    await signIn();
+    await openFile('공.py');
+    google.remoteSave('f1', 'other tab');
+    google.state.files.get('f1').appProperties = { vpylabDevice: screen.getByText(/이 브라우저:/).textContent.replace(/.*이 브라우저:\s*/, '').trim() };
+    fireEvent.change(editor(), { target: { value: 'mine' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(status()).toHaveTextContent('이 브라우저의 다른 탭(창)에서 먼저 저장했습니다'));
   });
 
   it('드라이브 내용 사용은 확인을 받은 뒤에만 내 변경을 버린다', async () => {

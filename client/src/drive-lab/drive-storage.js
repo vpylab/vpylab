@@ -112,6 +112,22 @@ export function normalizeFileName(name) {
 }
 
 /**
+ * 폴더에 같은 이름이 있으면 "이름 (2).py"처럼 번호를 붙입니다. 드라이브는 같은 이름을 허용해서
+ * 학생이 목록에서 두 파일을 구분하지 못하는 일을 막습니다(대소문자는 구분하지 않음).
+ */
+export function uniqueFileName(name, existingNames = []) {
+  const wanted = normalizeFileName(name);
+  const taken = new Set(existingNames.map((n) => String(n).toLowerCase()));
+  if (!taken.has(wanted.toLowerCase())) return wanted;
+  const stem = wanted.replace(/\.py$/i, '');
+  for (let i = 2; i < 1000; i += 1) {
+    const candidate = normalizeFileName(`${stem} (${i})`);
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+  return normalizeFileName(`${stem} (${Date.now().toString(36)})`);
+}
+
+/**
  * @param {object} options
  * @param {() => Promise<string>|string} options.getToken 유효한 액세스 토큰을 돌려줍니다. 없으면 오류를 던집니다.
  * @param {typeof fetch} [options.fetchImpl]
@@ -184,17 +200,29 @@ export function createDriveStorage({
     }
   }
 
-  async function findMarked(key, value, fields = 'files(id,name,createdTime)') {
-    const q = `trashed=false and appProperties has { key='${escapeQuery(key)}' and value='${escapeQuery(value)}' }`;
+  async function findMarked(key, value, fields = 'files(id,name,createdTime)', { includeTrashed = false } = {}) {
+    const mark = `appProperties has { key='${escapeQuery(key)}' and value='${escapeQuery(value)}' }`;
+    const q = includeTrashed ? mark : `trashed=false and ${mark}`;
     const found = await request('file.findMarked', `${API}/files?${new URLSearchParams({
       q, spaces: 'drive', fields, orderBy: 'createdTime', pageSize: '10',
     })}`);
     return found.files || [];
   }
 
+  /**
+   * 학생이 드라이브에서 VPyLab 폴더를 휴지통으로 옮긴 경우: 새 빈 폴더를 몰래 만들면 기존 파일이 사라진 것처럼 보이고,
+   * 휴지통 폴더 안에 새 파일을 만들면 30일 뒤 함께 지워집니다. 그래서 멈추고 되살리기를 안내합니다.
+   */
+  function folderTrashedError(folderId) {
+    return new DriveError('VPyLab 폴더가 드라이브 휴지통에 있습니다.', { reason: 'folderTrashed', detail: { folderId } });
+  }
+
   async function findOrCreateFolder() {
-    const existing = (await findMarked(ROOT_MARK.key, ROOT_MARK.value)).filter((f) => !f.mimeType || f.mimeType === FOLDER_MIME);
+    const marked = (await findMarked(ROOT_MARK.key, ROOT_MARK.value, 'files(id,name,createdTime,mimeType,trashed)', { includeTrashed: true }))
+      .filter((f) => !f.mimeType || f.mimeType === FOLDER_MIME);
+    const existing = marked.filter((f) => !f.trashed);
     if (existing.length) return existing[0].id;
+    if (marked.length) throw folderTrashedError(marked[marked.length - 1].id);
     const created = await request('folder.create', `${API}/files?fields=id`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -221,6 +249,29 @@ export function createDriveStorage({
       });
     }
     return folderPromise;
+  }
+
+  /** 기억해 둔 폴더가 그사이 휴지통으로 옮겨졌는지 확인한 뒤 돌려줍니다(방금 찾은 폴더는 다시 확인하지 않음). */
+  async function liveFolder() {
+    const fresh = !folderPromise;
+    const id = await ensureFolder();
+    if (fresh) return id;
+    let meta;
+    try {
+      meta = await request('folder.meta', `${API}/files/${encodeURIComponent(id)}?fields=id,trashed`);
+    } catch (error) {
+      // 다른 계정의 폴더이거나 완전히 지워진 경우: 기억을 지우고 이 계정의 폴더를 다시 찾습니다.
+      if (error instanceof DriveError && error.reason === 'notFound') {
+        folderPromise = null;
+        return ensureFolder();
+      }
+      throw error;
+    }
+    if (meta.trashed) {
+      folderPromise = null;
+      throw folderTrashedError(id);
+    }
+    return id;
   }
 
   async function getMeta(id) {
@@ -282,10 +333,12 @@ export function createDriveStorage({
   return {
     kind: 'google-drive',
     ensureFolder,
+    /** 계정이 바뀌거나 로그아웃할 때 부릅니다. 앞 계정의 폴더 ID를 다음 계정에서 쓰지 않게 합니다. */
+    resetFolder() { folderPromise = null; },
 
     /** 폴더 안의 파일 목록. 1,000개를 넘으면 truncated=true로 알립니다. */
     async list() {
-      const parent = await ensureFolder();
+      const parent = await liveFolder();
       const files = [];
       let pageToken = '';
       for (let page = 0; page < MAX_LIST_PAGES; page += 1) {
@@ -311,7 +364,7 @@ export function createDriveStorage({
      */
     async create({ name, code, deviceId }) {
       checkSize(code);
-      const parent = await ensureFolder();
+      const parent = await liveFolder();
       const createId = `${Date.now().toString(36)}-${Math.floor(random() * 1e12).toString(36)}`;
       const metadata = {
         name: normalizeFileName(name),
@@ -338,6 +391,7 @@ export function createDriveStorage({
     /** 메타데이터와 그 버전의 내용을 함께 읽습니다. 둘이 같은 버전이라 다음 저장의 충돌 판정이 정확합니다. */
     async open(id) {
       const meta = await getMeta(id);
+      if (meta.trashed) throw new DriveError('이 파일은 휴지통에 있습니다.', { reason: 'trashed' });
       const code = await contentOf(meta);
       return { meta, code };
     },
@@ -353,16 +407,22 @@ export function createDriveStorage({
      * 드라이브 v3에는 조건부 쓰기가 없어 확인과 쓰기 사이에 짧은 틈이 남습니다.
      * 그래서 쓴 뒤 버전 기록을 보고, 내 버전 바로 앞이 확인했던 버전이 아니면 overwritten으로 알립니다.
      */
-    async save({ id, code, baseVersion, baseCode, attemptedCodes = [], deviceId, force = false, expectVersion = null, verify = true }) {
+    async save({ id, code, baseVersion, baseCode, attemptedCodes = [], deviceId, force = false, expectVersion = null, expectRevisionId = null, verify = true }) {
       checkSize(code);
-      if (force && expectVersion == null) {
+      if (force && expectVersion == null && expectRevisionId == null) {
         throw new DriveError('덮어쓰기에는 사용자가 본 버전(expectVersion)이 필요합니다.', { reason: 'unknown' });
       }
       const hash = await contentHash(code);
       const current = await getMeta(id);
-      // 덮어쓰기(force)는 사용자가 충돌 화면에서 본 버전(expectVersion)일 때만 합니다. 그 뒤 또 저장됐으면 다시 충돌로 보여 줍니다.
-      if (force && String(current.version) !== String(expectVersion)) {
-        return { status: 'conflict', remote: { meta: current, code: await contentOf(current) } };
+      // 다른 탭·기기에서 휴지통으로 옮긴 파일에 저장하면 성공처럼 보이지만 목록에서 사라지고 30일 뒤 지워집니다.
+      if (current.trashed) throw new DriveError('이 파일은 휴지통에 있습니다.', { reason: 'trashed' });
+      // 덮어쓰기(force)는 사용자가 충돌 화면에서 본 내용일 때만 합니다. 그 뒤 또 저장됐으면 다시 충돌로 보여 줍니다.
+      // 드라이브는 내용 변경 없이 version 숫자만 올리기도 하므로, 알면 내용 버전(headRevisionId)으로 비교합니다.
+      if (force) {
+        const sameAsSeen = expectRevisionId && current.headRevisionId
+          ? current.headRevisionId === expectRevisionId
+          : String(current.version) === String(expectVersion);
+        if (!sameAsSeen) return { status: 'conflict', remote: { meta: current, code: await contentOf(current) } };
       }
       if (!force && String(current.version) !== String(baseVersion)) {
         const remoteCode = await contentOf(current);
@@ -389,7 +449,12 @@ export function createDriveStorage({
               break;
             }
             // 그사이 다른 기기가 저장했다면 다시 보내지 않고 충돌로 돌려줍니다.
-            if (after && String(after.version) !== String(current.version)) {
+            // 드라이브는 저장하고 몇 초 뒤 내용 변경 없이 version 숫자만 올리기도 합니다. 그래서 내용이 바뀌었는지는
+            // headRevisionId로 판단하고, 그 값이 없을 때만 version을 봅니다(버전 숫자만 오른 것을 충돌로 보지 않음).
+            const contentMoved = after && (current.headRevisionId && after.headRevisionId
+              ? after.headRevisionId !== current.headRevisionId
+              : String(after.version) !== String(current.version));
+            if (contentMoved) {
               const remoteCode = await contentOf(after);
               if (remoteCode === code) return { status: 'unchanged', meta: after };
               return { status: 'conflict', remote: { meta: after, code: remoteCode } };
@@ -432,6 +497,19 @@ export function createDriveStorage({
     },
 
     revisionContent: getRevisionContent,
+
+    /** 휴지통에 있는 VPyLab 폴더(가장 최근 것)를 되살립니다. 안의 파일도 함께 돌아옵니다. 되살린 폴더 ID, 없으면 null. */
+    async restoreFolder() {
+      const trashed = (await findMarked(ROOT_MARK.key, ROOT_MARK.value, 'files(id,name,createdTime,mimeType,trashed)', { includeTrashed: true }))
+        .filter((f) => (!f.mimeType || f.mimeType === FOLDER_MIME) && f.trashed);
+      folderPromise = null;
+      if (!trashed.length) return null;
+      const target = trashed[trashed.length - 1];
+      await request('folder.restore', `${API}/files/${encodeURIComponent(target.id)}?fields=id,trashed`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: false }),
+      });
+      return target.id;
+    },
 
     async trash(id) {
       return request('file.trash', `${API}/files/${encodeURIComponent(id)}?fields=id,trashed`, {

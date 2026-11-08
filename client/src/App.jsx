@@ -6,7 +6,8 @@ import Home from './pages/Home';
 import AuthCallback from './pages/AuthCallback';
 import AuthModal from './components/auth/AuthModal';
 import useAuthStore from './stores/authStore';
-import { resetForSessionChange } from './engine/pyodide-singleton';
+import { resetForSessionChange, prewarm } from './engine/pyodide-singleton';
+import { scheduleIdlePrewarm } from './engine/idle-prewarm';
 import './index.css';
 
 // 배포 후 구 청크 404 → 자동 새로고침 (Vite + SPA 배포 공통 이슈)
@@ -49,6 +50,14 @@ function AppContent() {
     const cleanup = initialize();
     return () => { stopForAccountChange(); if (cleanup) cleanup(); };
   }, [initialize]);
+
+  // 첫 화면을 보는 동안 실습 화면 코드와 Python 엔진을 미리 준비합니다(idle-prewarm.js 참고).
+  useEffect(() => scheduleIdlePrewarm({
+    warm: () => {
+      void import('./pages/Sandbox').catch(() => {});
+      prewarm();
+    },
+  }), []);
 
   return (
     <>

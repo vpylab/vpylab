@@ -18,7 +18,7 @@ import { processBatch, clearScene } from '../engine/vpython-bridge';
 import { clearRegistry } from '../engine/object-registry';
 import { runSound, errorSound, stopBgm, stopAllSounds, initAudioOnUserGesture, isAudioUnlocked, isTouchPlaybackEnvironment, resumeAndRun } from '../engine/sound-system';
 import { captureThumbnail } from '../engine/thumbnail';
-import { createShareLink, decodeCodeFromURL } from '../utils/share';
+import { createShareLink, decodeCodeFromURL, SHARE_RUN_VIEW } from '../utils/share';
 import ShareLinkDialog from '../components/share/ShareLinkDialog';
 import { isViewportFullscreen } from '../hooks/useFullscreen';
 import {
@@ -151,6 +151,7 @@ export default function Sandbox() {
   const repoParam = searchParams.get('repo');
   const repoAutorun = searchParams.get('autorun') === '1';
   const playParam = searchParams.get('play');
+  const runViewParam = searchParams.get('view') === SHARE_RUN_VIEW;
   const teamInviteCode = (searchParams.get('team') || '').trim().toLowerCase();
   const showcaseProject = getGlowscriptProject(searchParams.get('showcase'));
   const tutorial = getTutorial(searchParams.get('tutorial'), searchParams.get('step'));
@@ -313,14 +314,20 @@ export default function Sandbox() {
       consumedSharedSource.current=location.key;
       updateCode(shared);
       homeDraftTitle.current=null; initialCodeRef.current = shared;
-      if (repoAutorun) {
+      if (runViewParam) {
+        // 공유 링크(?view=run): /s/ 짧은 주소처럼 실행 화면부터 보여 주고, 누르면 실행합니다.
+        // 코드 보기로 돌아가면 아래 외부 코드 안내가 출력 창에 남아 있습니다.
+        stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
+        setTheaterMode(true);
+        setTheaterWaiting(true);
+      } else if (repoAutorun) {
         pendingPlayRef.current = shared;
       }
       if (isExternal) {
         setOutputs([{ text: location.state?.homeDraft ? ui("내 메인의 코드 사본을 열었습니다. 수정 후 다시 내 메인으로 설정해 주세요.") : tRef.current('share.externalCode'), type: 'warning', id: Date.now() }]);
       }
     }
-  }, [location.state?.sharedCode, location.state?.sharedTitle, location.state?.autoPlay, location.state?.homeDraft, location.key, repoAutorun, repoParam, playParam, updateCode, ui]);
+  }, [location.state?.sharedCode, location.state?.sharedTitle, location.state?.autoPlay, location.state?.homeDraft, location.key, repoAutorun, repoParam, playParam, runViewParam, updateCode, ui]);
 
   // 자동 저장: 코드 변경 시 2초 debounce
   // 활성 프로젝트가 있으면 GitHub commit 흐름(수동 저장)을 사용하므로 자동 저장은 건너뜁니다.
@@ -851,7 +858,8 @@ export default function Sandbox() {
       setShareMsg(t('share.copyLink'));
     }
     setTimeout(() => setShareMsg(''), 2000);
-    setShareDialog({ url, id: url.slice(url.lastIndexOf('/s/') + 3), title });
+    // 주소에 코드를 담은 링크(#code=)에는 공유 ID가 없어 임베드 코드를 만들지 않습니다.
+    setShareDialog({ url, id: url.includes('/s/') ? url.slice(url.lastIndexOf('/s/') + 3) : null, title });
   };
 
   const handleExport = async () => {

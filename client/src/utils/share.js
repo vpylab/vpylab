@@ -4,10 +4,22 @@
  */
 
 import { supabase } from '../lib/supabase';
-import { decompressFromEncodedURIComponent } from 'lz-string';
+import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
 
-import { API_BASE } from '../lib/api-base.js';
+import { API_BASE, SERVER_FEATURES } from '../lib/api-base.js';
 const MAX_CODE_SIZE = 50_000; // 50KB 상한
+
+/** 공유 링크로 열 때 편집기 대신 실행 화면(극장 모드)부터 보여 주라는 표시. /s/ 짧은 주소와 같은 동작입니다. */
+export const SHARE_RUN_VIEW = 'run';
+
+/**
+ * 서버 없이 쓰는 공유 링크: 코드를 주소의 #code= 뒤에 압축해 담습니다.
+ * 오픈소스 판·교실 LAN 모드처럼 공유 서버가 없을 때 사용하고, 여는 쪽은 decodeCodeFromURL이 읽습니다.
+ * ?view=run이 붙어 있어 QR로 연 휴대폰에서도 코드가 아니라 실행 화면이 먼저 나옵니다.
+ */
+export function hashShareUrl(code, origin = window.location.origin) {
+  return `${origin}/sandbox?view=${SHARE_RUN_VIEW}#code=${compressToEncodedURIComponent(code)}`;
+}
 
 /**
  * 코드를 서버 경유로 저장하고 짧은 URL 반환
@@ -20,6 +32,8 @@ export async function createShareLink(code, title = '제목 없음') {
   if (code.length > MAX_CODE_SIZE) {
     return { url: null, error: '코드가 너무 깁니다 (50KB 초과)' };
   }
+  // 공유 서버가 없는 판에서는 서버에 저장하지 않고 주소에 코드를 담습니다(예전에는 /api/share가 405로 실패).
+  if (!SERVER_FEATURES) return { url: hashShareUrl(code), error: null };
 
   try {
     const res = await fetch(`${API_BASE}/api/share`, {
