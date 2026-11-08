@@ -24,22 +24,22 @@ VPyLab은 저장소 하나(`vpylab/vpylab`)에서 두 판을 배포합니다. �
 
 ## Cloudflare Pages 설정 (오픈소스 판)
 
-Cloudflare 대시보드 → Workers & Pages → 만들기 → Pages → Git에 연결 → `vpylab/vpylab`
+Cloudflare Pages 프로젝트 `vpylab`은 직접 업로드 방식으로 생성되어 Git 연결로 전환할 수 없습니다. 이 제한 때문에 GitHub Actions 워크플로 `.github/workflows/deploy-pages.yml`이 자동 배포를 수행합니다. main 브랜치에 푸시된 커밋의 CI가 모두 통과하면 오픈소스 판이 빌드되어 vpylab.pages.dev에 배포됩니다. 배포 후에는 첫 화면, 개인정보 화면, 만들기 화면, 드라이브 실험 페이지가 정상적으로 열리는지 확인합니다. GitHub 저장소 Actions 탭에서 이 워크플로를 직접 실행할 수도 있습니다.
 
-| 항목 | 값 |
-|---|---|
-| 프로덕션 브랜치 | `main` |
-| 프레임워크 | 없음 |
-| 빌드 명령 | `cd client && npm ci && npm run build:open` |
-| 빌드 출력 폴더 | `client/dist` |
-| 환경변수 | `NODE_VERSION=20`(CI와 같음), `VITE_GOOGLE_CLIENT_ID=<구글 OAuth 클라이언트 ID>` |
+저장소 설정의 Actions 비밀값과 변수에는 아래 표의 세 값이 설정되어 있어야 합니다. API 토큰은 Cloudflare Pages에 대한 Edit 권한만 부여하여 생성한 뒤 비밀값으로 등록합니다. 계정 ID와 구글 OAuth 클라이언트 ID는 공개 가능한 값이므로 변수로 등록합니다. 토큰이 없으면 배포 단계가 건너뛰어지고 경고만 남으므로, 포크한 저장소에서는 이 상태가 실패로 표시되지 않습니다.
 
-Git 연결 없이 로컬에서 바로 올릴 때:
+| 종류 | 이름 | 값 |
+|---|---|---|
+| 비밀값(Secret) | `CLOUDFLARE_API_TOKEN` | Cloudflare → My Profile → API Tokens → Create Token → Custom token, 권한 `Account · Cloudflare Pages · Edit` |
+| 변수(Variable) | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
+| 변수(Variable) | `VITE_GOOGLE_CLIENT_ID` | 구글 OAuth 웹 클라이언트 ID |
+
+로컬에서 바로 올릴 때:
 
 ```bash
 cd client
 VITE_GOOGLE_CLIENT_ID=<클라이언트 ID> npm run build:open
-npx wrangler pages deploy dist --project-name vpylab
+npx wrangler pages deploy dist --project-name vpylab --branch main
 ```
 
 Cloudflare는 `/drive-lab.html`을 `/drive-lab`으로 넘겨 제공합니다(깔끔한 주소). 그래서 변환기는 `/drive-lab` 경로에도 실험 페이지 전용 헤더를 걸고, 서비스 워커도 `/drive-lab`을 가로채지 않습니다. 맨 위에 404.html을 만들지 않아야 Cloudflare가 SPA 대체(index.html)를 해 줍니다. 대신 `assets/`·`pyodide/`·`projects/`처럼 Vercel이 SPA 대체에서 빼 둔 폴더에는 변환기가 404.html을 넣습니다. 이 폴더의 없는 파일에 index.html이 1년 캐시로 나가지 않고 404가 나가게 하기 위해서입니다.
