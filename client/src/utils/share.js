@@ -9,12 +9,16 @@ import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from
 import { API_BASE, SERVER_FEATURES } from '../lib/api-base.js';
 const MAX_CODE_SIZE = 50_000; // 50KB 상한
 
+/** 공유 링크로 열 때 편집기 대신 실행 화면(극장 모드)부터 보여 주라는 표시. /s/ 짧은 주소와 같은 동작입니다. */
+export const SHARE_RUN_VIEW = 'run';
+
 /**
  * 서버 없이 쓰는 공유 링크: 코드를 주소의 #code= 뒤에 압축해 담습니다.
  * 오픈소스 판·교실 LAN 모드처럼 공유 서버가 없을 때 사용하고, 여는 쪽은 decodeCodeFromURL이 읽습니다.
+ * ?view=run이 붙어 있어 QR로 연 휴대폰에서도 코드가 아니라 실행 화면이 먼저 나옵니다.
  */
 export function hashShareUrl(code, origin = window.location.origin) {
-  return `${origin}/sandbox#code=${compressToEncodedURIComponent(code)}`;
+  return `${origin}/sandbox?view=${SHARE_RUN_VIEW}#code=${compressToEncodedURIComponent(code)}`;
 }
 
 /**

@@ -21,7 +21,8 @@ describe('공유 링크 만들기', () => {
     const code = 'from vpython import *\nsphere(color=color.cyan)  # 한글 🎨\n';
     const { url, error } = await createShareLink(code, '공');
     expect(error).toBeNull();
-    expect(url).toMatch(/\/sandbox#code=/);
+    // QR로 연 휴대폰에서도 편집기가 아니라 실행 화면이 먼저 나오도록 ?view=run을 붙인다.
+    expect(url).toMatch(/\/sandbox\?view=run#code=/);
     expect(fetchSpy).not.toHaveBeenCalled();
 
     window.location.hash = url.slice(url.indexOf('#'));

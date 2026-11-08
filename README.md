@@ -29,7 +29,7 @@ Paste this into **Create** and press **Run**. A glowing red sphere and a label a
 VPyLab is in active development. In the open edition (vpylab.pages.dev):
 
 - **Saving is not built into the editor yet.** The **Save** button opens a "Saving is coming soon" notice. To keep your work, use **Tools → Download HTML** in Create.
-- **Share links** work in the open edition without a server: **Tools → Share** compresses the code into the link itself. Long programs make long links (very long ones may not fit in a QR code), and there is no embed code.
+- **Share links** work in the open edition without a server: **Tools → Share** compresses the code into the link itself, and the link or its QR code opens straight to the running view (tap to start; the top-left button shows the source). Long programs make long links (very long ones may not fit in a QR code), and there is no embed code.
 - **Saving to Google Drive is an experiment**, on a separate page: https://vpylab.pages.dev/drive-lab. It is not part of the main editor. See [Saving to Google Drive (experiment)](#saving-to-google-drive-experiment).
 
 ## Two editions, one codebase
