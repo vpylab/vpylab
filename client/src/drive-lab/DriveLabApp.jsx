@@ -194,8 +194,10 @@ export default function DriveLabApp({ storage: providedStorage, sessionStore: pr
   // 이 탭의 초안: 편집기 내용이 드라이브와 같으면 지우고, 다르면 저장합니다.
   // 저장 처리 안에서 지우지 않고 여기서 지워야 렌더링 순서와 관계없이 결과가 같습니다.
   // 안내 중인 초안은 다른 이름에 있으므로 여기서 덮어쓰거나 지우지 않습니다.
+  // 화면 갱신과 같은 순간에 브라우저 저장소를 맞추려고 useLayoutEffect를 씁니다. useEffect는 화면이 바뀐 뒤 늦게 돌아,
+  // "저장했습니다"가 보인 직후나 다른 파일을 연 직후에는 초안 목록이 한 박자 늦었습니다(느린 기기·바쁜 CI에서 드러남).
   const ownKey = current?.id ? `${current.id}@${tabId}` : newKey;
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (code === savedCode) {
       clearDraft(draftStore, scope, ownKey);
       setDraftSaveFailed(false);
