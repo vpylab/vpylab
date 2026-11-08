@@ -47,7 +47,8 @@ async function signIn() {
 
 async function openFile(name) {
   fireEvent.click(await screen.findByRole('button', { name }));
-  await waitFor(() => expect(status()).toHaveTextContent('열었습니다'));
+  // 앞서 연 파일의 "열었습니다"가 아직 상태 줄에 남아 있을 수 있어, 이 파일 이름까지 확인합니다(바쁜 CI에서 간헐 실패하던 원인).
+  await waitFor(() => expect(status()).toHaveTextContent(`${name}을(를) 열었습니다`));
 }
 
 beforeEach(() => {
