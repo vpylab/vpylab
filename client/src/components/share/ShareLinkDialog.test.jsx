@@ -9,9 +9,10 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-async function renderDialog(edition, props = {}) {
+async function renderDialog(edition, props = {}, { lan = false } = {}) {
   vi.resetModules();
   vi.stubEnv('VITE_EDITION', edition);
+  vi.stubEnv('VITE_LAN_MODE', lan ? '1' : '');
   const { I18nProvider } = await import('../../i18n');
   const { default: ShareLinkDialog } = await import('./ShareLinkDialog.jsx');
   return render(
@@ -48,7 +49,10 @@ it('남이 쓰는 이름이면 안내를 보여 주고 주소는 그대로 둔�
   expect(screen.getByTestId('share-url')).toHaveValue(`${window.location.origin}/s/k7x2p9`);
 });
 
-it('수업용 판에는 이름 칸이 없다', async () => {
+it('수업용 판에도 이름 칸이 있고, 저장소가 없는 교실 LAN 모드에는 없다', async () => {
   await renderDialog('');
+  expect(screen.getByTestId('share-name-form')).toBeInTheDocument();
+  cleanup();
+  await renderDialog('', {}, { lan: true });
   expect(screen.queryByTestId('share-name-form')).toBeNull();
 });

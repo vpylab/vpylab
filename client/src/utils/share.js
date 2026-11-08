@@ -1,19 +1,20 @@
 /**
  * VPyLab — 코드 공유 유틸리티
- * 짧은 URL 방식 (/s/abc12345, 오픈소스 판은 /s/<정한 이름>) + LZ-String/base64 해시 하위 호환
+ * 짧은 URL 방식 (/s/abc12345 또는 /s/<정한 이름>) + LZ-String/base64 해시 하위 호환
  */
 
 import { supabase } from '../lib/supabase';
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
 
 import { API_BASE, SHARE_BACKEND } from '../lib/api-base.js';
+import { SHARE_NAME_PATTERN, checkShareName } from '../../../server/shared/share-names.js';
 const MAX_CODE_SIZE = 50_000; // 50KB 상한
 
 /** 공유 링크로 열 때 편집기 대신 실행 화면(극장 모드)부터 보여 주라는 표시. /s/ 짧은 주소와 같은 동작입니다. */
 export const SHARE_RUN_VIEW = 'run';
 
-/** 이름 규칙(서버 cloudflare/share-core.js와 같음): 영어 소문자·숫자·하이픈 3~30자, 하이픈으로 시작·끝 금지 */
-export const SHARE_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$/;
+/** 이름 규칙은 두 판의 서버와 같은 파일을 씁니다(server/shared/share-names.js). */
+export { SHARE_NAME_PATTERN };
 
 /** 이 브라우저에서 만든 공유 주소의 수정 열쇠. 같은 이름을 다시 고칠 때만 씁니다. */
 const EDIT_KEYS_STORAGE = 'vpylab-share-edit-keys';
@@ -38,7 +39,10 @@ function rememberEditKey(id, editKey) {
 
 /** 이 브라우저에서 만든 이름인지(고칠 수 있는지) */
 export function hasEditKey(id) {
-  return Boolean(id && readEditKeys()[String(id).toLowerCase()]);
+  if (!id) return false;
+  const keys = readEditKeys();
+  // 정한 이름은 소문자, 수업용 판 무작위 주소는 대소문자가 섞여 있어 그대로 먼저 찾습니다.
+  return Boolean(keys[id] || keys[String(id).toLowerCase()]);
 }
 
 /**
@@ -89,13 +93,14 @@ export async function createShareLink(code, title = '제목 없음') {
 }
 
 /**
- * 정한 이름으로 공유 주소 만들기(오픈소스 판). 이 브라우저에서 만든 이름이면 내용을 지금 코드로 바꿉니다.
+ * 정한 이름으로 공유 주소 만들기(두 판 공통). 이 브라우저에서 만든 이름이면 내용을 지금 코드로 바꿉니다.
  * 오류는 화면에서 번역할 수 있게 코드(errorCode)로 돌려줍니다.
  * @returns {Promise<{ url: string|null, id: string|null, updated: boolean, errorCode: string|null }>}
  */
 export async function claimShareName(code, title, rawName) {
-  const name = String(rawName ?? '').trim().toLowerCase();
-  if (!SHARE_NAME_PATTERN.test(name) || name.includes('--')) return { url: null, id: null, updated: false, errorCode: 'name_invalid' };
+  const checked = checkShareName(rawName);
+  if (checked.error) return { url: null, id: null, updated: false, errorCode: checked.error };
+  const name = checked.name;
   if (code.length > MAX_CODE_SIZE) return { url: null, id: null, updated: false, errorCode: 'code_too_large' };
 
   try {
@@ -113,6 +118,8 @@ export async function claimShareName(code, title, rawName) {
     }
     const { res, data } = await postShare({ code, title, name });
     if (!res.ok || !data.url) return { url: null, id: null, updated: false, errorCode: data.code || 'server_error' };
+    // 이름을 모르는 예전 서버는 무작위 주소를 돌려줍니다. 정한 이름이 아니면 성공으로 보이지 않게 합니다.
+    if (data.id !== name) return { url: null, id: null, updated: false, errorCode: 'server_error' };
     rememberEditKey(data.id, data.editKey);
     return { url: `${window.location.origin}${data.url}`, id: data.id, updated: false, errorCode: null };
   } catch {
