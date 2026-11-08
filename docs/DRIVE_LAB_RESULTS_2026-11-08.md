@@ -1,7 +1,7 @@
 # 드라이브 저장 실험 안정성 시험 결과 (2026-11-08)
 
 배포: https://vpylab.pages.dev/drive-lab (Cloudflare Pages, 오픈소스 판)
-구글 OAuth: 개인 gmail의 GCP 프로젝트 `vpylab`, 동의 화면 "외부·테스트 중", 범위 `openid email profile drive.file`
+구글 OAuth: 개인 gmail의 GCP 프로젝트 `vpylab`, 동의 화면 "외부·테스트 중"(시험 뒤 같은 날 "프로덕션"으로 게시), 범위 `openid email profile drive.file`
 시험 계정: 개인 gmail 1개, 당곡고 교사 계정(danggok.hs.kr) 1개
 "기기 2"는 등록된 다른 출처(`http://localhost:4086`)에서 연 같은 앱입니다. 브라우저 저장소와 기기 표식이 따로라 다른 기기와 같은 조건입니다.
 
@@ -59,6 +59,6 @@
 
 ## 남은 일
 
-- 학생 계정 승인(A1): 학교 관리 콘솔 정책에 따라 다르므로 실제 학생 계정으로 확인해야 합니다.
-- 구글 앱 검증: 테스트 사용자 100명 한도가 있습니다. 실제 수업 전에는 동의 화면을 "프로덕션"으로 게시하고 개인정보처리방침 주소를 등록해야 합니다(`drive.file`은 민감하지 않은 범위라 보안 심사는 필요 없음).
+- 학생 계정 승인(A1): 학교 관리 콘솔 정책에 따라 다르므로 실제 학생 계정으로 확인해야 합니다. 다른 학교 선생님께 [TESTERS.ko.md](TESTERS.ko.md)로 시험을 요청합니다.
+- 구글 앱 게시: 2026-11-08에 홈페이지(https://vpylab.pages.dev)와 개인정보처리방침(https://vpylab.pages.dev/privacy)을 등록하고 동의 화면을 "프로덕션"으로 게시했습니다. 범위 네 개가 모두 민감하지 않은 범위라 구글 인증 심사는 필요 없습니다. 테스트 사용자로 등록하지 않은 계정의 승인은 다른 학교 시험([TESTERS.ko.md](TESTERS.ko.md))에서 확인합니다.
 - 오픈소스 판 `/privacy` 화면이 수업용 판 내용(Supabase 저장 등)을 그대로 보여 줍니다. 판에 맞는 문구가 필요합니다.

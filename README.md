@@ -104,12 +104,12 @@ A wider stability run on the same day added a real one-hour token expiry, access
 
 Limits today:
 
-- The Google OAuth app is in **Testing** status. Only accounts added as test users (Google allows up to 100) can approve it. Other accounts get a Google error, `403 access_denied`.
+- The Google OAuth app was published to **Production** on 2026-11-08, so any Google account can approve it; no test-user registration is needed. All requested scopes (`openid`, `email`, `profile`, `drive.file`) are non-sensitive, so Google verification is not required.
 - School Google Workspace accounts may need the Workspace admin to allow the app first. A teacher account at one school (danggok.hs.kr) worked without any admin change; student accounts have not been checked yet.
 - Google's consent screen leaves the Drive box **unchecked** by default. Tell students to tick it, or the page will ask them to approve again.
 - A Google access token lasts about one hour, and the token model gives no refresh token. When it expires, the page keeps your code as a draft and asks you to approve again.
 
-Setup and test checklist: [docs/DRIVE_LAB.md](docs/DRIVE_LAB.md) (Korean). Full stability results and the defects fixed: [docs/DRIVE_LAB_RESULTS_2026-11-08.md](docs/DRIVE_LAB_RESULTS_2026-11-08.md) (Korean).
+Testing VPyLab at another school: [docs/TESTERS.ko.md](docs/TESTERS.ko.md) (Korean). Setup and test checklist: [docs/DRIVE_LAB.md](docs/DRIVE_LAB.md) (Korean). Full stability results and the defects fixed: [docs/DRIVE_LAB_RESULTS_2026-11-08.md](docs/DRIVE_LAB_RESULTS_2026-11-08.md) (Korean).
 
 ## For school IT
 
@@ -129,8 +129,7 @@ Allow pop-ups from `vpylab.pages.dev` for the Drive experiment; Google approval 
 - In the Admin console, add the app by its OAuth client ID under **Security → Access and data control → API controls → App access control**, and set it to **Limited** or **Trusted**. If your domain marks Drive as a restricted service, it must be **Trusted**. Menu names differ between console versions.
 - In Google Workspace for Education, users designated as under 18 cannot use third-party apps the admin has not configured.
 - Parental consent, where the law requires it, is the school's responsibility under Google's policy.
-- While the app is in Testing, accounts also have to be registered as test users. Ask the VPyLab maintainers through [GitHub issues](https://github.com/vpylab/vpylab/issues).
-- To avoid both limits inside one school, a school can host its own copy with its own OAuth client set to **Internal** audience. Internal clients need no test users, but only accounts in that domain can use them. See [docs/DRIVE_LAB.md](docs/DRIVE_LAB.md).
+- A school can also host its own copy with its own OAuth client set to **Internal** audience. Only accounts in that domain can use it. See [docs/DRIVE_LAB.md](docs/DRIVE_LAB.md).
 
 ## For developers
 
