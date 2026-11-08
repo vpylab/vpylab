@@ -8,8 +8,7 @@ VPyLab은 학교 수업용 3D 파이썬 실습실입니다. 학생이 VPython �
 
 **바로 사용하기:** https://vpylab.pages.dev (영어 화면: https://vpylab.pages.dev/?lang=en)
 
-<!-- TODO 화면 캡처: 아래 예제를 실행한 만들기 화면(왼쪽 편집기, 오른쪽에 "안녕!" 글자와 빛나는 빨간 구). 제안 파일명: docs/screenshots/readme-create-ko.png -->
-> 화면 캡처는 준비 중입니다.
+![만들기 화면에서 아래 예제를 실행한 모습. 왼쪽은 편집기, 오른쪽은 "안녕!" 글자와 빛나는 빨간 구](docs/screenshots/readme-create-ko.png)
 
 ```python
 from vpython import *
@@ -177,8 +176,7 @@ npm run dev                          # 클라이언트 4033 + 서버 4034
 - 수업 자료와 미션: [docs/MISSION_SCHEMA.md](docs/MISSION_SCHEMA.md)
 - 번역: [docs/I18N_GUIDE.md](docs/I18N_GUIDE.md). 지금 화면은 한국어와 영어를 지원합니다.
 - 버그와 제안: [GitHub 이슈](https://github.com/vpylab/vpylab/issues)
-- 보안 문제: 공개 이슈에 올리지 않고 운영자에게 따로 알립니다.
-  <!-- TODO(운영자): vpylab/vpylab의 GitHub 비공개 취약점 신고를 켜고 .github/SECURITY.md를 고친다. 지금 적힌 vpylab.org 도메인은 존재하지 않는다. -->
+- 보안 문제: 공개 이슈에 올리지 않고 [비공개 보안 신고](https://github.com/vpylab/vpylab/security/advisories/new)로 운영자에게 따로 알립니다.
 
 ## 라이선스
 

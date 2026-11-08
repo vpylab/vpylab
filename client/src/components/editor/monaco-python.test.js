@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const here = resolve(__dirname);
+const here = dirname(fileURLToPath(import.meta.url));
 
 describe('Python 전용 Monaco', () => {
   it('편집기는 모든 언어를 담은 monaco-editor 진입점 대신 Python 전용 모듈을 불러온다', () => {

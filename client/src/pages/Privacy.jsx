@@ -1,5 +1,6 @@
 import { useUiText } from "../i18n/ui-text";
 import Header from '../components/layout/Header';
+import { OPEN_EDITION } from '../lib/api-base.js';
 
 const Section = ({ title, children }) => (
   <section
@@ -21,8 +22,42 @@ const Section = ({ title, children }) => (
   </section>
 );
 
+// 공개판(vpylab.pages.dev)은 서버·DB가 없어 수업용 판과 처리방침이 다릅니다. 문구: docs/reference/solar/privacy-open-261108-solar.md
+const OPEN_SECTIONS = [
+  ["1. 수집하는 개인정보", "VPyLab 공개판은 회원 가입과 로그인을 사용하지 않습니다. VPyLab 서버와 데이터베이스가 없으므로 VPyLab이 개인정보를 수집하거나 저장하지 않습니다. 작성한 코드는 사용자의 브라우저 안에서 실행되며 VPyLab 서비스에 저장되지 않습니다."],
+  ["2. 브라우저에 남는 정보", "학습 진행 상황, 화면 테마, 언어, 홈 설정은 이 브라우저의 저장 공간(localStorage)에 남습니다. 연습 중인 초안은 브라우저 탭의 저장 공간(sessionStorage)에 남습니다. 이 정보는 VPyLab으로 전송되지 않으며, 브라우저 데이터를 지우면 사라지고 다른 기기로 옮겨지지 않습니다."],
+  ["3. 공유 링크", "공유 링크는 코드를 압축해 링크 주소 안에 담으며 서버에 저장하지 않습니다. 링크를 받은 사람은 누구나 그 코드를 볼 수 있으므로 코드에 이름, 연락처 같은 개인정보를 넣지 않아야 합니다."],
+  ["4. 외부 서비스", "사이트는 Cloudflare Pages가 제공하며, 접속 과정의 기록은 Cloudflare의 정책에 따라 처리됩니다. 웹 글꼴은 Google Fonts와 Fontshare에서 불러옵니다. 파이썬 실행 환경(Pyodide)은 vpylab.pages.dev에서 받고, 받지 못했을 때만 jsDelivr나 unpkg에서 받습니다. 내려받은 HTML 파일은 열 때 jsDelivr나 unpkg에서 Pyodide와 Three.js를 불러옵니다."],
+  ["5. 구글 드라이브 저장 실험", "실험 페이지(vpylab.pages.dev/drive-lab)는 구글 로그인으로 openid, email, profile, drive.file 권한을 요청합니다. drive.file 권한으로는 이 앱이 만든 파일만 볼 수 있고 드라이브의 다른 파일은 볼 수 없습니다. 파일은 사용자 본인의 구글 드라이브 VPyLab 폴더에 저장되며 VPyLab 관리자는 볼 수 없습니다. 구글 접근 토큰은 페이지 메모리에만 있고 새로 고침하면 사라집니다. 저장하지 못한 초안은 계정별로 브라우저에 남고, 14일이 지나면 그 컴퓨터에서 페이지를 다시 열 때 지워집니다. 권한은 페이지의 권한 철회 버튼이나 myaccount.google.com/connections에서 거둘 수 있습니다."],
+  ["6. 수업용 판", "학교 수업에 사용하는 수업용 판(vpylab.vercel.app)은 계정과 코드를 Supabase에 저장합니다. 수업용 판은 그 사이트의 개인정보 처리방침을 따릅니다."],
+  ["7. 개인정보 보호책임자와 문의", "개인정보 보호책임자는 석리송(당곡고등학교 정보과 교사)입니다. 문의는 GitHub 이슈(github.com/vpylab/vpylab/issues)로 받습니다. 이슈는 누구나 볼 수 있으므로 개인정보를 적지 않아야 합니다."],
+  ["8. 변경", "이 처리방침은 「개인정보 보호법」에 따라 작성했으며, 법령이나 운영 방식이 바뀌면 갱신합니다."],
+];
+
+function OpenPrivacy({ ui }) {
+  return (
+    <>
+      <header className="mb-8">
+        <h1 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: 'var(--color-text-primary)' }}>{ui("개인정보 처리방침 (공개판)")}</h1>
+        <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{ui("최종 수정일: 2026-11-08")}</p>
+      </header>
+      {OPEN_SECTIONS.map(([title, body]) => (
+        <Section key={title} title={ui(title)}><p>{ui(body)}</p></Section>
+      ))}
+    </>
+  );
+}
+
 export default function Privacy() {
   const ui = useUiText();
+  if (OPEN_EDITION) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+        <Header />
+        <main className="max-w-2xl mx-auto px-6 py-12" data-testid="privacy-open"><OpenPrivacy ui={ui} /></main>
+      </div>
+    );
+  }
   return (
     <div
       className="min-h-screen"

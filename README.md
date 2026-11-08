@@ -8,8 +8,7 @@ English · [한국어](README.ko.md)
 
 **Try it:** https://vpylab.pages.dev (English interface: https://vpylab.pages.dev/?lang=en)
 
-<!-- TODO screenshot: Create screen running the sample below (editor on the left, red glowing sphere with "Hello!" on the right). Suggested file: docs/screenshots/readme-create.png -->
-> Screenshot coming soon.
+![The Create screen running the sample below: editor on the left, a glowing red sphere labeled "Hello!" on the right](docs/screenshots/readme-create.png)
 
 ```python
 from vpython import *
@@ -209,8 +208,7 @@ Teachers, students and developers are welcome. Read [CONTRIBUTING.md](CONTRIBUTI
 - Lessons and missions: [docs/MISSION_SCHEMA.md](docs/MISSION_SCHEMA.md)
 - Translations: [docs/I18N_GUIDE.md](docs/I18N_GUIDE.md). The interface is in Korean and English today.
 - Bugs and ideas: [GitHub issues](https://github.com/vpylab/vpylab/issues)
-- Security problems: please do not post them in a public issue. Contact the maintainers privately.
-  <!-- TODO (maintainers): enable GitHub private vulnerability reporting for vpylab/vpylab and update .github/SECURITY.md; its email domain vpylab.org does not resolve yet. -->
+- Security problems: please do not post them in a public issue. [Report them privately](https://github.com/vpylab/vpylab/security/advisories/new) instead.
 
 ## License
 

@@ -15,8 +15,7 @@ VPy Lab은 **학생과 교사가 사용하는 교육 플랫폼**입니다. 보�
 보안 취약점을 발견하셨다면:
 
 1. **공개 Issue로 신고하지 마세요.**
-2. **이메일**: `security@vpylab.org` 또는 메인테이너에게 직접 연락
-3. **GitHub Security Advisory**: [비공개 보안 보고서 생성](https://github.com/greatsong/vpylab/security/advisories/new)
+2. **GitHub 비공개 신고**: [비공개 보안 보고서 작성](https://github.com/vpylab/vpylab/security/advisories/new) (Private vulnerability reporting)
 
 ### 신고 포함 사항
 
