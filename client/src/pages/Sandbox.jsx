@@ -20,6 +20,9 @@ import { runSound, errorSound, stopBgm, stopAllSounds, initAudioOnUserGesture, i
 import { captureThumbnail } from '../engine/thumbnail';
 import { createShareLink, decodeCodeFromURL, SHARE_RUN_VIEW } from '../utils/share';
 import ShareLinkDialog from '../components/share/ShareLinkDialog';
+import DriveDialog from '../components/drive/DriveDialog';
+import { DRIVE_CLIENT_ID, useDriveStore } from '../drive/driveSession';
+import { OPEN_EDITION } from '../lib/api-base.js';
 import { isViewportFullscreen } from '../hooks/useFullscreen';
 import {
   shouldForceDetailed,
@@ -72,6 +75,9 @@ function waitForSaveTimeout(ms, message) {
  * 3패널: 좌 에디터 | 우상 3D 뷰포트 | 우하 콘솔
  * 태블릿: 탭 전환 (에디터/3D 토글)
  */
+/** 오픈소스 판은 저장을 학생 본인의 구글 드라이브에 합니다(클라이언트 ID가 없는 배포는 예전 안내). */
+const DRIVE_EDITOR = OPEN_EDITION && Boolean(DRIVE_CLIENT_ID);
+
 export default function Sandbox() {
   const ui = useUiText();
   const { t, locale } = useI18n();
@@ -87,6 +93,9 @@ export default function Sandbox() {
   const toolsButtonRef = useRef(null);
   const [shareMsg, setShareMsg] = useState('');
   const [shareDialog, setShareDialog] = useState(null); // { url, id, title, code } | null
+  const [driveDialog, setDriveDialog] = useState(null); // 'save' | 'files' | null (오픈소스 판)
+  const driveFile = useDriveStore((state) => state.file);
+  const driveAccount = useDriveStore((state) => state.account);
   const [saveMsg, setSaveMsg] = useState('');
   const [showTeam, setShowTeam] = useState(false);
   const [showSavedCodes, setShowSavedCodes] = useState(false);
@@ -190,6 +199,24 @@ export default function Sandbox() {
   useEffect(() => {
     codeRef.current = code;
   }, [code]);
+
+  // 오픈소스 판: 드라이브에 반영되지 않은 편집을 이 브라우저에 초안으로 남기고(계정별), 떠나기 전에 묻습니다.
+  useEffect(() => {
+    if (!DRIVE_EDITOR || !driveAccount) return undefined;
+    const drive = useDriveStore.getState();
+    if (!drive.file && code === initialCodeRef.current) return undefined;
+    const timer = setTimeout(() => useDriveStore.getState().rememberDraft(code), 800);
+    return () => clearTimeout(timer);
+  }, [code, driveAccount, driveFile]);
+  useEffect(() => {
+    if (!DRIVE_EDITOR) return undefined;
+    const warn = (event) => {
+      if (!useDriveStore.getState().isDirty(codeRef.current)) return;
+      event.preventDefault(); event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, []);
 
   // GitHub 재인증 후 복원된 코드
   useEffect(() => {
@@ -898,7 +925,25 @@ export default function Sandbox() {
    * 저장 — 현재 코드가 이미 있으면 같은 행을 업데이트하고 revision을 누적,
    * 없으면 제목을 묻고 새 행을 만든다. (학생 학습 흐름에 맞춰 단순화)
    */
+  /** 오픈소스 판 저장: 연 드라이브 파일이 있으면 바로 저장하고, 로그인·이름·충돌·오류는 대화상자에서 안내합니다. */
+  const handleDriveSave = async () => {
+    const drive = useDriveStore.getState();
+    const canQuickSave = drive.account && drive.file && !drive.conflict && !drive.needsReauth && !drive.missingScope && !drive.folderTrashed && !drive.busy;
+    if (!canQuickSave) { setDriveDialog('save'); return; }
+    setSaveMsg(ui("저장 중…"));
+    const result = await drive.save(codeRef.current);
+    if (['saved', 'unchanged'].includes(result.status)) {
+      setSaveMsg(ui("저장됨"));
+      setTimeout(() => setSaveMsg(''), 2000);
+      if (result.overwritten) addOutput(ui("저장 직전에 다른 탭이나 기기에서 저장한 내용이 있었고, 드라이브의 버전 기록에서 확인할 수 있습니다."), 'warning');
+      return;
+    }
+    setSaveMsg('');
+    setDriveDialog('save');
+  };
+
   const handleSave = async () => {
+    if (DRIVE_EDITOR) { await handleDriveSave(); return; }
     if (!user) {
       useAuthStore.getState().setAuthModalOpen(true);
       return;
@@ -1209,6 +1254,41 @@ export default function Sandbox() {
       {shareDialog && (
         <ShareLinkDialog url={shareDialog.url} shareId={shareDialog.id} title={shareDialog.title} code={shareDialog.code} onClose={() => setShareDialog(null)} />
       )}
+      {driveDialog && (
+        <DriveDialog
+          mode={driveDialog}
+          getCode={() => codeRef.current}
+          defaultName={shareTitle()}
+          isDirty={() => useDriveStore.getState().isDirty(codeRef.current) || (!useDriveStore.getState().file && codeRef.current !== initialCodeRef.current)}
+          onSaved={(result) => {
+            setDriveDialog(null);
+            setSaveMsg(ui("저장됨"));
+            setTimeout(() => setSaveMsg(''), 2000);
+            if (result?.status === 'created') addOutput(ui`구글 드라이브 VPyLab 폴더에 "${result.meta?.name || ''}"을(를) 만들었습니다.`, 'success');
+          }}
+          onLoaded={(loaded, name) => {
+            stopAllSounds();
+            stopExecution();
+            if (sceneRef.current) clearScene(sceneRef.current);
+            clearRegistry();
+            setOutputs([]);
+            setActiveTab('editor');
+            practiceContextRef.current = null;
+            updateCode(loaded);
+            homeDraftTitle.current = null; initialCodeRef.current = useDriveStore.getState().file?.savedCode ?? loaded;
+            addOutput(ui`구글 드라이브에서 "${name || ''}"을(를) 열었습니다.`, 'success');
+            setDriveDialog(null);
+          }}
+          onNewCode={() => {
+            practiceContextRef.current = null;
+            const starter = getDefaultCode(locale);
+            updateCode(starter);
+            homeDraftTitle.current = null; initialCodeRef.current = starter;
+            setDriveDialog(null);
+          }}
+          onClose={() => setDriveDialog(null)}
+        />
+      )}
 
       {(tutorial || showcaseProject || workbookLesson || referenceDoc) && <nav aria-label={locale === 'ko' ? '학습 이동' : 'Learning navigation'} className="flex items-center justify-between gap-3 px-4 py-2 border-b text-xs shrink-0" style={{ borderColor:'var(--color-border)', color:'var(--color-accent)' }}>
         <Link className="shrink-0 py-1 no-underline" to={referenceDoc ? '/docs' : tutorial ? '/tutorials' : showcaseProject ? '/gallery' : `/courses/${lessonParts[0]}`}>
@@ -1233,7 +1313,9 @@ export default function Sandbox() {
         <button onClick={handleRun} disabled={!isReady || isRunning || repoLoadStatus === 'loading'} className="toolbar-btn --run">{repoLoadStatus === 'loading' ? ui("불러오는 중") : t('editor.run')}</button>
         {(isRunning||audio.playing) && <button onClick={handleStop} className="toolbar-btn --stop">{t('editor.stop')}</button>}
         <button onClick={handleSave} disabled={!activeProjectCanEdit} className="toolbar-btn" title={ui("현재 코드 저장 (Ctrl/Cmd+S)")}>{activeProjectRole === 'viewer' ? ui("보기 전용") : (saveMsg || ui("저장"))}</button>
-        <button onClick={() => { setTeamInitialAction('browse'); setShowTeam(true); }} className="toolbar-btn max-w-36 truncate" title={activeProject?.title || ui("프로젝트")}>{activeProject ? activeProject.title : ui("프로젝트")}</button>
+        {DRIVE_EDITOR
+          ? <button onClick={() => setDriveDialog('files')} className="toolbar-btn max-w-36 truncate" title={driveFile?.name || ui("내 구글 드라이브")} data-testid="drive-files-button">{driveFile ? driveFile.name : ui("내 드라이브")}</button>
+          : <button onClick={() => { setTeamInitialAction('browse'); setShowTeam(true); }} className="toolbar-btn max-w-36 truncate" title={activeProject?.title || ui("프로젝트")}>{activeProject ? activeProject.title : ui("프로젝트")}</button>}
         <div className="relative">
           <button ref={toolsButtonRef} onClick={() => setMobileMore(previous => !previous)} className="toolbar-btn" aria-label={ui("실습 도구")} aria-expanded={mobileMore}>{ui("도구")}<span aria-hidden="true">⌄</span></button>
           {mobileMore && <>
