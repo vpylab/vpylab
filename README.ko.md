@@ -26,7 +26,7 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 ## 지금 상태
 
 - 공개판(vpylab.pages.dev) 편집기에는 아직 저장 기능이 없습니다. **저장** 버튼을 누르면 "저장 기능 준비 중" 안내 창이 표시됩니다. 작품을 보관하려면 만들기 화면의 **도구 → HTML 내려받기**를 사용하십시오.
-- 공개판에서도 **도구 → 공유**를 사용하여 링크를 만들 수 있습니다. 코드는 서버에 저장하지 않고 압축하여 링크 주소 안에 담습니다. 따라서 코드가 길면 링크도 길어지며, 코드가 아주 길면 QR 코드를 만들지 못할 수 있습니다. 웹페이지에 넣는 임베드 코드는 공개판에서 제공하지 않습니다.
+- 공개판에서도 **도구 → 공유**로 짧은 주소를 만들 수 있습니다. 이름을 정하면 vpylab.pages.dev/s/정한이름이 되고, 정하지 않으면 무작위 6자가 붙습니다. 주소나 QR 코드로 열면 실행 화면이 먼저 나오며, 임베드 코드도 제공합니다. 코드와 제목만 Cloudflare D1에 저장하며 로그인은 필요 없습니다.
 - 구글 드라이브 저장은 별도의 실험 페이지에서 시험 중입니다. 이 기능은 본 편집기 기능이 아닙니다. 실험 페이지는 https://vpylab.pages.dev/drive-lab 에서 확인할 수 있습니다. 자세한 내용은 [구글 드라이브 저장 실험](#구글-드라이브-저장-실험)에 있습니다.
 
 ## 두 가지 판, 하나의 코드
@@ -36,8 +36,8 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 | | 공개판 | 수업용 판(VPyLab Classroom) |
 |---|---|---|
 | 주소 | https://vpylab.pages.dev | https://vpylab.vercel.app |
-| 호스팅 | Cloudflare Pages(정적 파일만) | Vercel + Railway(Express 서버) |
-| 서버·데이터베이스 | 없음 | Supabase |
+| 호스팅 | Cloudflare Pages(정적 파일 + 공유 주소 함수) | Vercel + Railway(Express 서버) |
+| 서버·데이터베이스 | 공유 주소용 Cloudflare D1(코드·제목만) | Supabase |
 | 로그인 | 없음 | 구글 또는 GitHub(Supabase Auth) |
 | 저장 | 지금은 HTML 내려받기, 구글 드라이브는 시험 중 | 프로젝트, 저장 이력, GitHub 동기화 |
 | 갤러리·팀·교사 도구 | 꺼짐 | 켜짐 |
@@ -71,7 +71,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 
 ### 공개판
 
-공개판에는 VPyLab 서버와 데이터베이스가 없으며, Cloudflare Pages의 정적 파일만 있습니다. 코드는 학생 브라우저 안에서 실행되고 VPyLab이 저장하지 않습니다. 진행 기록, 테마, 언어, 메인 화면 설정은 이 브라우저(localStorage)에 보관되고, 연습 초안은 브라우저 탭(sessionStorage)에 보관됩니다. 브라우저 데이터를 지우면 이 정보가 사라지며 다른 기기로 옮겨지지 않습니다. 외부 요청은 웹 글꼴(Google Fonts, Fontshare)을 받을 때 이루어집니다. 파이썬 엔진은 vpylab.pages.dev에서 받으며, 실패할 때만 jsDelivr나 unpkg를 사용합니다.
+공개판에는 계정이나 로그인이 없고, VPyLab이 개인정보를 저장하는 서버나 데이터베이스도 없습니다. 저장소는 공유 주소용 Cloudflare D1 하나뿐이며, 공유를 누를 때 코드와 제목만 저장됩니다. 코드는 학생 브라우저 안에서 실행됩니다. 진행 기록, 테마, 언어, 메인 화면 설정은 이 브라우저(localStorage)에, 연습 초안은 브라우저 탭(sessionStorage)에 보관됩니다. 브라우저 데이터를 지우면 사라지며 다른 기기로 옮겨지지 않습니다. 외부 요청은 웹 글꼴(Google Fonts, Fontshare)을 받을 때 이루어집니다. 파이썬 엔진은 vpylab.pages.dev에서 받으며, 실패할 때만 jsDelivr나 unpkg를 사용합니다.
 
 ### 드라이브 저장 실험
 
@@ -124,7 +124,7 @@ cd client && npm install && cd ..
 cd server && npm install && cd ..
 ```
 
-**공개판 실행**(서버·데이터베이스 없음)
+**공개판 실행**(로컬에는 공유 주소 저장소가 없어 공유하면 긴 링크가 만들어집니다)
 
 ```bash
 cd client

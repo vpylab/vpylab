@@ -1,56 +1,122 @@
 /**
  * VPyLab — 코드 공유 유틸리티
- * 짧은 URL 방식 (/s/abc12345) + LZ-String/base64 해시 하위 호환
+ * 짧은 URL 방식 (/s/abc12345, 오픈소스 판은 /s/<정한 이름>) + LZ-String/base64 해시 하위 호환
  */
 
 import { supabase } from '../lib/supabase';
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
 
-import { API_BASE, SERVER_FEATURES } from '../lib/api-base.js';
+import { API_BASE, SHARE_BACKEND } from '../lib/api-base.js';
 const MAX_CODE_SIZE = 50_000; // 50KB 상한
 
 /** 공유 링크로 열 때 편집기 대신 실행 화면(극장 모드)부터 보여 주라는 표시. /s/ 짧은 주소와 같은 동작입니다. */
 export const SHARE_RUN_VIEW = 'run';
 
+/** 이름 규칙(서버 cloudflare/share-core.js와 같음): 영어 소문자·숫자·하이픈 3~30자, 하이픈으로 시작·끝 금지 */
+export const SHARE_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$/;
+
+/** 이 브라우저에서 만든 공유 주소의 수정 열쇠. 같은 이름을 다시 고칠 때만 씁니다. */
+const EDIT_KEYS_STORAGE = 'vpylab-share-edit-keys';
+
+function readEditKeys() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(EDIT_KEYS_STORAGE) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function rememberEditKey(id, editKey) {
+  if (!id || !editKey) return;
+  try {
+    const keys = readEditKeys();
+    keys[id] = editKey;
+    window.localStorage.setItem(EDIT_KEYS_STORAGE, JSON.stringify(keys));
+  } catch { /* 사생활 보호 모드 등: 열쇠를 못 남겨도 링크는 동작합니다 */ }
+}
+
+/** 이 브라우저에서 만든 이름인지(고칠 수 있는지) */
+export function hasEditKey(id) {
+  return Boolean(id && readEditKeys()[String(id).toLowerCase()]);
+}
+
 /**
  * 서버 없이 쓰는 공유 링크: 코드를 주소의 #code= 뒤에 압축해 담습니다.
- * 오픈소스 판·교실 LAN 모드처럼 공유 서버가 없을 때 사용하고, 여는 쪽은 decodeCodeFromURL이 읽습니다.
+ * 교실 LAN 모드처럼 공유 저장소가 없거나, 오픈소스 판 저장소가 응답하지 않을 때 사용하고, 여는 쪽은 decodeCodeFromURL이 읽습니다.
  * ?view=run이 붙어 있어 QR로 연 휴대폰에서도 코드가 아니라 실행 화면이 먼저 나옵니다.
  */
 export function hashShareUrl(code, origin = window.location.origin) {
   return `${origin}/sandbox?view=${SHARE_RUN_VIEW}#code=${compressToEncodedURIComponent(code)}`;
 }
 
+async function postShare(body) {
+  const res = await fetch(`${API_BASE}/api/share`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
 /**
  * 코드를 서버 경유로 저장하고 짧은 URL 반환
  * 보안: anon key 직접 INSERT 대신 서버 rate-limit + 크기 검증
+ * 오픈소스 판은 저장소가 응답하지 않으면 주소에 코드를 담은 링크(#code=)로 대신합니다(공유가 막히지 않게).
  * @param {string} code
  * @param {string} [title]
- * @returns {Promise<{ url: string|null, error: string|null }>}
+ * @returns {Promise<{ url: string|null, id?: string|null, error: string|null }>}
  */
 export async function createShareLink(code, title = '제목 없음') {
   if (code.length > MAX_CODE_SIZE) {
     return { url: null, error: '코드가 너무 깁니다 (50KB 초과)' };
   }
-  // 공유 서버가 없는 판에서는 서버에 저장하지 않고 주소에 코드를 담습니다(예전에는 /api/share가 405로 실패).
-  if (!SERVER_FEATURES) return { url: hashShareUrl(code), error: null };
+  if (SHARE_BACKEND === 'none') return { url: hashShareUrl(code), id: null, error: null };
 
   try {
-    const res = await fetch(`${API_BASE}/api/share`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code, title }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
+    const { res, data } = await postShare({ code, title });
+    if (!res.ok || !data.url) {
+      if (SHARE_BACKEND === 'pages') return { url: hashShareUrl(code), id: null, error: null };
       return { url: null, error: data.error || '공유 링크 생성 실패' };
     }
-
-    const url = `${window.location.origin}${data.url}`;
-    return { url, error: null };
+    if (data.editKey) rememberEditKey(data.id, data.editKey);
+    return { url: `${window.location.origin}${data.url}`, id: data.id ?? null, error: null };
   } catch {
+    if (SHARE_BACKEND === 'pages') return { url: hashShareUrl(code), id: null, error: null };
     return { url: null, error: '서버 연결 실패' };
+  }
+}
+
+/**
+ * 정한 이름으로 공유 주소 만들기(오픈소스 판). 이 브라우저에서 만든 이름이면 내용을 지금 코드로 바꿉니다.
+ * 오류는 화면에서 번역할 수 있게 코드(errorCode)로 돌려줍니다.
+ * @returns {Promise<{ url: string|null, id: string|null, updated: boolean, errorCode: string|null }>}
+ */
+export async function claimShareName(code, title, rawName) {
+  const name = String(rawName ?? '').trim().toLowerCase();
+  if (!SHARE_NAME_PATTERN.test(name) || name.includes('--')) return { url: null, id: null, updated: false, errorCode: 'name_invalid' };
+  if (code.length > MAX_CODE_SIZE) return { url: null, id: null, updated: false, errorCode: 'code_too_large' };
+
+  try {
+    const editKey = readEditKeys()[name];
+    if (editKey) {
+      const res = await fetch(`${API_BASE}/api/share/${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${editKey}` },
+        body: JSON.stringify({ code, title }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) return { url: `${window.location.origin}${data.url}`, id: data.id, updated: true, errorCode: null };
+      // 열쇠가 맞지 않거나 지워진 이름이면 새로 만들기를 시도합니다.
+      if (res.status !== 403 && res.status !== 404) return { url: null, id: null, updated: false, errorCode: data.code || 'server_error' };
+    }
+    const { res, data } = await postShare({ code, title, name });
+    if (!res.ok || !data.url) return { url: null, id: null, updated: false, errorCode: data.code || 'server_error' };
+    rememberEditKey(data.id, data.editKey);
+    return { url: `${window.location.origin}${data.url}`, id: data.id, updated: false, errorCode: null };
+  } catch {
+    return { url: null, id: null, updated: false, errorCode: 'network' };
   }
 }
 
@@ -60,6 +126,15 @@ export async function createShareLink(code, title = '제목 없음') {
  * @returns {Promise<{ code: string|null, title: string|null, error: string|null }>}
  */
 export async function loadSharedCode(shareId) {
+  if (SHARE_BACKEND === 'pages') {
+    try {
+      const res = await fetch(`${API_BASE}/api/share/${encodeURIComponent(shareId)}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.code === 'string') return { code: data.code, title: data.title || null, error: null };
+    } catch { /* 아래 안내로 */ }
+    return { code: null, title: null, error: '공유 코드를 찾을 수 없습니다' };
+  }
+
   const { data, error } = await supabase
     .from('vpylab_shares')
     .select('code, title')

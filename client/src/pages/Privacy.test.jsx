@@ -23,7 +23,8 @@ it('공개판은 서버·DB가 없다는 처리방침을 보여 주고 수업용
   await renderPrivacy('open');
   expect(screen.getByTestId('privacy-open')).toBeInTheDocument();
   expect(screen.getByText('개인정보 처리방침 (공개판)')).toBeInTheDocument();
-  expect(screen.getByText(/개인정보를 수집하거나 저장하지 않습니다/)).toBeInTheDocument();
+  expect(screen.getByText(/이름이나 이메일 같은 개인정보를 수집하지 않습니다/)).toBeInTheDocument();
+  expect(screen.getByText(/코드와 제목이 Cloudflare D1 저장소에 저장되고 짧은 주소가 만들어집니다/)).toBeInTheDocument();
   expect(screen.getByText(/drive\.file 권한으로는 이 앱이 만든 파일만/)).toBeInTheDocument();
   expect(screen.queryByText(/Supabase 서울 리전에 저장/)).toBeNull();
 });

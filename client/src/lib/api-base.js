@@ -14,3 +14,12 @@ export const OPEN_EDITION = EDITION === 'open';
 /** 운영 서버·DB가 필요한 기능(로그인, 갤러리, 팀, 공유 링크 저장, 교사 대시보드)을 켤지 */
 export const SERVER_FEATURES = !LAN_MODE && !OPEN_EDITION;
 export const API_BASE = OPEN_EDITION ? '' : import.meta.env.VITE_API_URL || (LAN_MODE ? '' : 'http://localhost:4034');
+/**
+ * 짧은 공유 주소(/s/<이름>)를 저장하는 곳. 두 판 모두 POST /api/share로 만듭니다.
+ *   server: 수업용 판. Railway Express가 Supabase에 저장하고, 읽기는 Supabase에서 바로 합니다.
+ *   pages: 오픈소스 판. 같은 출처의 Cloudflare Pages 함수(functions/api/share)가 D1에 저장하고 읽습니다.
+ *   none: 교실 LAN 모드. 저장소가 없어 코드를 주소(#code=)에 담습니다.
+ */
+export const SHARE_BACKEND = LAN_MODE ? 'none' : OPEN_EDITION ? 'pages' : 'server';
+/** 공유 주소의 이름을 정할 수 있는지. 지금은 오픈소스 판 저장소(pages)만 지원합니다. */
+export const SHARE_NAMES = SHARE_BACKEND === 'pages';

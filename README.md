@@ -28,7 +28,7 @@ Paste this into **Create** and press **Run**. A glowing red sphere and a label a
 VPyLab is in active development. In the open edition (vpylab.pages.dev):
 
 - **Saving is not built into the editor yet.** The **Save** button opens a "Saving is coming soon" notice. To keep your work, use **Tools → Download HTML** in Create.
-- **Share links** work in the open edition without a server: **Tools → Share** compresses the code into the link itself, and the link or its QR code opens straight to the running view (tap to start; the top-left button shows the source). Long programs make long links (very long ones may not fit in a QR code), and there is no embed code.
+- **Short share links**: **Tools → Share** creates a short link such as `vpylab.pages.dev/s/k7x2p9`, or `vpylab.pages.dev/s/your-name` if you choose a name (3–30 lowercase letters, numbers or hyphens; first come, first served). The link or its QR code opens straight to the running view (tap to start; the top-left button shows the source), and an embed code is available. Only the code and its title are stored, in Cloudflare D1. No sign-in is needed.
 - **Saving to Google Drive is an experiment**, on a separate page: https://vpylab.pages.dev/drive-lab. It is not part of the main editor. See [Saving to Google Drive (experiment)](#saving-to-google-drive-experiment).
 
 ## Two editions, one codebase
@@ -38,8 +38,8 @@ The same code is built two ways. The `VITE_EDITION` build setting picks the edit
 | | Open edition | VPyLab Classroom |
 |---|---|---|
 | Address | https://vpylab.pages.dev | https://vpylab.vercel.app |
-| Hosting | Cloudflare Pages (static files only) | Vercel + Railway (Express server) |
-| Server and database | None | Supabase |
+| Hosting | Cloudflare Pages (static files + share-link functions) | Vercel + Railway (Express server) |
+| Server and database | Cloudflare D1 for share links only (code and title) | Supabase |
 | Login | None | Google or GitHub (Supabase Auth) |
 | Saving | Download HTML today; Google Drive in testing | Projects, version history, GitHub sync |
 | Gallery, teams, teacher tools | Off | On |
@@ -73,8 +73,8 @@ Guides:
 
 **Open edition**
 
-- There is no VPyLab server or database. The site is static files on Cloudflare Pages.
-- Your code runs in your browser. No VPyLab service stores it.
+- There are no accounts or sign-in, and VPyLab keeps no personal information. The site is static files on Cloudflare Pages.
+- Your code runs in your browser. The only thing stored is what you share: pressing **Share** saves the code and its title in Cloudflare D1. A hashed IP address is used for rate limiting and deleted within two minutes; the IP address itself is never stored.
 - Progress, theme, language and home settings are kept in your browser (localStorage). Practice drafts are kept in the browser tab (sessionStorage). Clearing browser data removes them, and they do not move to other devices.
 - Third-party requests: web fonts from Google Fonts and Fontshare. The Python runtime is served from vpylab.pages.dev; jsDelivr or unpkg is used only if that fails.
 - A downloaded HTML file loads Pyodide and Three.js from jsDelivr or unpkg when opened.
@@ -145,7 +145,7 @@ cd client && npm install && cd ..
 cd server && npm install && cd ..
 ```
 
-**Run the open edition** (no server, no database):
+**Run the open edition** (there is no share database locally, so sharing falls back to a long link):
 
 ```bash
 cd client

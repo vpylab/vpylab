@@ -86,7 +86,7 @@ export default function Sandbox() {
   const [mobileMore, setMobileMore] = useState(false);
   const toolsButtonRef = useRef(null);
   const [shareMsg, setShareMsg] = useState('');
-  const [shareDialog, setShareDialog] = useState(null); // { url, id } | null
+  const [shareDialog, setShareDialog] = useState(null); // { url, id, title, code } | null
   const [saveMsg, setSaveMsg] = useState('');
   const [showTeam, setShowTeam] = useState(false);
   const [showSavedCodes, setShowSavedCodes] = useState(false);
@@ -859,7 +859,8 @@ export default function Sandbox() {
     }
     setTimeout(() => setShareMsg(''), 2000);
     // 주소에 코드를 담은 링크(#code=)에는 공유 ID가 없어 임베드 코드를 만들지 않습니다.
-    setShareDialog({ url, id: url.includes('/s/') ? url.slice(url.lastIndexOf('/s/') + 3) : null, title });
+    // 이름 정하기(오픈소스 판)는 대화상자를 연 순간의 코드로 만듭니다.
+    setShareDialog({ url, id: url.includes('/s/') ? url.slice(url.lastIndexOf('/s/') + 3) : null, title, code: codeRef.current });
   };
 
   const handleExport = async () => {
@@ -1206,7 +1207,7 @@ export default function Sandbox() {
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
       <Header />
       {shareDialog && (
-        <ShareLinkDialog url={shareDialog.url} shareId={shareDialog.id} title={shareDialog.title} onClose={() => setShareDialog(null)} />
+        <ShareLinkDialog url={shareDialog.url} shareId={shareDialog.id} title={shareDialog.title} code={shareDialog.code} onClose={() => setShareDialog(null)} />
       )}
 
       {(tutorial || showcaseProject || workbookLesson || referenceDoc) && <nav aria-label={locale === 'ko' ? '학습 이동' : 'Learning navigation'} className="flex items-center justify-between gap-3 px-4 py-2 border-b text-xs shrink-0" style={{ borderColor:'var(--color-border)', color:'var(--color-accent)' }}>

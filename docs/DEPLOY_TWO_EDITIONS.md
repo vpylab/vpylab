@@ -8,7 +8,7 @@ VPyLab은 저장소 하나(`vpylab/vpylab`)에서 두 판을 배포합니다. �
 | 호스팅 | Vercel (`vpylab.vercel.app`) | Cloudflare Pages (`vpylab.pages.dev`, 자체 도메인 예정) |
 | 빌드 명령 | `vercel.json`의 `cd client && npm install && npm run build:deploy` | `cd client && npm ci && npm run build:open` |
 | 출력 폴더 | `client/dist` | `client/dist` |
-| 서버·DB | Railway Express + Supabase(로그인·갤러리·팀·GitHub 연동) | 없음. 운영 서버·Supabase에 연결하지 않음 |
+| 서버·DB | Railway Express + Supabase(로그인·갤러리·팀·GitHub 연동) | 공유 주소용 Pages 함수 + D1(`vpylab-shares`)만. 운영 서버·Supabase에 연결하지 않음 |
 | 헤더 | `vercel.json` | `vercel.json`에서 자동 변환(`client/scripts/cloudflare-pages.mjs`가 `_headers`·`_redirects` 생성) |
 
 ## 판에 따라 달라지는 것
@@ -43,6 +43,27 @@ npx wrangler pages deploy dist --project-name vpylab --branch main
 ```
 
 Cloudflare는 `/drive-lab.html`을 `/drive-lab`으로 넘겨 제공합니다(깔끔한 주소). 그래서 변환기는 `/drive-lab` 경로에도 실험 페이지 전용 헤더를 걸고, 서비스 워커도 `/drive-lab`을 가로채지 않습니다. 맨 위에 404.html을 만들지 않아야 Cloudflare가 SPA 대체(index.html)를 해 줍니다. 대신 `assets/`·`pyodide/`·`projects/`처럼 Vercel이 SPA 대체에서 빼 둔 폴더에는 변환기가 404.html을 넣습니다. 이 폴더의 없는 파일에 index.html이 1년 캐시로 나가지 않고 404가 나가게 하기 위해서입니다.
+
+## 짧은 공유 주소 (오픈소스 판, `/s/<이름>`)
+
+오픈소스 판의 공유 주소는 Cloudflare Pages 함수(`functions/api/share/`)가 만들고 읽으며, 규칙은 `cloudflare/share-core.js` 한 곳에 있습니다. 저장소는 D1 데이터베이스 `vpylab-shares`(아시아·태평양 지역)이고, `wrangler.toml`에서 `DB`라는 이름으로 연결합니다. 따로 운영하는 서버는 없고, 정적 파일과 함께 배포됩니다. IP 주소를 변환할 때 섞는 비밀값 `SHARE_SALT`는 Pages 비밀값으로 넣어 둡니다. 저장소가 응답하지 않으면 앱은 코드를 주소에 담은 링크(`#code=`)로 대신하므로 공유가 막히지 않습니다. 수업용 판은 지금처럼 Railway 서버가 Supabase에 무작위 8자 주소로 저장하며, 이름 정하기는 아직 지원하지 않습니다.
+
+표 구조는 `cloudflare/migrations/` 폴더에 있고, 바꾼 뒤에는 원격 데이터베이스에 반영하는 명령을 실행합니다. 부적절한 공유 주소나 삭제 요청이 들어온 주소는 지우는 명령으로 처리하며, 명령은 Cloudflare 계정에 로그인한 컴퓨터에서 실행합니다. 무료 사용량은 하루에 쓰기 10만 건, 읽기 500만 건이며 학교 수업 규모로는 비용이 들지 않습니다.
+
+```bash
+# 표 구조 반영
+npx wrangler d1 migrations apply vpylab-shares --remote
+# 공유 주소 지우기(예: /s/bad-name)
+npx wrangler d1 execute vpylab-shares --remote --command "DELETE FROM shares WHERE id = 'bad-name'"
+```
+
+| 요청 | 하는 일 |
+|---|---|
+| `POST /api/share` `{ code, title, name? }` | 만들기. 이름이 없으면 무작위 6자. 응답의 `editKey`는 만든 브라우저(localStorage)에만 남김 |
+| `GET /api/share/:id` | 읽기 |
+| `PUT /api/share/:id` + `Authorization: Bearer <editKey>` | 같은 브라우저에서 내용 바꾸기 |
+
+<!-- 문단 문구: docs/reference/solar/short-share-261109-solar.md 블록 16·17 -->
 
 ## 속도 (2026-11-07 측정, 맥북 크롬)
 

@@ -1,0 +1,13 @@
+# Cloudflare Pages(오픈소스 판 vpylab.pages.dev) 설정.
+# 짧은 공유 주소(/s/<이름>)용 함수(functions/)와 D1 데이터베이스를 연결합니다.
+# 배포: .github/workflows/deploy-pages.yml (wrangler pages deploy client/dist)
+# 표 만들기·바꾸기: npx wrangler d1 migrations apply vpylab-shares --remote
+name = "vpylab"
+pages_build_output_dir = "client/dist"
+compatibility_date = "2025-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "vpylab-shares"
+database_id = "50e121b6-89f7-42a4-aef6-af40b098e3ce"
+migrations_dir = "cloudflare/migrations"
