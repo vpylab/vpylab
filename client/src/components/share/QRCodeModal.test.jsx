@@ -4,7 +4,10 @@ import { I18nProvider } from '../../i18n';
 
 const qr = vi.hoisted(() => ({ toDataURL: vi.fn(async () => 'data:image/png;base64,QUJD') }));
 vi.mock('qrcode', () => ({ default: qr }));
-vi.mock('../../stores/appStore', () => ({ default: (selector) => selector({ theme: 'creative-light', locale: 'ko' }) }));
+vi.mock('../../stores/appStore', () => {
+  const state = { theme: 'creative-light', locale: 'ko' };
+  return { default: Object.assign((selector) => selector(state), { getState: () => state }) };
+});
 
 import QRCodeModal from './QRCodeModal';
 import ShareLinkDialog from './ShareLinkDialog';
