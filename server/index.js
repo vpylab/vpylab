@@ -1,3 +1,4 @@
+import { proxyClientIp } from './middleware/proxy-client-ip.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -13,6 +14,8 @@ const PORT = process.env.PORT || 4034;
 
 // === 프록시 설정 (Railway/Render 등 리버스 프록시 뒤에서 req.ip 정확도 보장) ===
 app.set('trust proxy', 1);
+// Vercel 중계(/srv)를 거친 요청은 비밀값이 맞을 때만 실제 학생 IP를 씁니다(학교 DNS의 railway.app 차단 대응).
+app.use(proxyClientIp());
 
 // === 보안 미들웨어 (CRITICAL — 보안 감사 결과 반영) ===
 app.use(helmet());

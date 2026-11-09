@@ -77,6 +77,12 @@ npx wrangler d1 execute vpylab-shares --remote --command "DELETE FROM shares WHE
 npx wrangler pages dev client/dist --port 4087
 ```
 
+## 수업용 서버 중계 (/srv, 2026-11-09)
+
+일부 학교·통신사 DNS가 `*.railway.app` 주소를 막습니다. 2026-11-09에 그런 네트워크에서 수업용 판의 공유·저장·팀 기능이 모두 실패한 것을 확인했습니다. 그래서 수업용 화면은 Railway 주소로 직접 요청하지 않고 같은 출처의 `/srv/…`로 요청합니다(`client/.env.production`의 `VITE_API_URL=/srv`). `vercel.json`이 이 요청을 Vercel 함수 `api/srv.mjs`로 보내고, 함수가 Railway 서버로 전달합니다.
+
+요청 제한은 학생 IP 기준이므로, 함수가 실제 학생 IP를 `x-vpylab-client-ip`로 보내고 비밀값 `PROXY_SECRET`을 함께 보냅니다. 서버(`server/middleware/proxy-client-ip.js`)는 비밀값이 맞을 때만 그 IP를 믿습니다. `PROXY_SECRET`은 Vercel(Production·Preview)과 Railway에 같은 값으로 넣어 두었고, 값은 기록하지 않습니다. 바꿀 때는 세 곳을 함께 바꿉니다.
+
 ## 수업용 배포를 이 저장소로 옮긴 기록 (2026-11-09)
 
 수업용 배포는 2026-11-09에 `greatsong/vpylab-classroom`에서 이 저장소로 옮겼습니다. 옮기기 전에 두 저장소의 `main`을 비교해 이 저장소가 수업용 저장소의 커밋을 모두 포함하는 것을 확인했습니다.
