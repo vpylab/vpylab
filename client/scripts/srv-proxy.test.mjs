@@ -69,4 +69,13 @@ describe('Vercel → Railway 중계(/srv)', () => {
     expect(clientIpOf({ headers: { 'x-forwarded-for': '198.51.100.4, 76.76.21.1' } })).toBe('198.51.100.4');
     expect(clientIpOf({ headers: { 'x-real-ip': '198.51.100.5' } })).toBe('198.51.100.5');
   });
+
+  it('응답 본문을 읽다가 연결이 끊겨도 502 JSON으로 답한다 (아르곤 안정성 점검)', async () => {
+    const broken = { status: 200, headers: new Headers({ 'content-type': 'application/json' }), arrayBuffer: async () => { throw new TypeError('terminated'); } };
+    const handler = createProxyHandler({ env: {}, fetchImpl: async () => broken });
+    const res = fakeRes();
+    await handler(fakeReq({ url: '/api/srv?__path=api/share' }), res);
+    expect(res.statusCode).toBe(502);
+    expect(JSON.parse(res.body).code).toBe('upstream_unreachable');
+  });
 });

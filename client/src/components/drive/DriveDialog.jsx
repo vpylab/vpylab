@@ -67,7 +67,8 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
       pendingRef.current = null;
       setNotice(ui("다른 계정으로 바뀌어 하려던 작업을 멈췄습니다. 이 계정에 저장하려면 저장을 다시 누르십시오."));
     }
-    if (result.status === 'ok' && !store().file && onRestoreNew) {
+    // 하던 저장·열기를 이어서 하는 재승인이면 초안을 묻지 않습니다(묻고 불러온 초안을 곧바로 저장하지 않게).
+    if (result.status === 'ok' && !store().file && !pendingRef.current && onRestoreNew) {
       const draft = store().latestNewDraft();
       if (draft && draft.code !== getCode() && window.confirm(ui`이 브라우저에 저장하지 못한 초안이 있습니다(${new Date(draft.at).toLocaleString()}). 초안을 불러올까요?`)) {
         onRestoreNew(draft.code);
@@ -272,7 +273,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
                 ? ui(error.detail)
                 : <>{ui(DRIVE_REASON_TEXT[reason] || DRIVE_REASON_TEXT.unknown)}{error.detail && reason !== 'auth' ? ` (${error.detail})` : ''}</>}
             </p>
-            {reason === 'trashed' && <button type="button" className={button} disabled={working} onClick={saveAsNew}>{ui("새 파일로 저장")}</button>}
+            {(reason === 'trashed' || reason === 'notFound') && <button type="button" className={button} disabled={working} onClick={saveAsNew}>{ui("새 파일로 저장")}</button>}
           </div>
         )}
         {notice && (

@@ -18,23 +18,38 @@ export { SHARE_NAME_PATTERN };
 
 /** 이 브라우저에서 만든 공유 주소의 수정 열쇠. 같은 이름을 다시 고칠 때만 씁니다. */
 const EDIT_KEYS_STORAGE = 'vpylab-share-edit-keys';
+/** localStorage를 쓸 수 없는 환경(사생활 보호 모드 등)에서도 이 탭이 열려 있는 동안은 열쇠를 기억합니다. */
+const memoryKeys = new Map();
 
 function readEditKeys() {
+  let stored = {};
   try {
     const parsed = JSON.parse(window.localStorage.getItem(EDIT_KEYS_STORAGE) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) stored = parsed;
+  } catch { /* 아래 메모리 열쇠만 사용 */ }
+  // 쓰기만 실패하는 환경(용량 초과 등)에서는 저장소 값이 옛것일 수 있어 이 탭의 메모리 열쇠를 우선합니다.
+  return { ...stored, ...Object.fromEntries(memoryKeys) };
+}
+
+function writeEditKeys(keys) {
+  try {
+    window.localStorage.setItem(EDIT_KEYS_STORAGE, JSON.stringify(keys));
+  } catch { /* 사생활 보호 모드 등: 메모리 열쇠로 이 탭에서는 계속 동작합니다 */ }
 }
 
 function rememberEditKey(id, editKey) {
   if (!id || !editKey) return;
-  try {
-    const keys = readEditKeys();
-    keys[id] = editKey;
-    window.localStorage.setItem(EDIT_KEYS_STORAGE, JSON.stringify(keys));
-  } catch { /* 사생활 보호 모드 등: 열쇠를 못 남겨도 링크는 동작합니다 */ }
+  memoryKeys.set(id, editKey);
+  const keys = readEditKeys();
+  keys[id] = editKey;
+  writeEditKeys(keys);
+}
+
+function forgetEditKey(id) {
+  memoryKeys.delete(id);
+  const keys = readEditKeys();
+  delete keys[id];
+  writeEditKeys(keys);
 }
 
 /** 이 브라우저에서 만든 이름인지(고칠 수 있는지) */
@@ -144,12 +159,7 @@ export async function discardShareLink(id) {
       headers: { Authorization: `Bearer ${editKey}` },
     });
     // 지웠거나 이미 없으면 열쇠도 버립니다.
-    if (res.ok || res.status === 404) {
-      try {
-        delete keys[id];
-        window.localStorage.setItem(EDIT_KEYS_STORAGE, JSON.stringify(keys));
-      } catch { /* 열쇠가 남아도 동작에는 문제가 없습니다 */ }
-    }
+    if (res.ok || res.status === 404) forgetEditKey(id);
     return res.ok;
   } catch {
     return false;

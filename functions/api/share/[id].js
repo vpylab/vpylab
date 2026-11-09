@@ -17,10 +17,10 @@ export const onRequestPut = ({ request, params, env }) => handle(async () => {
 });
 
 // 이름을 정한 뒤 쓰이지 않게 된 무작위 주소를 지웁니다. 정한 이름은 지우지 않습니다.
+// 수정 열쇠가 있어야 하고 한 주소를 한 번만 지울 수 있어서, 학급 전체의 이름 정하기가 요청 제한에 걸리지 않게 제한에서 뺍니다.
 export const onRequestDelete = ({ request, params, env }) => handle(async () => {
   assertSameOrigin(request);
   const db = requireDb(env);
-  await checkRate(db, request.headers.get('CF-Connecting-IP'), env.SHARE_SALT || 'vpylab-share');
   const deleted = await deleteRandomShare(db, params.id, bearerKey(request));
   return json(200, deleted);
 });

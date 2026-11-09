@@ -34,7 +34,7 @@ export const RATE_LIMITS = Object.freeze({
   /** 사용자 층 발행: GitHub Pages 발행·포크·갱신 (기존 분당 3회 유지) */
   userPublishPerMinute: fromEnv('RATE_LIMIT_USER_PUBLISH_PER_MINUTE', 3),
   /** 비로그인 공유 링크 생성: IP 기준. 한 학급이 1분 안에 모두 공유해도 통과 */
-  anonymousSharePerMinute: fromEnv('RATE_LIMIT_SHARE_PER_MINUTE', 60),
+  anonymousSharePerMinute: fromEnv('RATE_LIMIT_SHARE_PER_MINUTE', 120), // 공유 창(무작위 주소)+이름 정하기를 한 학급이 1분 안에 해도 통과
 });
 
 /** 로그인 사용자는 사용자 ID, 그 밖에는 IP(IPv6는 /56 묶음)로 키를 만듭니다. */

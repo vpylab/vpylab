@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeGoogle, memoryStorage } from '../drive-lab/fake-google.js';
 import { configureDrive, useDriveStore } from './driveSession.js';
 
@@ -182,6 +182,64 @@ describe('편집기 드라이브 저장', () => {
     release();
     expect(await listing).toBeNull();
     expect(store().files).toEqual([]);
+  });
+
+  it('저장 중에 로그아웃하면 늦게 온 저장 결과를 화면에 넣지 않는다 (아르곤 안정성 점검)', async () => {
+    await signedIn();
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    configureDrive({ fetchImpl: async (url, init = {}) => { if (String(url).includes('/upload/')) await gate; return google.fetchImpl(url, init); } });
+    await store().prepare();
+    await store().signIn();
+    const saving = store().save('a code', { name: 'A.py' });
+    await store().signOut();
+    release();
+    expect(await saving).toEqual({ status: 'stale' });
+    expect(store().file).toBeNull();
+    expect(store().busy).toBe('');
+  });
+
+  it('저장이 끝나기 전에 다시 저장해도 새 파일은 하나만 만든다 (아르곤 안정성 점검)', async () => {
+    await signedIn();
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    let creates = 0;
+    configureDrive({ fetchImpl: async (url, init = {}) => {
+      if (String(url).includes('/upload/') && (init.method || 'GET') === 'POST') { creates += 1; await gate; }
+      return google.fetchImpl(url, init);
+    } });
+    await store().prepare();
+    await store().signIn();
+    const first = store().save('x', { name: '연타.py' });
+    expect(await store().save('x', { name: '연타.py' })).toEqual({ status: 'busy' });
+    release();
+    expect((await first).status).toBe('created');
+    expect(creates).toBe(1);
+  });
+
+  it('늦게 온 앞 세션 저장 결과가 새 세션에서 진행 중인 저장의 busy를 풀지 않는다 (아르곤 재검토)', async () => {
+    await signedIn();
+    const gates = {};
+    configureDrive({ fetchImpl: async (url, init = {}) => {
+      if (String(url).includes('/upload/') && (init.method || 'GET') === 'POST') {
+        const which = String(init.body).includes('OLD_SAVE') ? 'old' : 'new';
+        await new Promise((r) => { gates[which] = r; });
+      }
+      return google.fetchImpl(url, init);
+    } });
+    await store().prepare();
+    await store().signIn();
+    const oldSave = store().save('# OLD_SAVE', { name: '앞.py' });
+    await store().signOut();
+    await store().signIn();
+    const newSave = store().save('# NEW_SAVE', { name: '뒤.py' });
+    await vi.waitFor(() => expect(Object.keys(gates).sort()).toEqual(['new', 'old']));
+    gates.old();
+    expect(await oldSave).toEqual({ status: 'stale' });
+    expect(store().busy).toBe('save'); // 뒤 저장은 아직 진행 중
+    gates.new();
+    expect((await newSave).status).toBe('created');
+    expect(store().busy).toBe('');
   });
 
   it('파일로 만들기 전의 새 코드 초안을 다시 찾을 수 있다 (3-way #6)', async () => {

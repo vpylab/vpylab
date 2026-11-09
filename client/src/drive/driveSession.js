@@ -77,6 +77,8 @@ let authEpoch = 0;
 let sessionEpoch = 0;
 /** 파일 열기 요청 번호. 마지막으로 고른 파일의 응답만 반영합니다. */
 let openSeq = 0;
+/** 저장 요청 번호. 늦게 온 앞 계정 저장이 지금 진행 중인 저장의 busy를 풀지 않게 합니다. */
+let saveSeq = 0;
 
 export function configureDrive(next) {
   deps = { ...deps, ...next };
@@ -128,9 +130,16 @@ export const useDriveStore = create((set, get) => {
     }
   }
 
-  async function createFile(code, name) {
+  /** 앞 계정으로 보낸 저장의 결과는 지금 계정 화면에 넣지 않습니다. 드라이브에 쓴 내용은 앞 계정 드라이브에 남습니다. */
+  function staleResult(token) {
+    set((s) => (token === saveSeq && s.busy === 'save' ? { busy: '' } : {}));
+    return { status: 'stale' };
+  }
+
+  async function createFile(code, name, session = sessionEpoch, token = saveSeq) {
     const existing = get().files.map((f) => f.name);
     const meta = await drive.create({ name: uniqueFileName(name, existing), code, deviceId: getDeviceId(storage() || undefined) });
+    if (session !== sessionEpoch) return staleResult(token);
     forgetDraft(null);
     set((s) => ({
       busy: '',
@@ -301,15 +310,21 @@ export const useDriveStore = create((set, get) => {
      * 결과: created | saved | unchanged | conflict | error
      */
     async save(code, { name } = {}) {
+      // 저장이 진행 중이면 겹쳐 부르지 않습니다(새 파일이 두 개 생기지 않게).
+      if (get().busy === 'save') return { status: 'busy' };
       const { file } = get();
+      const session = sessionEpoch;
+      const epoch = authEpoch;
+      const token = ++saveSeq;
       set({ busy: 'save', error: null });
       try {
-        if (!file) return await createFile(code, name || '제목 없음.py');
+        if (!file) return await createFile(code, name || '제목 없음.py', session, token);
         const attempted = get().attemptedCodes;
         const result = await drive.save({
           id: file.id, code, baseVersion: file.version, baseCode: file.savedCode, attemptedCodes: attempted,
           deviceId: getDeviceId(storage() || undefined),
         });
+        if (session !== sessionEpoch) return staleResult(token); // 그사이 로그아웃·계정 전환
         if (result.status === 'conflict') {
           set({ busy: '', conflict: { mine: code, remote: result.remote } });
           rememberDraft(code);
@@ -326,10 +341,11 @@ export const useDriveStore = create((set, get) => {
         }));
         return { status: result.status, overwritten: result.overwritten || null };
       } catch (error) {
+        if (session !== sessionEpoch) return staleResult(token);
         // 시간 초과처럼 결과를 모르는 저장 시도는 다음 저장의 충돌 판정에서 내 저장으로 인정합니다.
         if (error instanceof DriveError && error.reason === 'timeout') set((s) => ({ attemptedCodes: [...s.attemptedCodes, code].slice(-5) }));
         rememberDraft(code);
-        return fail(error);
+        return fail(error, epoch);
       }
     },
 
@@ -348,17 +364,22 @@ export const useDriveStore = create((set, get) => {
         set({ conflict: null, file: { id: meta.id, name: meta.name || file.name, version: meta.version, headRevisionId: meta.headRevisionId, savedCode: code }, attemptedCodes: [] });
         return { status: 'loaded', code };
       }
+      if (get().busy === 'save') return { status: 'busy' };
+      const session = sessionEpoch;
+      const epoch = authEpoch;
+      const token = ++saveSeq;
       set({ busy: 'save', error: null });
       try {
         if (choice === 'copy') {
           const base = (file.name || '제목 없음.py').replace(/\.py$/i, '');
-          return await createFile(conflict.mine, `${base} (사본).py`);
+          return await createFile(conflict.mine, `${base} (사본).py`, session, token);
         }
         const result = await drive.save({
           id: file.id, code: conflict.mine, baseVersion: file.version, baseCode: file.savedCode, force: true,
           expectVersion: conflict.remote.meta.version, expectRevisionId: conflict.remote.meta.headRevisionId,
           deviceId: getDeviceId(storage() || undefined),
         });
+        if (session !== sessionEpoch) return staleResult(token);
         if (result.status === 'conflict') {
           set({ busy: '', conflict: { mine: conflict.mine, remote: result.remote } });
           return { status: 'conflict' };
@@ -368,14 +389,24 @@ export const useDriveStore = create((set, get) => {
         set({ busy: '', conflict: null, file: { id: meta.id, name: meta.name || file.name, version: meta.version, headRevisionId: meta.headRevisionId, savedCode: conflict.mine }, attemptedCodes: [], lastSavedAt: Date.now() });
         return { status: 'saved' };
       } catch (error) {
-        return fail(error);
+        if (session !== sessionEpoch) return staleResult(token);
+        return fail(error, epoch);
       }
     },
 
-    /** 휴지통에 있는 파일 대신 지금 코드를 새 파일로 저장합니다. */
+    /** 휴지통에 있거나 찾을 수 없는 파일 대신 지금 코드를 새 파일로 저장합니다. */
     async saveAsNew(code, name) {
+      if (get().busy === 'save') return { status: 'busy' };
+      const session = sessionEpoch;
+      const epoch = authEpoch;
+      const token = ++saveSeq;
       set({ busy: 'save', error: null, file: null });
-      try { return await createFile(code, name); } catch (error) { return fail(error); }
+      try {
+        return await createFile(code, name, session, token);
+      } catch (error) {
+        if (session !== sessionEpoch) return staleResult(token);
+        return fail(error, epoch);
+      }
     },
 
     async restoreFolder() {

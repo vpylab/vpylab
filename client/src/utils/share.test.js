@@ -140,4 +140,23 @@ describe('이름 정하기(수업용 판)', () => {
     await createShareLink('box()', '상자');
     expect(hasEditKey('AbC_12xY')).toBe(true);
   });
+
+  it('localStorage를 쓸 수 없어도 이 탭에서는 열쇠를 기억해 같은 이름을 다시 정하면 내용을 바꾼다 (아르곤 안정성 점검)', async () => {
+    const fetchSpy = vi.fn(async (url, init) => (init.method === 'POST'
+      ? jsonResponse(201, { id: 'solar', url: '/s/solar', editKey: 'secret-secret-secret-1', named: true })
+      : jsonResponse(200, { id: 'solar', url: '/s/solar', named: true })));
+    vi.stubGlobal('fetch', fetchSpy);
+    const { claimShareName } = await loadShare('open');
+    const blocked = () => { throw new DOMException('blocked', 'SecurityError'); };
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(blocked);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(blocked);
+    try {
+      expect((await claimShareName('sphere()', '태양', 'solar')).updated).toBe(false);
+      const second = await claimShareName('box()', '태양', 'solar');
+      expect(second.updated).toBe(true);
+      expect(fetchSpy.mock.calls[1][1]).toMatchObject({ method: 'PUT', headers: { Authorization: 'Bearer secret-secret-secret-1' } });
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 });

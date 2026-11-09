@@ -86,13 +86,16 @@ export function createProxyHandler({ env = process.env, fetchImpl = globalThis.f
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     let upstream;
+    let buffer;
     try {
       upstream = await fetchImpl(`${origin}${path}`, { method: req.method, headers, body, redirect: 'manual', signal: controller.signal });
+      // 응답 본문도 같은 시간 제한 안에서 읽습니다. 읽는 도중 연결이 끊겨도 정해진 JSON 오류로 답합니다.
+      buffer = Buffer.from(await upstream.arrayBuffer());
     } catch {
-      clearTimeout(timer);
       return sendJson(res, 502, { error: '서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.', code: 'upstream_unreachable' });
+    } finally {
+      clearTimeout(timer);
     }
-    clearTimeout(timer);
 
     res.statusCode = upstream.status;
     for (const name of FORWARD_RESPONSE) {
@@ -100,7 +103,6 @@ export function createProxyHandler({ env = process.env, fetchImpl = globalThis.f
       if (value) res.setHeader(name, value);
     }
     if (!upstream.headers.get('cache-control')) res.setHeader('Cache-Control', 'no-store');
-    const buffer = Buffer.from(await upstream.arrayBuffer());
     res.end(buffer);
   };
 }
