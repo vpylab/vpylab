@@ -16,7 +16,7 @@ VPyLab을 전 세계 학교가 사용하는 오픈소스 서비스로 키우려�
 
 | | 오픈소스 VPyLab | 수업용 VPyLab Classroom |
 |---|---|---|
-| 저장소 | [vpylab/vpylab](https://github.com/vpylab/vpylab) (공개) | [greatsong/vpylab-classroom](https://github.com/greatsong/vpylab-classroom) (공개, 예전 이름 greatsong/vpylab) |
+| 저장소 | [vpylab/vpylab](https://github.com/vpylab/vpylab) (공개) | [vpylab/vpylab](https://github.com/vpylab/vpylab) (2026-11-09부터 같은 저장소, 예전 greatsong/vpylab-classroom) |
 | 방향 | 이 계획대로 구글 중심, 운영자는 학생 데이터를 보관하지 않음 | 당곡고 수업, GitHub 연동, 현재 구조(Supabase·Railway) 유지 |
 | 주소 | 자체 도메인 예정 | https://vpylab.vercel.app |
 

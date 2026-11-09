@@ -77,14 +77,13 @@ npx wrangler d1 execute vpylab-shares --remote --command "DELETE FROM shares WHE
 npx wrangler pages dev client/dist --port 4087
 ```
 
-## 수업용 배포를 이 저장소로 옮기기 (한 번)
+## 수업용 배포를 이 저장소로 옮긴 기록 (2026-11-09)
 
-지금 수업용 배포는 `greatsong/vpylab-classroom`에 연결되어 있습니다. 두 저장소의 `main`이 같을 때 옮깁니다.
+수업용 배포는 2026-11-09에 `greatsong/vpylab-classroom`에서 이 저장소로 옮겼습니다. 옮기기 전에 두 저장소의 `main`을 비교해 이 저장소가 수업용 저장소의 커밋을 모두 포함하는 것을 확인했습니다.
 
-1. Vercel: GitHub의 Vercel 앱이 `vpylab` 조직에 접근하도록 허용한 뒤, 프로젝트 `vpylab` → Settings → Git에서 연결 저장소를 `vpylab/vpylab`으로 바꿉니다.
-2. Railway: 서비스 `vpylab-server` → Settings → Source에서 저장소를 `vpylab/vpylab`으로 바꿉니다.
-3. 로컬 작업 폴더의 원격 주소를 바꿉니다: `git remote set-url origin https://github.com/vpylab/vpylab.git`
-4. 다음 푸시에서 Vercel·Railway 배포가 생기는지 확인합니다.
-5. `greatsong/vpylab-classroom`은 보관(archive)하고 README에 새 저장소 주소를 적습니다.
+1. GitHub의 Vercel 앱과 Railway 앱(`railway-app`)을 `vpylab` 조직의 `vpylab/vpylab` 저장소에만 설치했습니다.
+2. Vercel: `vercel git connect https://github.com/vpylab/vpylab.git`로 프로젝트 `vpylab`의 연결 저장소를 바꿨습니다.
+3. Railway: `railway service source connect --service vpylab-server --repo vpylab/vpylab --branch main`으로 바꿨습니다. 루트 폴더는 그대로 `/server`입니다.
+4. 두 서비스 모두 이 저장소 `main`(dfb5985)으로 배포되는 것을 확인했습니다.
 
-순서가 중요합니다. 1·2를 하기 전에 3을 하면, 새 커밋이 수업용 배포에 반영되지 않습니다.
+남은 일: `greatsong/vpylab-classroom` 보관(archive), 예전 수업용 작업 폴더(`10_수업자료/vpylab`)의 원격 주소 정리. 그 폴더에는 커밋하지 않은 변경이 남아 있어 손대지 않았습니다.
