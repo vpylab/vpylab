@@ -32,7 +32,6 @@ const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
 const Gallery = lazyWithRetry(() => import('./pages/Gallery'));
 const GalleryDetail = lazyWithRetry(() => import('./pages/GalleryDetail'));
 const SourceProject = lazyWithRetry(() => import('./pages/SourceProject'));
-const SharedCodeLoader = lazyWithRetry(() => import('./pages/SharedCodeLoader'));
 const Docs = lazyWithRetry(() => import('./pages/Docs'));
 const Forge = lazyWithRetry(() => import('./pages/Forge'));
 const Guide = lazyWithRetry(() => import('./pages/Guide'));
@@ -87,7 +86,8 @@ function AppContent() {
           <Route path="/gallery" element={<Gallery />} />
           <Route path="/gallery/glowscript/:projectId" element={<SourceProject />} />
           <Route path="/gallery/:id" element={<GalleryDetail />} />
-          <Route path="/s/:id" element={<SharedCodeLoader />} />
+          {/* 공유 주소는 만들기 화면이 직접 읽습니다. 주소창에 /s/이름이 남아 새로 고침·복사해도 작품이 다시 열립니다. */}
+          <Route path="/s/:id" element={<Sandbox />} />
           <Route path="/embed/:id" element={<Embed />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
