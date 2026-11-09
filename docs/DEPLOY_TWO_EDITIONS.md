@@ -83,6 +83,8 @@ npx wrangler pages dev client/dist --port 4087
 
 요청 제한은 학생 IP 기준이므로, 함수가 실제 학생 IP를 `x-vpylab-client-ip`로 보내고 비밀값 `PROXY_SECRET`을 함께 보냅니다. 서버(`server/middleware/proxy-client-ip.js`)는 비밀값이 맞을 때만 그 IP를 믿습니다. `PROXY_SECRET`은 Vercel(Production·Preview)과 Railway에 같은 값으로 넣어 두었고, 값은 기록하지 않습니다. 바꿀 때는 세 곳을 함께 바꿉니다.
 
+Vercel 프로젝트 환경변수 `VITE_API_URL`은 `client/.env.production`보다 우선합니다. 그래서 Vercel 환경변수도 `/srv`로 바꿔 두었습니다(2026-11-09, 예전 값은 Railway 주소). 서비스 워커가 예전 화면을 저장해 두므로, 사용자는 다음 방문부터 새 주소를 사용합니다.
+
 ## 수업용 배포를 이 저장소로 옮긴 기록 (2026-11-09)
 
 수업용 배포는 2026-11-09에 `greatsong/vpylab-classroom`에서 이 저장소로 옮겼습니다. 옮기기 전에 두 저장소의 `main`을 비교해 이 저장소가 수업용 저장소의 커밋을 모두 포함하는 것을 확인했습니다.
