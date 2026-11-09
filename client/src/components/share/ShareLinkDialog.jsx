@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n/useI18n';
 import { useUiText } from '../../i18n/ui-text';
 import { SHARE_NAMES } from '../../lib/api-base';
 import { copyEmbedCode } from '../../utils/embed';
-import { claimShareName } from '../../utils/share';
+import { claimShareName, discardShareLink } from '../../utils/share';
 import QRCodeModal from './QRCodeModal';
 
 /**
@@ -24,6 +24,12 @@ export default function ShareLinkDialog({ url: initialUrl, shareId: initialShare
   const url = link.url;
   const shareId = link.shareId;
   const canName = SHARE_NAMES && typeof code === 'string';
+  // 창을 열 때 만든 무작위 주소. 이름을 정하면 쓰이지 않으므로 지웁니다.
+  // 다만 이 창에서 그 주소를 복사·QR·임베드·열기로 사용했다면 이미 누군가에게 전했을 수 있어 남겨 둡니다.
+  const firstLink = useRef({ id: initialShareId, used: false, discarded: false });
+  const markUsed = () => {
+    if (link.shareId === firstLink.current.id) firstLink.current.used = true;
+  };
 
   const nameErrors = {
     name_invalid: ui("이름이 규칙에 맞지 않습니다. 이름은 영어 소문자, 숫자, 하이픈(-)으로 3~30자여야 하며, 하이픈으로 시작하거나 끝날 수 없습니다."),
@@ -44,6 +50,11 @@ export default function ShareLinkDialog({ url: initialUrl, shareId: initialShare
       return;
     }
     setLink({ url: result.url, shareId: result.id });
+    const first = firstLink.current;
+    if (first.id && first.id !== result.id && !first.used && !first.discarded) {
+      first.discarded = true;
+      discardShareLink(first.id); // 기다리지 않습니다. 실패해도 이름은 정해졌습니다.
+    }
     let copiedNow = false;
     try { await navigator.clipboard.writeText(result.url); copiedNow = true; } catch { /* 주소가 화면에 있음 */ }
     const message = result.updated
@@ -60,9 +71,11 @@ export default function ShareLinkDialog({ url: initialUrl, shareId: initialShare
 
   const flash = (key) => { setCopied(key); setTimeout(() => setCopied(''), 1400); };
   const copyLink = async () => {
+    markUsed();
     try { await navigator.clipboard.writeText(url); flash('link'); } catch { /* 주소가 화면에 있음 */ }
   };
   const copyEmbed = async () => {
+    markUsed();
     if (await copyEmbedCode(shareId)) flash('embed');
   };
 
@@ -102,7 +115,7 @@ export default function ShareLinkDialog({ url: initialUrl, shareId: initialShare
           <button type="button" onClick={copyLink} className="toolbar-btn" style={buttonStyle}>
             {copied === 'link' ? `✓ ${t('qr.copied')}` : `📋 ${t('qr.copyLink')}`}
           </button>
-          <button type="button" onClick={() => setShowQr(true)} className="toolbar-btn" style={buttonStyle} data-testid="share-show-qr">
+          <button type="button" onClick={() => { markUsed(); setShowQr(true); }} className="toolbar-btn" style={buttonStyle} data-testid="share-show-qr">
             ▦ {t('qr.show')}
           </button>
           {shareId && (
@@ -110,7 +123,7 @@ export default function ShareLinkDialog({ url: initialUrl, shareId: initialShare
               {copied === 'embed' ? `✓ ${t('qr.copied')}` : `<> ${t('embed.copyEmbed')}`}
             </button>
           )}
-          <a href={url} target="_blank" rel="noopener noreferrer" className="toolbar-btn no-underline" style={buttonStyle}>
+          <a href={url} target="_blank" rel="noopener noreferrer" onClick={markUsed} className="toolbar-btn no-underline" style={buttonStyle} data-testid="share-open">
             ↗ {t('shareLink.open')}
           </a>
         </div>

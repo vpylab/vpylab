@@ -128,6 +128,24 @@ test('수정 열쇠가 맞을 때만 내용을 바꾼다', async () => {
   assert.equal((await put('ghost', editKey, { code: 'x' })).status, 404);
 });
 
+const del = (id, key) => nativeFetch(`${base}/${id}`, { method: 'DELETE', headers: key ? { authorization: `Bearer ${key}` } : {} });
+
+test('무작위 주소는 만든 열쇠로만 지우고, 정한 이름은 409로 남긴다', async () => {
+  const random = await (await post({ code: 'sphere()' })).json();
+  const named = await (await post({ code: 'box()', name: 'kept' })).json();
+  assert.equal((await del(random.id, 'wrong-wrong-wrong-wrong')).status, 403);
+  assert.equal((await del(random.id, '')).status, 403);
+  const namedRes = await del('kept', named.editKey);
+  assert.equal(namedRes.status, 409);
+  assert.equal((await namedRes.json()).code, 'named');
+
+  const ok = await del(random.id, random.editKey);
+  assert.equal(ok.status, 200);
+  assert.deepEqual(await ok.json(), { id: random.id, deleted: true });
+  assert.deepEqual(tables.vpylab_shares.map((r) => r.id), ['kept']);
+  assert.equal((await del('ghost', random.editKey)).status, 404);
+});
+
 test('열쇠를 남기지 못하면 공유 행도 지워 이름이 묶이지 않는다', async () => {
   failKeyInsert = true;
   const res = await post({ code: 'x', name: 'orphan' });

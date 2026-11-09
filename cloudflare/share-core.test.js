@@ -5,10 +5,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import {
-  RATE_PER_MINUTE, ShareError, checkRate, createShare, getShare, isValidId, normalizeName, randomId, updateShare,
+  RATE_PER_MINUTE, ShareError, checkRate, createShare, deleteRandomShare, getShare, isValidId, normalizeName, randomId, updateShare,
 } from './share-core.js';
 import { onRequestPost } from '../functions/api/share/index.js';
-import { onRequestGet, onRequestPut } from '../functions/api/share/[id].js';
+import { onRequestDelete, onRequestGet, onRequestPut } from '../functions/api/share/[id].js';
 
 const schema = readFileSync(new URL('./migrations/0001_shares.sql', import.meta.url), 'utf8');
 
@@ -103,6 +103,21 @@ test('고치기는 수정 열쇠가 맞을 때만 된다', async () => {
   await rejectsWith(updateShare(db, 'ghost', editKey, { code: 'x' }), 'not_found');
 });
 
+test('무작위 주소는 만든 열쇠로만 지울 수 있고, 정한 이름은 지우지 않는다', async () => {
+  const db = fakeD1();
+  const random = await createShare(db, { code: 'sphere()' });
+  const named = await createShare(db, { code: 'box()', name: 'kept' });
+  await rejectsWith(deleteRandomShare(db, random.id, 'wrong-key-wrong-key-wrong'), 'not_owner');
+  await rejectsWith(deleteRandomShare(db, random.id, ''), 'not_owner');
+  await rejectsWith(deleteRandomShare(db, 'kept', named.editKey), 'named');
+  assert.equal((await getShare(db, 'kept')).code, 'box()');
+
+  assert.deepEqual(await deleteRandomShare(db, random.id, random.editKey), { id: random.id, deleted: true });
+  await rejectsWith(getShare(db, random.id), 'not_found');
+  await rejectsWith(deleteRandomShare(db, random.id, random.editKey), 'not_found');
+  await rejectsWith(deleteRandomShare(db, '../x', random.editKey), 'not_found');
+});
+
 test('코드 크기와 빈 코드 검사', async () => {
   const db = fakeD1();
   await rejectsWith(createShare(db, { code: '' }), 'code_missing');
@@ -161,6 +176,22 @@ test('HTTP: 만들기 → 읽기 → 열쇠로 고치기', async () => {
   assert.equal((await put('x'.repeat(32))).status, 403);
   assert.equal((await put(editKey)).status, 200);
   assert.equal((await (await onRequestGet({ params: { id }, env })).json()).code, 'box()');
+});
+
+test('HTTP: 무작위 주소 지우기(DELETE)는 같은 출처와 열쇠를 확인한다', async () => {
+  const env = { DB: fakeD1() };
+  const { id, editKey } = await (await onRequestPost({ request: post({ code: 'sphere()' }), env })).json();
+  const del = (key, origin = ORIGIN) => onRequestDelete({
+    request: new Request(`${ORIGIN}/api/share/${id}`, { method: 'DELETE', headers: { Origin: origin, Authorization: `Bearer ${key}` } }),
+    params: { id },
+    env,
+  });
+  assert.equal((await del(editKey, 'https://evil.example')).status, 403);
+  assert.equal((await del('x'.repeat(32))).status, 403);
+  const ok = await del(editKey);
+  assert.equal(ok.status, 200);
+  assert.deepEqual(await ok.json(), { id, deleted: true });
+  assert.equal((await onRequestGet({ params: { id }, env })).status, 404);
 });
 
 test('HTTP: 오류는 상태 코드와 한국어 안내로 돌려준다', async () => {

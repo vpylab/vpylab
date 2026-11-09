@@ -5,6 +5,7 @@
  *
  *   POST /api/share        { code, title?, name? } → { id, url, editKey, named }
  *   PUT  /api/share/:id    Authorization: Bearer <editKey>, { code, title? } → { id, url, named }
+ *   DELETE /api/share/:id  Authorization: Bearer <editKey> → { id, deleted } (무작위 주소만, 정한 이름은 409)
  *
  * 이름 규칙은 server/shared/share-names.js(오픈소스 판 cloudflare/share-core.js와 같음).
  * 수정 열쇠는 만든 브라우저에만 있고, 서버는 SHA-256만 vpylab_share_keys(서버 전용 표)에 둡니다.
@@ -157,6 +158,47 @@ router.put('/:id', shareLimiter, async (req, res) => {
     }
     if (!updated) return res.status(404).json({ error: '공유 코드를 찾을 수 없습니다.', code: 'not_found' });
     res.json({ id, url: `/s/${id}`, named: updated.named === true });
+  } catch (err) {
+    console.error('[Share] 오류:', err.message);
+    res.status(500).json({ error: '서버 오류', code: 'server_error' });
+  }
+});
+
+/**
+ * DELETE /api/share/:id — 이름을 정한 뒤 쓰이지 않게 된 무작위 주소를 지웁니다.
+ * 만든 브라우저(수정 열쇠)만 지울 수 있고, 정한 이름은 지우지 않습니다. 열쇠 행은 외래 키(ON DELETE CASCADE)로 함께 지워집니다.
+ */
+router.delete('/:id', shareLimiter, async (req, res) => {
+  try {
+    const id = String(req.params.id || '');
+    if (!/^[A-Za-z0-9_-]{3,40}$/.test(id)) return res.status(404).json({ error: '공유 코드를 찾을 수 없습니다.', code: 'not_found' });
+    const db = getSupabase();
+
+    const { data: keyRow, error: keyError } = await db.from('vpylab_share_keys').select('edit_key_hash').eq('share_id', id).maybeSingle();
+    if (keyError) {
+      console.error('[Share] 열쇠 조회 실패:', keyError.message);
+      return res.status(500).json({ error: '서버 오류', code: 'server_error' });
+    }
+    if (!keyRow) return res.status(404).json({ error: '공유 코드를 찾을 수 없습니다.', code: 'not_found' });
+    const key = bearerKey(req);
+    if (!key || !sameHash(hashKey(key), keyRow.edit_key_hash)) {
+      return res.status(403).json({ error: '이 주소를 만든 브라우저에서만 지울 수 있습니다.', code: 'not_owner' });
+    }
+
+    const { data: row, error: rowError } = await db.from('vpylab_shares').select('named').eq('id', id).maybeSingle();
+    if (rowError) {
+      console.error('[Share] 공유 조회 실패:', rowError.message);
+      return res.status(500).json({ error: '서버 오류', code: 'server_error' });
+    }
+    if (!row) return res.status(404).json({ error: '공유 코드를 찾을 수 없습니다.', code: 'not_found' });
+    if (row.named === true) return res.status(409).json({ error: '정한 이름은 지울 수 없습니다.', code: 'named' });
+
+    const { error } = await db.from('vpylab_shares').delete().eq('id', id).eq('named', false);
+    if (error) {
+      console.error('[Share] 지우기 실패:', error.message);
+      return res.status(500).json({ error: '서버 오류', code: 'server_error' });
+    }
+    res.json({ id, deleted: true });
   } catch (err) {
     console.error('[Share] 오류:', err.message);
     res.status(500).json({ error: '서버 오류', code: 'server_error' });
