@@ -234,12 +234,14 @@ test('커밋 응답 유실 후 같은 이력을 다시 보내도 커밋과 이�
 });
 
 test('각 학생의 항해 일지가 누적되고 같은 기록의 재전송은 중복되지 않는다', async () => {
+  // 서버는 오늘 기준 ±2일 날짜만 받으므로 고정 날짜를 쓰면 며칠 뒤 실패합니다(2026-11-09 CI). 오늘 날짜를 씁니다.
+  const today = new Date().toISOString().slice(0, 10);
   const note = (id, author) => ({ ...current(), recordOnly: true, revisionId: id, authorLabel: author,
-    voyageEntry: { localDate: '2026-11-06', localTime: '10:00', tzOffset: -540, kind: 'detailed', title: author + '의 기록', did: '서로 검토했습니다.' } });
+    voyageEntry: { localDate: today, localTime: '10:00', tzOffset: -540, kind: 'detailed', title: author + '의 기록', did: '서로 검토했습니다.' } });
   assert.equal((await post('/projects/commit', note('note-a', '학생 A'))).status, 200);
   assert.equal((await post('/projects/commit', note('note-b', '학생 B'))).status, 200);
   assert.equal((await post('/projects/commit', note('note-b', '학생 B'))).status, 200);
-  const diary = files.get('docs/voyage/2026-11-06.md');
+  const diary = files.get(`docs/voyage/${today}.md`);
   assert.match(diary, /학생 A/);
   assert.match(diary, /학생 B/);
   assert.equal(diary.split('vpylab-revision:note-b').length - 1, 1);
