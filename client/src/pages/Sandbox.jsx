@@ -3,7 +3,7 @@ import { getDefaultCode } from '../data/default-code';
 import { useUiText, getUiLocale } from "../i18n/ui-text";
 import { readPracticeDraft, writePracticeDraft } from '../utils/practice-drafts';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Link, useSearchParams, useLocation } from 'react-router-dom';
+import { Link, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
 import Header from '../components/layout/Header';
 import CodeEditor, { DEFAULT_CODE } from '../components/editor/CodeEditor';
@@ -18,7 +18,7 @@ import { processBatch, clearScene } from '../engine/vpython-bridge';
 import { clearRegistry } from '../engine/object-registry';
 import { runSound, errorSound, stopBgm, stopAllSounds, initAudioOnUserGesture, isAudioUnlocked, isTouchPlaybackEnvironment, resumeAndRun } from '../engine/sound-system';
 import { captureThumbnail } from '../engine/thumbnail';
-import { createShareLink, decodeCodeFromURL, SHARE_RUN_VIEW } from '../utils/share';
+import { createShareLink, decodeCodeFromURL, loadSharedCode, SHARE_RUN_VIEW } from '../utils/share';
 import ShareLinkDialog from '../components/share/ShareLinkDialog';
 import DriveDialog from '../components/drive/DriveDialog';
 import { DRIVE_CLIENT_ID, useDriveStore } from '../drive/driveSession';
@@ -277,7 +277,32 @@ export default function Sandbox() {
     ui,
   ]);
 
-  // /s/:id에서 넘어온 공유 코드 로드
+  // /s/:id 주소로 열면 공유 코드를 직접 불러옵니다. 주소창은 /s/이름 그대로 둡니다.
+  const { id: sharedRouteId } = useParams();
+  const loadedSharedRouteId = useRef(null);
+  useEffect(() => {
+    if (!sharedRouteId || loadedSharedRouteId.current === sharedRouteId) return undefined;
+    loadedSharedRouteId.current = sharedRouteId;
+    let cancelled = false;
+    loadSharedCode(sharedRouteId).then(({ code: sharedCode, title, error }) => {
+      if (cancelled) return;
+      if (error || !sharedCode) {
+        setOutputs([{ text: tRef.current('sharedCode.notFound'), type: 'warning', id: Date.now() }]);
+        return;
+      }
+      stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
+      practiceContextRef.current = null;
+      updateCode(sharedCode);
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = sharedCode;
+      if (title) document.title = `${title} · VPyLab`;
+      // 극장 모드: 클릭 대기 → 클릭 시 오디오 잠금 해제 + 실행
+      setTheaterMode(true);
+      setTheaterWaiting(true);
+    });
+    return () => { cancelled = true; };
+  }, [sharedRouteId, updateCode]);
+
+  // 예전 방식(location.state로 넘어온 공유 코드) 로드
   useEffect(() => {
     if (location.state?.sharedCode) {
       if(consumedSharedSource.current===location.key)return;
