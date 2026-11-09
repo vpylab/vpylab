@@ -11,7 +11,7 @@ const GOOGLE_LOGOUT_URL = 'https://accounts.google.com/Logout';
  *   mode='files': 로그인 → VPyLab 폴더의 파일 목록 → 열기, 새 코드로 시작, 로그아웃.
  * 문구: docs/reference/solar/drive-editor-261109-solar.md
  */
-export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoaded, onNewCode, isDirty, onClose }) {
+export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoaded, onNewCode, onRestoreNew, isDirty, onClose }) {
   const ui = useUiText();
   const {
     ready, preparing, account, file, files, truncated, busy, error, needsReauth, missingScope, folderTrashed, conflict,
@@ -23,6 +23,11 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
   const listedFor = useRef('');
 
   useEffect(() => { store().prepare(); }, [store]);
+  // 저장 창은 대개 저장이 막혀서 열립니다(로그인·만료·충돌). 재승인하면 이 저장을 이어서 합니다.
+  useEffect(() => {
+    if (mode === 'save' && store().file) pendingRef.current = () => doSave();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     const onKey = (event) => { if (event.key === 'Escape' && !busy) onClose?.(); };
     document.addEventListener('keydown', onKey);
@@ -57,6 +62,17 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
 
   async function signIn(options) {
     const result = await store().signIn(options);
+    if (result.switched) {
+      // 다른 계정으로 바뀌었으면 앞 계정에서 하려던 저장·열기를 새 계정에 하지 않습니다.
+      pendingRef.current = null;
+      setNotice(ui("다른 계정으로 바뀌어 하려던 작업을 멈췄습니다. 이 계정에 저장하려면 저장을 다시 누르십시오."));
+    }
+    if (result.status === 'ok' && !store().file && onRestoreNew) {
+      const draft = store().latestNewDraft();
+      if (draft && draft.code !== getCode() && window.confirm(ui`이 브라우저에 저장하지 못한 초안이 있습니다(${new Date(draft.at).toLocaleString()}). 초안을 불러올까요?`)) {
+        onRestoreNew(draft.code);
+      }
+    }
     if (result.status === 'ok') {
       // 승인 전에 읽던 목록은 실패했을 수 있어 새로 읽습니다.
       listedFor.current = store().account?.sub || '';
@@ -78,6 +94,8 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
     let code = result.code;
     if (result.draft && window.confirm(ui`이 브라우저에 저장하지 못한 초안이 있습니다(${new Date(result.draft.at).toLocaleString()}). 초안을 불러올까요?`)) {
       code = result.draft.code;
+      // 초안 뒤에 드라이브가 바뀌었으면 저장할 때 덮어쓰지 않고 충돌로 보여 줍니다.
+      store().adoptDraft(result.draft);
     }
     onLoaded?.(code, result.name);
   }
@@ -184,10 +202,17 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
       </form>
     );
   } else if (mode === 'save') {
-    body = (
-      <p className="m-0 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-        {saving ? ui("저장 중…") : ui`${file.name}에 저장했습니다.`}
-      </p>
+    // 저장한 뒤에만 "저장했습니다"를 보입니다. 아직 드라이브와 다르면 이 파일에 저장하는 버튼을 둡니다.
+    const unsaved = isDirty ? isDirty() : getCode() !== file.savedCode;
+    body = unsaved || saving ? (
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm truncate" style={{ color: 'var(--color-text-secondary)' }}>{file.name}</span>
+        <button type="button" className={button} style={primary} disabled={working} onClick={() => doSave()} data-testid="drive-save-existing">
+          {saving ? ui("저장 중…") : ui("드라이브에 저장")}
+        </button>
+      </div>
+    ) : (
+      <p className="m-0 text-sm" style={{ color: 'var(--color-text-secondary)' }}>{ui`${file.name}에 저장했습니다.`}</p>
     );
   } else {
     body = (
