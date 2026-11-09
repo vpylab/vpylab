@@ -44,7 +44,7 @@ The same code is built two ways. The `VITE_EDITION` build setting picks the edit
 | Gallery, teams, teacher tools | Off | On |
 | Build setting | `VITE_EDITION=open` | default (`classroom`) |
 
-The classroom edition is used in classes at Danggok High School. Its deployments are still connected to `greatsong/vpylab-classroom` while they move to this repository.
+The classroom edition is used in classes at Danggok High School. Since 2026-11-09 both editions deploy from this repository (Vercel and Railway for the classroom edition, Cloudflare Pages for the open edition).
 
 ## For students and teachers
 

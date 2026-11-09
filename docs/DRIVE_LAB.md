@@ -1,6 +1,6 @@
 # 구글 드라이브 저장 실험
 
-오픈소스 VPyLab(`vpylab/vpylab`)을 서버와 DB 없이 운영할 수 있는지 확인하는 실험입니다. 수업용 GitHub 연동 버전은 별도 저장소 `greatsong/vpylab-classroom`에서 관리합니다. 학생 코드는 학생 본인의 구글 드라이브 `VPyLab` 폴더에 저장하고, 브라우저는 구글 API와만 통신합니다. 전체 전환 계획은 [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md)에 있습니다.
+오픈소스 VPyLab(`vpylab/vpylab`)을 서버와 DB 없이 운영할 수 있는지 확인하는 실험입니다. 수업용 GitHub 연동 버전도 2026-11-09부터 같은 저장소에서 배포합니다(예전 저장소 `greatsong/vpylab-classroom`). 학생 코드는 학생 본인의 구글 드라이브 `VPyLab` 폴더에 저장하고, 브라우저는 구글 API와만 통신합니다. 전체 전환 계획은 [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md)에 있습니다.
 
 - 화면: `client/drive-lab.html` → `client/src/drive-lab/`
 - 저장 어댑터: `client/src/drive-lab/drive-storage.js` (`list`·`create`·`open`·`save`·`revisions`·`revisionContent`·`trash`). 같은 메서드를 구현하면 OneDrive 등 다른 저장소로 바꿀 수 있습니다.

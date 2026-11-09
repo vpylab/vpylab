@@ -30,7 +30,7 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 
 ## 두 가지 판, 하나의 코드
 
-같은 코드를 두 가지 방식으로 빌드할 수 있습니다. 빌드 설정 `VITE_EDITION`으로 판을 선택합니다. 수업용 판(VPyLab Classroom)은 당곡고등학교 수업에서 사용 중이며, 수업용 판 배포는 이 저장소로 옮기는 중이고 아직 `greatsong/vpylab-classroom`에 연결되어 있습니다.
+같은 코드를 두 가지 방식으로 빌드할 수 있습니다. 빌드 설정 `VITE_EDITION`으로 판을 선택합니다. 수업용 판(VPyLab Classroom)은 당곡고등학교 수업에서 사용 중이며, 2026-11-09부터 두 판 모두 이 저장소에서 배포합니다(수업용 판은 Vercel·Railway, 공개판은 Cloudflare Pages).
 
 | | 공개판 | 수업용 판(VPyLab Classroom) |
 |---|---|---|
