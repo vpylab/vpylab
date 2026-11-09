@@ -31,6 +31,8 @@ export const DRIVE_REASON_TEXT = {
   network: '네트워크 연결에 실패했고, 코드는 편집기와 이 브라우저에 남아 있습니다.',
   timeout: '구글 응답이 너무 늦습니다. 저장됐는지 확인하려면 파일을 다시 여십시오.',
   tooLarge: '코드가 100KB를 넘어 저장할 수 없습니다.',
+  videoTooLarge: '영상이 30MB를 넘어 드라이브에 저장할 수 없습니다. 내려받기를 사용하십시오.',
+  uploadExpired: '영상 올리기가 중간에 만료되었습니다. 다시 저장하십시오.',
   folderTrashed: 'VPyLab 폴더가 드라이브 휴지통에 있습니다. 그대로 두면 안의 파일이 30일 뒤 지워집니다. "VPyLab 폴더 되살리기"를 누르십시오.',
   server: '구글 서버 오류입니다. 잠시 뒤 다시 시도하십시오.',
   gis: '구글 로그인 스크립트를 불러오지 못했으니 네트워크나 학교 방화벽에서 accounts.google.com이 막혔는지 확인하십시오.',
@@ -65,6 +67,7 @@ const initialState = {
   conflict: null, // { mine, remote: { meta, code } }
   attemptedCodes: [],
   lastSavedAt: 0,
+  videoUpload: null, // 영상을 올리는 동안 { sent, total }
 };
 
 /** 테스트에서 구글 흉내(gis·fetch)와 저장소를 바꿔 끼웁니다. */
@@ -414,6 +417,32 @@ export const useDriveStore = create((set, get) => {
       } catch (error) {
         if (session !== sessionEpoch) return staleResult(token);
         return fail(error, epoch);
+      }
+    },
+
+    /**
+     * 작품 영상을 드라이브의 VPyLab/영상 폴더에 올립니다. 코드 저장 상태(busy·file)는 건드리지 않습니다.
+     * @returns {Promise<{ status: 'saved', file: object } | { status: 'error', reason: string } | { status: 'busy' | 'stale' }>}
+     */
+    async uploadVideo(blob, name) {
+      if (get().videoUpload) return { status: 'busy' };
+      if (!drive || !get().account) return { status: 'error', reason: 'auth' };
+      const session = sessionEpoch;
+      const epoch = authEpoch;
+      set({ videoUpload: { sent: 0, total: blob.size } });
+      try {
+        const file = await drive.uploadVideo({
+          blob, name,
+          onProgress: (sent, total) => { if (session === sessionEpoch) set({ videoUpload: { sent, total } }); },
+        });
+        if (session !== sessionEpoch) return { status: 'stale' };
+        set({ videoUpload: null });
+        return { status: 'saved', file };
+      } catch (error) {
+        if (session !== sessionEpoch) return { status: 'stale' };
+        // 재승인이 필요하면 저장 창이 쓰는 표시만 켭니다. 코드 저장의 진행·오류 표시는 그대로 둡니다.
+        set({ videoUpload: null, ...(needsReauth(error) && epoch === authEpoch ? { needsReauth: true } : {}) });
+        return { status: 'error', reason: reasonOf(error) };
       }
     },
 

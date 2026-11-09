@@ -25,6 +25,7 @@ export const MAX_AUDIO_TIMERS = 256;
 const HEADROOM = 0.45;
 const STOP_FADE = 0.018;
 let masterGain = null;
+let outputTap = null; // 스피커 직전의 마지막 노드 (녹화가 같은 소리를 받는 곳)
 let masterVolume = 0.6;
 let masterMuted = false;
 let audioGeneration = 0;
@@ -108,6 +109,20 @@ function createMasterGraph(ctx) {
     output = limiter;
   }
   output.connect(ctx.destination);
+  outputTap = output;
+}
+
+/**
+ * 작품 영상 녹화용 — 스피커로 나가는 것과 같은 소리를 MediaStream으로도 내보냅니다.
+ * 반환값의 close()로 연결을 풉니다. 지원하지 않는 환경에서는 null입니다.
+ */
+export function openRecordingAudioStream() {
+  const ctx = getAudioContext();
+  const tap = outputTap;
+  if (!ctx || !tap || typeof ctx.createMediaStreamDestination !== 'function') return null;
+  const destination = ctx.createMediaStreamDestination();
+  tap.connect(destination);
+  return { stream: destination.stream, close() { try { tap.disconnect(destination); } catch { /* 이미 끊김 */ } } };
 }
 
 function connectOutput(node) { node.connect(masterGain); }
