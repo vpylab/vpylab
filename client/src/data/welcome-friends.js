@@ -87,7 +87,7 @@ export const welcomeLayout=()=>welcomeFriends.map((f,i)=>{
   return{id:f.id,scale:.43,origin:[(i-1.5)*.82,-.80-minY*.43,0]};
 });
 export const welcomeBounce=(time,index)=>.24*Math.abs(Math.sin(time*5+index*Math.PI/4))*Math.max(0,Math.min(1,time/.3,(6-time)/.5));
-function welcomeDefinition(id,articulated=false){
+export function welcomeDefinition(id,articulated=false){
   const parts=welcomeParts(id),lines=['def make_'+id+(articulated?'_parts':'')+'(origin=None, scale=1):','    origin = vector(0,0,0) if origin is None else origin'];
   for(const part of parts.filter(p=>!p.name.startsWith('smile_'))){
     const props=Object.entries(part).filter(([key])=>!['name','type','angle'].includes(key)).map(([key,value])=>{

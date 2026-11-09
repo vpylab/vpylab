@@ -4,6 +4,7 @@
  */
 import vpythonApiRaw from './vpython-api.py?raw';
 import transformRaw from './student-code-transform.py?raw';
+import physicalKitRaw from './physical-kit.py?raw';
 import { stopAllSounds } from './sound-system';
 import { warmPyodideCache } from '../lib/service-worker.js';
 
@@ -213,7 +214,7 @@ export function initIfNeeded() {
   }, INIT_TIMEOUT);
   try {
     worker = createWorker();
-    worker.postMessage({ type: 'init', vpythonApi: vpythonApiRaw, transformSource: transformRaw });
+    worker.postMessage({ type: 'init', vpythonApi: vpythonApiRaw, transformSource: transformRaw, physicalKit: physicalKitRaw });
   } catch (error) {
     failWorker(`Python 엔진 초기화 실패: ${error.message}`, 'init');
   }

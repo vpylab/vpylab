@@ -8,6 +8,8 @@
  * - 모든 학생용 Python 예제는 한글 API를 먼저 보여주고, 필요한 곳에 영어 API를 병기
  */
 
+import physicalMissions from './physical-missions.js';
+
 const text = (ko, en) => ({ ko, en });
 
 // ── 실행형(run) 미션 조건식 도우미 (DSL은 grading-engine.js 머리 주석 참조) ──
@@ -3135,6 +3137,11 @@ print("사운드 로고 완성")
       text('마지막 화음은 장면의 마침표처럼 들립니다.', 'The final chord works like punctuation.'),
     ],
   }),
+
+  // ═══════════════════════════════════════════
+  // PC: 피지컬 컴퓨팅 시뮬레이션 (시범) — physical-missions.js
+  // ═══════════════════════════════════════════
+  ...physicalMissions,
 ];
 
 export default missions;
@@ -3178,6 +3185,12 @@ export const categories = {
     title: { ko: '음악 코딩', en: 'Music Coding' },
     icon: '🎵',
     color: '#D9694A',
+  },
+  PC: {
+    id: 'PC',
+    title: { ko: '피지컬 컴퓨팅', en: 'Physical Computing' },
+    icon: '🔌',
+    color: '#3FA7A0',
   },
 };
 

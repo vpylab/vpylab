@@ -5,6 +5,8 @@ import { getMissionById } from '../data/missions';
 import { trainingCourses, trainingSteps } from '../data/training';
 import useAppStore from '../stores/appStore';
 
+const physicalMissionIds = ['PC-1', 'PC-2', 'PC-3'];
+
 export default function Missions() {
   const { locale: lang } = useI18n();
   const ko = lang === 'ko';
@@ -33,6 +35,15 @@ export default function Missions() {
             return <li key={step.missionId} className="border-t" style={{ borderColor: 'var(--color-border)' }}><Link to={`/mission/${step.missionId}`} className="flex gap-4 py-5 no-underline" style={{ color: 'inherit' }}><span className="font-mono text-xs pt-1" style={{ color: 'var(--color-accent)' }}>{index + 1}</span><div className="flex-1 min-w-0"><p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>{step.focus[lang]}</p><h3 className="font-semibold text-sm">{mission.title[lang]}</h3><p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{step.reflect[lang]}</p></div><span className="text-xs shrink-0" style={{ color: 'var(--color-accent)' }}>{progress[step.missionId]?.passed ? (ko ? '조건 확인됨' : 'Checked') : '→'}</span></Link></li>;
           })}</ol>
           <p className="text-xs leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '자동 검사는 코드의 조건을 확인합니다. 왜 바꿨는지 설명하고, 다른 값에서도 되는지 살펴보며 마무리하세요. 이 기기의 연습 기록은 그대로 이어집니다.' : 'Automatic checks verify code conditions. Explain your changes and try other values to finish. Practice records on this device are preserved.'}</p>
+        </section>
+        <section aria-labelledby="physical-title" className="mb-10">
+          <p className="text-xs mb-2" style={{ color: 'var(--color-accent)' }}>{ko ? '시범 운영 · 피지컬 컴퓨팅 시뮬레이션' : 'Pilot · Physical computing simulation'}</p>
+          <h2 id="physical-title" className="font-display text-xl font-bold mb-3">{ko ? '센서로 읽고, 판단하고, 빛과 소리로 알리기' : 'Sense, decide, and signal with light and sound'}</h2>
+          <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '장면과 친구들은 미리 준비되어 있으며 여러분은 센서 함수가 값을 돌려주게 하고 조건문으로 알맞은 출력 장치를 실행하는 일을 합니다. 이는 실제 피지컬 컴퓨팅의 흐름인 센서로 읽고, 판단하고, 빛과 소리로 알리는 과정과 같습니다.' : 'The scene and friends are ready. Make the sensor function return a value, then call the right output with a condition.'}</p>
+          <ol>{physicalMissionIds.map((id, index) => {
+            const mission = getMissionById(id);
+            return <li key={id} className="border-t" style={{ borderColor: 'var(--color-border)' }}><Link to={`/mission/${id}`} className="flex gap-4 py-5 no-underline" style={{ color: 'inherit' }}><span className="font-mono text-xs pt-1" style={{ color: 'var(--color-accent)' }}>{index + 1}</span><div className="flex-1 min-w-0"><h3 className="font-semibold text-sm">{mission.title[lang]}</h3><p className="text-xs mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{mission.description[lang]}</p></div><span className="text-xs shrink-0" style={{ color: 'var(--color-accent)' }}>{progress[id]?.passed ? (ko ? '조건 확인됨' : 'Checked') : '→'}</span></Link></li>;
+          })}</ol>
         </section>
         <p className="text-sm leading-relaxed mb-10"><Link to="/tutorials" style={{ color: 'var(--color-accent)' }}>{ko ? '연습한 것으로 내 작품을 만들고 싶다면 튜토리얼의 만들며 탐구하기로 →' : 'Use your practice in a project: Explore by making in Tutorials →'}</Link></p>
         <section aria-labelledby="sharing-title" className="border-t pt-6" style={{ borderColor: 'var(--color-border)' }}>
