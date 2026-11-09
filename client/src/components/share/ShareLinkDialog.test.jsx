@@ -56,3 +56,38 @@ it('수업용 판에도 이름 칸이 있고, 저장소가 없는 교실 LAN 모
   await renderDialog('', {}, { lan: true });
   expect(screen.queryByTestId('share-name-form')).toBeNull();
 });
+
+it('이름을 정하면 창을 열 때 만든 무작위 주소를 그 브라우저의 열쇠로 지운다', async () => {
+  window.localStorage.setItem('vpylab-share-edit-keys', JSON.stringify({ k7x2p9: 'random-key-random-key-1' }));
+  const fetchSpy = vi.fn(async (_url, options = {}) => (options.method === 'DELETE'
+    ? { ok: true, status: 200, json: async () => ({ id: 'k7x2p9', deleted: true }) }
+    : { ok: true, status: 201, json: async () => ({ id: 'solar', url: '/s/solar', editKey: 'secret-secret-secret-1', named: true }) }));
+  vi.stubGlobal('fetch', fetchSpy);
+  vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async () => {}) } });
+  await renderDialog('open');
+
+  fireEvent.change(screen.getByTestId('share-name-input'), { target: { value: 'solar' } });
+  fireEvent.click(screen.getByTestId('share-name-submit'));
+
+  await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+  const [deleteUrl, deleteOptions] = fetchSpy.mock.calls[1];
+  expect(deleteUrl).toMatch(/\/api\/share\/k7x2p9$/);
+  expect(deleteOptions).toMatchObject({ method: 'DELETE', headers: { Authorization: 'Bearer random-key-random-key-1' } });
+  await waitFor(() => expect(JSON.parse(window.localStorage.getItem('vpylab-share-edit-keys'))).not.toHaveProperty('k7x2p9'));
+  expect(JSON.parse(window.localStorage.getItem('vpylab-share-edit-keys'))).toHaveProperty('solar');
+});
+
+it('무작위 주소를 이 창에서 복사했다면 이름을 정해도 지우지 않는다', async () => {
+  window.localStorage.setItem('vpylab-share-edit-keys', JSON.stringify({ k7x2p9: 'random-key-random-key-1' }));
+  const fetchSpy = vi.fn(async () => ({ ok: true, status: 201, json: async () => ({ id: 'solar', url: '/s/solar', editKey: 'secret-secret-secret-1', named: true }) }));
+  vi.stubGlobal('fetch', fetchSpy);
+  vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async () => {}) } });
+  await renderDialog('open');
+
+  fireEvent.click(screen.getByText(/링크 복사|Copy link/));
+  fireEvent.change(screen.getByTestId('share-name-input'), { target: { value: 'solar' } });
+  fireEvent.click(screen.getByTestId('share-name-submit'));
+
+  await waitFor(() => expect(screen.getByTestId('share-url')).toHaveValue(`${window.location.origin}/s/solar`));
+  expect(fetchSpy.mock.calls.every(([, options = {}]) => options.method !== 'DELETE')).toBe(true);
+});

@@ -128,6 +128,35 @@ export async function claimShareName(code, title, rawName) {
 }
 
 /**
+ * 이 브라우저에서 만든 무작위 주소를 지웁니다(두 판 공통).
+ * 공유 창을 열 때 무작위 주소가 먼저 생기는데, 이어서 이름을 정하면 그 주소는 쓰이지 않으므로 저장소에 남기지 않습니다.
+ * 수정 열쇠가 없으면(다른 브라우저에서 만든 주소) 아무것도 하지 않습니다. 실패해도 이름 정하기에는 영향이 없습니다.
+ * @returns {Promise<boolean>} 지웠으면 true
+ */
+export async function discardShareLink(id) {
+  if (!id) return false;
+  const keys = readEditKeys();
+  const editKey = keys[id];
+  if (!editKey) return false;
+  try {
+    const res = await fetch(`${API_BASE}/api/share/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${editKey}` },
+    });
+    // 지웠거나 이미 없으면 열쇠도 버립니다.
+    if (res.ok || res.status === 404) {
+      try {
+        delete keys[id];
+        window.localStorage.setItem(EDIT_KEYS_STORAGE, JSON.stringify(keys));
+      } catch { /* 열쇠가 남아도 동작에는 문제가 없습니다 */ }
+    }
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 공유 ID로 코드 조회
  * @param {string} shareId
  * @returns {Promise<{ code: string|null, title: string|null, error: string|null }>}

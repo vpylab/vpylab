@@ -158,6 +158,23 @@ export async function updateShare(db, rawId, editKey, { code, title }) {
   return { id, url: `/s/${id}`, named: row.named === 1 };
 }
 
+/**
+ * 무작위 주소 지우기. 공유 창을 열면 무작위 주소가 먼저 생기는데, 이어서 이름을 정하면 그 주소는 쓰이지 않습니다.
+ * 만든 브라우저(수정 열쇠)만 지울 수 있고, 정한 이름은 지우지 않습니다(남이 받은 링크를 끊지 않게).
+ */
+export async function deleteRandomShare(db, rawId, editKey) {
+  if (!isValidId(rawId)) throw new ShareError(404, 'not_found', '공유 코드를 찾을 수 없습니다.');
+  const id = String(rawId).toLowerCase();
+  const row = await db.prepare('SELECT edit_key_hash, named FROM shares WHERE id = ?').bind(id).first();
+  if (!row) throw new ShareError(404, 'not_found', '공유 코드를 찾을 수 없습니다.');
+  if (!editKey || !safeEqual(await sha256Hex(editKey), row.edit_key_hash)) {
+    throw new ShareError(403, 'not_owner', '이 주소를 만든 브라우저에서만 지울 수 있습니다.');
+  }
+  if (row.named === 1) throw new ShareError(409, 'named', '정한 이름은 지울 수 없습니다.');
+  await db.prepare('DELETE FROM shares WHERE id = ? AND named = 0').bind(id).run();
+  return { id, deleted: true };
+}
+
 // ── HTTP 처리 ──────────────────────────────────────────────
 
 export function json(status, body, extraHeaders = {}) {
