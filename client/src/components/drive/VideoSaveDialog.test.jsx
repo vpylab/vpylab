@@ -8,13 +8,13 @@ import VideoSaveDialog from './VideoSaveDialog';
 import { useDriveStore } from '../../drive/driveSession';
 
 const video = { blob: new Blob([new Uint8Array(1024 * 1024)], { type: 'video/mp4' }), name: 'vpylab_1.mp4', seconds: 12 };
-const original = { uploadVideo: useDriveStore.getState().uploadVideo, signIn: useDriveStore.getState().signIn };
+const original = { uploadVideo: useDriveStore.getState().uploadVideo, signIn: useDriveStore.getState().signIn, prepare: useDriveStore.getState().prepare, signOut: useDriveStore.getState().signOut };
 
 beforeEach(() => {
   recorder.downloadRecording.mockClear();
-  useDriveStore.setState({ account: { sub: 'a', email: 'a@school.example', name: '' }, videoUpload: null });
+  useDriveStore.setState({ account: { sub: 'a', email: 'a@school.example', name: '' }, videoUpload: null, ready: true, preparing: false, missingScope: false, error: null, busy: '', prepare: vi.fn(async () => true) });
 });
-afterEach(() => { cleanup(); useDriveStore.setState({ ...original, account: null, videoUpload: null }); });
+afterEach(() => { cleanup(); useDriveStore.setState({ ...original, account: null, videoUpload: null, ready: false, missingScope: false, error: null }); });
 
 describe('영상 저장 창', () => {
   it('길이와 크기를 보여 주고 내려받기는 이 컴퓨터에 저장한다', () => {
@@ -60,10 +60,40 @@ describe('영상 저장 창', () => {
     expect(await screen.findByText(/영상 폴더에 저장했습니다/)).toBeTruthy();
   });
 
-  it('드라이브를 연결하지 않았으면 드라이브 저장 버튼을 보이지 않는다', () => {
-    useDriveStore.setState({ account: null });
+  it('드라이브를 연결하지 않았으면 연결 버튼을 보이고, 연결하면 저장 버튼으로 바뀌며 연결을 끊을 수 있다', async () => {
+    const signIn = vi.fn(async () => { useDriveStore.setState({ account: { sub: 'a', email: 'a@school.example', name: '' } }); return { status: 'ok' }; });
+    const signOut = vi.fn(async () => { useDriveStore.setState({ account: null }); });
+    useDriveStore.setState({ account: null, signIn, signOut });
     render(<VideoSaveDialog video={video} onClose={() => {}} />);
+    expect(useDriveStore.getState().prepare).toHaveBeenCalled();
     expect(screen.queryByTestId('video-upload')).toBeNull();
     expect(screen.getByTestId('video-download')).toBeTruthy();
+    fireEvent.click(screen.getByTestId('video-drive-connect'));
+    expect(signIn).toHaveBeenCalledOnce();
+    expect(await screen.findByTestId('video-upload')).toBeTruthy();
+    expect(screen.queryByTestId('video-drive-connect')).toBeNull();
+    fireEvent.click(screen.getByTestId('video-drive-disconnect'));
+    expect(await screen.findByTestId('video-drive-connect')).toBeTruthy();
+  });
+
+  it('구글 로그인 준비가 끝나기 전에는 연결 버튼을 누를 수 없고, 준비에 실패하면 이유를 알리며 내려받기는 남긴다', () => {
+    useDriveStore.setState({ account: null, ready: false, preparing: true });
+    const view = render(<VideoSaveDialog video={video} onClose={() => {}} />);
+    expect(screen.getByTestId('video-drive-connect').disabled).toBe(true);
+    view.unmount();
+    useDriveStore.setState({ account: null, ready: false, preparing: false, error: { reason: 'gis' } });
+    render(<VideoSaveDialog video={video} onClose={() => {}} />);
+    expect(screen.queryByTestId('video-drive-connect')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toContain('구글 로그인 스크립트');
+    expect(screen.getByTestId('video-download').disabled).toBe(false);
+  });
+
+  it('드라이브 권한을 체크하지 않고 승인했으면 저장 대신 권한 다시 요청을 보인다', () => {
+    const signIn = vi.fn(async () => ({ status: 'ok' }));
+    useDriveStore.setState({ missingScope: true, signIn });
+    render(<VideoSaveDialog video={video} onClose={() => {}} />);
+    expect(screen.queryByTestId('video-upload')).toBeNull();
+    fireEvent.click(screen.getByText('드라이브 권한 다시 요청'));
+    expect(signIn).toHaveBeenCalledWith({ again: true, consent: true });
   });
 });

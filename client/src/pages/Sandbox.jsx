@@ -79,6 +79,9 @@ function waitForSaveTimeout(ms, message) {
  */
 /** 오픈소스 판은 저장을 학생 본인의 구글 드라이브에 합니다(클라이언트 ID가 없는 배포는 예전 안내). */
 const DRIVE_EDITOR = OPEN_EDITION && Boolean(DRIVE_CLIENT_ID);
+// 작품 영상의 드라이브 저장은 두 판 모두에서 쓸 수 있습니다(구글 클라이언트 ID가 설정된 배포만).
+// 수업용 판의 코드 저장은 그대로 Supabase·GitHub에 둡니다.
+const DRIVE_VIDEO = Boolean(DRIVE_CLIENT_ID);
 /** 예제·공유 코드처럼 다른 출처의 코드를 불러오면 드라이브 파일 연결을 끊어, 다음 저장이 그 파일을 덮어쓰지 않게 합니다. */
 function detachDriveSource() {
   if (DRIVE_EDITOR) useDriveStore.getState().detach();
@@ -951,8 +954,8 @@ export default function Sandbox() {
       if (result) {
         const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
         const name = `vpylab_${stamp}.${result.extension}`;
-        if (DRIVE_EDITOR && useDriveStore.getState().account) {
-          // 구글 드라이브를 연결한 학생은 내려받기와 드라이브 저장 가운데 고릅니다.
+        if (DRIVE_VIDEO) {
+          // 내려받기와 드라이브 저장 가운데 고릅니다. 드라이브를 연결하지 않았으면 창에서 연결할 수 있습니다.
           setRecordedVideo({ blob: result.blob, name, seconds: result.seconds });
         } else {
           downloadRecording(result.blob, name);

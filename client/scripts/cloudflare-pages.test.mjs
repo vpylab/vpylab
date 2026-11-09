@@ -90,7 +90,7 @@ describe('SPA 대체에서 뺀 폴더', () => {
     expect(dirs).not.toContain('sw.js');
     expect(dirs.every((d) => !d.includes('\\'))).toBe(true);
   });
-  it('오픈소스 판 본 앱 CSP에만 구글 로그인을 더하고, 수업용 판·임베드에는 더하지 않는다', () => {
+  it('두 판의 본 앱 CSP에 구글 로그인이 있고(수업용 판은 영상의 드라이브 저장에 사용), 임베드에는 없다', () => {
     const blocks = parse(buildCloudflareConfig(vercel, { edition: 'open' }).headers);
     const classroom = buildCloudflareConfig(vercel, { edition: 'classroom' });
     const openMain = blocks['/*'].find((l) => l.startsWith('Content-Security-Policy:'));
@@ -98,6 +98,8 @@ describe('SPA 대체에서 뺀 폴더', () => {
     expect(openMain).not.toContain("frame-src 'none'");
     const openEmbed = blocks['/embed/*'].find((l) => l.startsWith('Content-Security-Policy:'));
     expect(openEmbed).not.toContain('accounts.google.com');
-    expect(classroom.headers.split('\n').find((l) => l.includes('Content-Security-Policy') && !l.includes('drive')) ).not.toContain('accounts.google.com/gsi/client');
+    const classroomBlocks = parse(classroom.headers);
+    expect(classroomBlocks['/*'].find((l) => l.startsWith('Content-Security-Policy:'))).toContain('https://accounts.google.com/gsi/client');
+    expect(classroomBlocks['/embed/*'].find((l) => l.startsWith('Content-Security-Policy:'))).not.toContain('accounts.google.com');
   });
 });
