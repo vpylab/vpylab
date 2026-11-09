@@ -7,7 +7,8 @@ import { downloadRecording } from '../../engine/video-recorder';
 const megabytes = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
 
 /**
- * 녹화한 작품 영상을 어디에 저장할지 고르는 창(구글 드라이브를 연결한 경우에만 열립니다).
+ * 녹화한 작품 영상을 어디에 저장할지 고르는 창(구글 클라이언트 ID가 설정된 배포에서 열립니다).
+ * 드라이브를 연결하지 않았으면 이 창에서 연결할 수 있습니다. 수업용 판에서는 영상 저장에만 드라이브를 씁니다.
  *   - 내려받기: 이 컴퓨터에 파일로 저장
  *   - 드라이브에 저장: 내 구글 드라이브의 VPyLab/영상 폴더에 이어 올리기
  * @param {{ video: { blob: Blob, name: string, seconds: number }, onClose: () => void }} props
@@ -15,11 +16,18 @@ const megabytes = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
 export default function VideoSaveDialog({ video, onClose }) {
   const ui = useUiText();
   const account = useDriveStore((state) => state.account);
+  const ready = useDriveStore((state) => state.ready);
+  const signingIn = useDriveStore((state) => state.busy === 'signin');
+  const missingScope = useDriveStore((state) => state.missingScope);
+  const prepareFailed = useDriveStore((state) => !state.ready && !state.preparing && state.error?.reason === 'gis');
   const progress = useDriveStore((state) => state.videoUpload);
   const [saved, setSaved] = useState(null); // 드라이브에 올린 파일
   const [failure, setFailure] = useState(''); // 실패 이유(DRIVE_REASON_TEXT의 키)
   const [downloaded, setDownloaded] = useState(false);
   const uploading = Boolean(progress);
+
+  // 구글 로그인 스크립트는 이 창을 열 때 불러옵니다. 연결 버튼은 준비가 끝난 뒤에 누를 수 있습니다(팝업 차단 방지).
+  useEffect(() => { useDriveStore.getState().prepare(); }, []);
 
   useEffect(() => {
     const onKey = (event) => { if (event.key === 'Escape' && !uploading) onClose?.(); };
@@ -38,6 +46,12 @@ export default function VideoSaveDialog({ video, onClose }) {
   async function approveAndUpload() {
     const result = await useDriveStore.getState().signIn({ again: true });
     if (result?.status === 'ok' && !result.switched) await upload();
+  }
+
+  // 반드시 클릭 처리 안에서 부릅니다(구글 승인 창이 팝업으로 열립니다).
+  async function connect(options) {
+    setFailure('');
+    await useDriveStore.getState().signIn(options);
   }
 
   function download() {
@@ -66,7 +80,19 @@ export default function VideoSaveDialog({ video, onClose }) {
         <p className="m-0 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           {ui`녹화한 영상은 ${video.seconds}초, ${megabytes(video.blob.size)}MB입니다. 이 창을 닫으면 영상은 사라집니다.`}
         </p>
-        {account && <p className="m-0 text-xs" style={{ color: 'var(--color-text-muted)' }}>{ui`드라이브 계정: ${account.email}`}</p>}
+        {account && (
+          <p className="m-0 text-xs" style={{ color: 'var(--color-text-muted)' }}>
+            {ui`드라이브 계정: ${account.email}`}{' '}
+            <button type="button" className="underline cursor-pointer border-none bg-transparent p-0 text-xs" style={{ color: 'inherit' }} disabled={uploading} onClick={() => useDriveStore.getState().signOut()} data-testid="video-drive-disconnect">{ui("연결 끊기")}</button>
+          </p>
+        )}
+        {!account && !prepareFailed && (
+          <p className="m-0 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            {ui("구글 드라이브를 연결하면 영상을 내 드라이브의 VPyLab 폴더에 저장할 수 있습니다. VPyLab은 이 앱이 만든 파일만 볼 수 있으며 드라이브의 다른 파일은 볼 수 없습니다.")}
+          </p>
+        )}
+        {!account && prepareFailed && <p className="m-0 text-xs" role="alert" style={{ color: 'var(--color-error)' }}>{ui(DRIVE_REASON_TEXT.gis)}</p>}
+        {account && missingScope && <p className="m-0 text-sm" role="alert" style={{ color: 'var(--color-error)' }}>{ui(DRIVE_REASON_TEXT.scope)}</p>}
 
         {uploading && (
           <div role="status" aria-live="polite">
@@ -87,8 +113,14 @@ export default function VideoSaveDialog({ video, onClose }) {
         {downloaded && <p className="m-0 text-xs" role="status" style={{ color: 'var(--color-text-secondary)' }}>{ui("이 컴퓨터에 내려받았습니다.")}</p>}
 
         <div className="flex flex-wrap gap-2 justify-end">
-          <button type="button" className={button} disabled={uploading} onClick={download} data-testid="video-download">{ui("내려받기")}</button>
-          {account && !saved && failure !== 'auth' && (
+          <button type="button" className={button} style={account ? undefined : primary} disabled={uploading} onClick={download} data-testid="video-download">{ui("내려받기")}</button>
+          {!account && !prepareFailed && (
+            <button type="button" className={button} disabled={!ready || signingIn} onClick={() => connect()} data-testid="video-drive-connect">{ui("구글 드라이브 연결")}</button>
+          )}
+          {account && missingScope && (
+            <button type="button" className={button} style={primary} disabled={signingIn} onClick={() => connect({ again: true, consent: true })}>{ui("드라이브 권한 다시 요청")}</button>
+          )}
+          {account && !missingScope && !saved && failure !== 'auth' && (
             <button type="button" className={button} style={primary} disabled={uploading} onClick={upload} data-testid="video-upload">
               {failure ? ui("드라이브에 다시 저장") : ui("드라이브에 저장")}
             </button>
