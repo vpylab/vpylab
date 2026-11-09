@@ -16,6 +16,19 @@ export const DEFAULT_FOLDER_NAME = 'VPyLab';
 export const MAX_CODE_BYTES = 100 * 1024; // 기존 서버 상한(server/routes/projects.js)과 같게 둡니다.
 export const MAX_LIST_PAGES = 10; // 목록은 최대 1,000개까지 읽습니다.
 export const DEFAULT_TIMEOUT_MS = 20_000;
+// 작품 영상: 30초·2.5Mbps 녹화는 10MB 안쪽입니다. 조각으로 나누어 이어 올립니다(조각 크기는 256KB의 배수여야 함).
+export const VIDEO_FOLDER_NAME = '영상';
+export const MAX_VIDEO_BYTES = 30 * 1024 * 1024;
+export const VIDEO_CHUNK_BYTES = 2 * 1024 * 1024;
+export const VIDEO_CHUNK_TIMEOUT_MS = 60_000;
+const VIDEO_MARK = { key: 'vpylabVideos', value: '1' };
+const VIDEO_FIELDS = 'id,name,mimeType,size,webViewLink';
+
+/** 308 응답의 Range 헤더("bytes=0-N")에서 다음에 보낼 위치를 읽습니다. 헤더가 없으면 fallback을 씁니다. */
+export function nextUploadOffset(rangeHeader, fallback) {
+  const match = /bytes=0-(\d+)/.exec(rangeHeader || '');
+  return match ? Number(match[1]) + 1 : fallback;
+}
 
 export class DriveError extends Error {
   constructor(message, { status = 0, reason = 'unknown', detail = null } = {}) {
@@ -330,9 +343,157 @@ export function createDriveStorage({
     }, options);
   }
 
+  /** VPyLab 폴더 안의 영상 폴더. 코드 파일 목록(list)은 폴더를 빼므로 영상이 코드 목록에 섞이지 않습니다. */
+  async function videoFolder() {
+    const parent = await liveFolder();
+    const q = `'${escapeQuery(parent)}' in parents and trashed=false and mimeType='${FOLDER_MIME}'`
+      + ` and appProperties has { key='${VIDEO_MARK.key}' and value='${VIDEO_MARK.value}' }`;
+    const found = await request('videoFolder.find', `${API}/files?${new URLSearchParams({
+      q, spaces: 'drive', fields: 'files(id)', orderBy: 'createdTime', pageSize: '1',
+    })}`);
+    if (found.files?.length) return found.files[0].id;
+    const created = await request('videoFolder.create', `${API}/files?fields=id`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: VIDEO_FOLDER_NAME, mimeType: FOLDER_MIME, parents: [parent], appProperties: { [VIDEO_MARK.key]: VIDEO_MARK.value } }),
+    });
+    return created.id;
+  }
+
+  /** 이어 올리기용 요청 한 번. 응답을 그대로 돌려주고(308 포함), 연결 실패·시간 초과만 DriveError로 던집니다. */
+  async function rawRequest(kind, url, init, { limitMs = timeoutMs, authorize = true } = {}) {
+    const started = performance.now();
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), limitMs) : null;
+    try {
+      const headers = { ...(init.headers || {}) };
+      if (authorize) headers.Authorization = `Bearer ${await getToken()}`;
+      const response = await fetchImpl(url, { ...init, headers, signal: controller?.signal });
+      onRequest({ kind, method: init.method || 'GET', status: response.status, ms: Math.round(performance.now() - started), attempt: 0 });
+      return response;
+    } catch (error) {
+      if (error instanceof DriveError || error?.name === 'AuthRequiredError') throw error;
+      const timedOut = error?.name === 'AbortError';
+      onRequest({ kind, method: init.method || 'GET', status: 0, ms: Math.round(performance.now() - started), attempt: 0 });
+      throw new DriveError(timedOut ? '구글 응답이 너무 늦습니다.' : '네트워크 연결에 실패했습니다.', {
+        reason: timedOut ? 'timeout' : 'network', detail: String(error?.message || error),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function responseError(response) {
+    let body = null;
+    try { body = await response.json(); } catch { /* 본문 없음 */ }
+    return new DriveError(body?.error?.message || `드라이브 요청 실패 (${response.status})`, {
+      status: response.status, reason: classifyError(response.status, body), detail: body,
+    });
+  }
+
+  /** 이어 올리기 세션을 엽니다. 파일은 모든 조각이 도착해야 만들어지므로 다시 보내도 안전합니다. */
+  async function openUploadSession(metadata, blob) {
+    const url = `${UPLOAD}/files?uploadType=resumable&fields=${VIDEO_FIELDS}`;
+    for (let attempt = 0; ; attempt += 1) {
+      let failure;
+      try {
+        const response = await rawRequest('video.session', url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json; charset=UTF-8',
+            'X-Upload-Content-Type': metadata.mimeType,
+            'X-Upload-Content-Length': String(blob.size),
+          },
+          body: JSON.stringify(metadata),
+        });
+        if (response.ok) {
+          const location = response.headers?.get?.('Location');
+          if (location) return location;
+          throw new DriveError('업로드 주소를 받지 못했습니다.', { reason: 'unknown' });
+        }
+        failure = await responseError(response);
+      } catch (error) {
+        if (!(error instanceof DriveError) || !['network', 'timeout'].includes(error.reason)) throw error;
+        failure = error;
+      }
+      const again = ['rate', 'server', 'network', 'timeout'].includes(failure.reason) && attempt < maxRetries;
+      if (!again) throw failure;
+      await sleep(backoffDelay(attempt, random));
+    }
+  }
+
   return {
     kind: 'google-drive',
     ensureFolder,
+
+    /**
+     * 작품 영상을 VPyLab/영상 폴더에 이어 올리기로 저장합니다.
+     * 조각을 보내다 연결이 끊기면 구글에 어디까지 받았는지 묻고 그 뒤부터 다시 보냅니다.
+     * @param {{ blob: Blob, name: string, onProgress?: (sent: number, total: number) => void }} options
+     * @returns {Promise<{ id: string, name: string, webViewLink?: string, size?: string }>}
+     */
+    async uploadVideo({ blob, name, onProgress = () => {} }) {
+      const total = blob?.size || 0;
+      if (!total) throw new DriveError('영상이 비어 있습니다.', { reason: 'unknown' });
+      if (total > MAX_VIDEO_BYTES) throw new DriveError('영상이 너무 큽니다.', { reason: 'videoTooLarge' });
+      const parent = await videoFolder();
+      const metadata = {
+        name: String(name || 'vpylab.mp4').replace(/[\\/]/g, '_').slice(0, 120),
+        parents: [parent],
+        mimeType: (blob.type || 'video/mp4').split(';')[0],
+        appProperties: { vpylabKind: 'video' },
+      };
+      const session = await openUploadSession(metadata, blob);
+      const finish = async (response) => { onProgress(total, total); return response.json(); };
+      let offset = 0;
+      let failures = 0;
+      onProgress(0, total);
+      for (;;) {
+        const end = Math.min(offset + VIDEO_CHUNK_BYTES, total);
+        let failure;
+        try {
+          // 세션 주소가 곧 권한이라 Authorization을 붙이지 않습니다(붙이면 조각마다 사전 요청이 한 번 더 나갑니다).
+          const response = await rawRequest('video.chunk', session, {
+            method: 'PUT',
+            headers: { 'Content-Range': `bytes ${offset}-${end - 1}/${total}` },
+            body: blob.slice(offset, end),
+          }, { limitMs: VIDEO_CHUNK_TIMEOUT_MS, authorize: false });
+          if (response.status === 200 || response.status === 201) return await finish(response);
+          if (response.status === 308) {
+            offset = nextUploadOffset(response.headers?.get?.('Range'), end);
+            failures = 0;
+            onProgress(offset, total);
+            continue;
+          }
+          if (response.status === 404 || response.status === 410) {
+            throw new DriveError('업로드가 만료되었습니다.', { status: response.status, reason: 'uploadExpired' });
+          }
+          failure = await responseError(response);
+          if (!RETRYABLE.has(failure.reason)) throw failure;
+        } catch (error) {
+          if (!(error instanceof DriveError) || !['network', 'timeout', 'rate', 'server'].includes(error.reason)) throw error;
+          failure = error;
+        }
+        if (failures >= maxRetries) throw failure;
+        await sleep(backoffDelay(failures, random));
+        failures += 1;
+        // 어디까지 도착했는지 확인합니다. 확인도 실패하면 같은 위치에서 다시 보냅니다.
+        try {
+          const status = await rawRequest('video.status', session, {
+            method: 'PUT', headers: { 'Content-Range': `bytes */${total}` },
+          }, { authorize: false });
+          if (status.status === 200 || status.status === 201) return await finish(status);
+          if (status.status === 308) {
+            offset = nextUploadOffset(status.headers?.get?.('Range'), 0);
+            onProgress(offset, total);
+          } else if (status.status === 404 || status.status === 410) {
+            throw new DriveError('업로드가 만료되었습니다.', { status: status.status, reason: 'uploadExpired' });
+          }
+        } catch (error) {
+          if (error instanceof DriveError && error.reason === 'uploadExpired') throw error;
+        }
+      }
+    },
     /** 계정이 바뀌거나 로그아웃할 때 부릅니다. 앞 계정의 폴더 ID를 다음 계정에서 쓰지 않게 합니다. */
     resetFolder() { folderPromise = null; },
 

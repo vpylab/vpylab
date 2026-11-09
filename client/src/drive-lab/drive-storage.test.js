@@ -515,3 +515,83 @@ describe('재시도와 실패', () => {
     expect(onRequest).toHaveBeenCalledWith(expect.objectContaining({ kind: 'file.findMarked', status: 200, attempt: 0 }));
   });
 });
+
+describe('작품 영상 이어 올리기', () => {
+  const MB = 1024 * 1024;
+  const video = (bytes) => new Blob([new Uint8Array(bytes)], { type: 'video/mp4;codecs=avc1' });
+  const folders = () => [json(200, { files: [{ id: 'root' }] }), json(200, { files: [{ id: 'videos' }] })];
+  const session = () => json(200, {}, { Location: 'https://upload.example/session-1' });
+  const resume = (lastByte) => json(308, null, lastByte == null ? {} : { Range: `bytes=0-${lastByte}` });
+  const done = () => json(200, { id: 'v1', name: 'a.mp4', webViewLink: 'https://drive.example/v1' });
+
+  it('Range 헤더에서 다음 위치를 읽고, 없으면 기본값을 쓴다', async () => {
+    const { nextUploadOffset } = await import('./drive-storage.js');
+    expect(nextUploadOffset('bytes=0-2097151', 7)).toBe(2097152);
+    expect(nextUploadOffset(null, 7)).toBe(7);
+  });
+
+  it('영상 폴더를 찾아 세션을 열고, 2MB 조각으로 나누어 보내며 진행률을 알린다', async () => {
+    const { fetchImpl, calls } = scripted([...folders(), session(), resume(2 * MB - 1), resume(4 * MB - 1), done()]);
+    const progress = [];
+    const file = await base(fetchImpl).uploadVideo({ blob: video(5 * MB), name: 'a/b.mp4', onProgress: (sent, total) => progress.push([sent, total]) });
+    expect(file.webViewLink).toBe('https://drive.example/v1');
+    expect(q(calls[1])).toContain("'root' in parents");
+    expect(q(calls[1])).toContain("key='vpylabVideos'");
+    expect(calls[2].url).toContain('uploadType=resumable');
+    expect(calls[2].init.headers).toMatchObject({ Authorization: 'Bearer tok', 'X-Upload-Content-Type': 'video/mp4', 'X-Upload-Content-Length': String(5 * MB) });
+    expect(JSON.parse(calls[2].init.body)).toMatchObject({ name: 'a_b.mp4', parents: ['videos'], mimeType: 'video/mp4' });
+    expect(calls.slice(3).map((c) => c.init.headers['Content-Range'])).toEqual([
+      `bytes 0-${2 * MB - 1}/${5 * MB}`, `bytes ${2 * MB}-${4 * MB - 1}/${5 * MB}`, `bytes ${4 * MB}-${5 * MB - 1}/${5 * MB}`,
+    ]);
+    expect(calls[3].url).toBe('https://upload.example/session-1');
+    expect(calls[3].init.headers.Authorization).toBeUndefined();
+    expect(calls[3].init.body.size).toBe(2 * MB);
+    expect(progress).toEqual([[0, 5 * MB], [2 * MB, 5 * MB], [4 * MB, 5 * MB], [5 * MB, 5 * MB]]);
+  });
+
+  it('영상 폴더가 없으면 VPyLab 폴더 안에 만든다', async () => {
+    const { fetchImpl, calls } = scripted([json(200, { files: [{ id: 'root' }] }), json(200, { files: [] }), json(200, { id: 'new-videos' }), session(), done()]);
+    await base(fetchImpl).uploadVideo({ blob: video(10), name: 'a.mp4' });
+    expect(JSON.parse(calls[2].init.body)).toMatchObject({ name: '영상', parents: ['root'], appProperties: { vpylabVideos: '1' } });
+    expect(JSON.parse(calls[3].init.body).parents).toEqual(['new-videos']);
+  });
+
+  it('조각을 보내다 연결이 끊기면 받은 위치를 물어 그 뒤부터 다시 보낸다', async () => {
+    const { fetchImpl, calls } = scripted([
+      ...folders(), session(),
+      () => { throw new TypeError('Failed to fetch'); }, // 첫 조각 실패
+      resume(MB - 1), // 상태 확인: 1MB까지 받음
+      resume(3 * MB - 1), done(),
+    ]);
+    const file = await base(fetchImpl).uploadVideo({ blob: video(4 * MB), name: 'a.mp4' });
+    expect(file.id).toBe('v1');
+    expect(calls[4].init.headers['Content-Range']).toBe(`bytes */${4 * MB}`);
+    expect(calls[5].init.headers['Content-Range']).toBe(`bytes ${MB}-${3 * MB - 1}/${4 * MB}`);
+  });
+
+  it('응답만 잃고 실제로는 다 올라간 경우 상태 확인에서 끝낸다', async () => {
+    const { fetchImpl, calls } = scripted([...folders(), session(), json(503, {}), done()]);
+    expect((await base(fetchImpl).uploadVideo({ blob: video(10), name: 'a.mp4' })).id).toBe('v1');
+    expect(calls).toHaveLength(5);
+  });
+
+  it('계속 실패하면 정해진 횟수 뒤에 멈추고, 만료된 세션과 큰 영상·빈 영상은 바로 거부한다', async () => {
+    const failing = scripted([...folders(), session(), ...Array.from({ length: 6 }, () => () => { throw new TypeError('offline'); })]);
+    await expect(base(failing.fetchImpl, { maxRetries: 1 }).uploadVideo({ blob: video(10), name: 'a.mp4' })).rejects.toMatchObject({ reason: 'network' });
+    expect(failing.calls).toHaveLength(6); // 조각, 상태 확인, 조각 다시, 그리고 멈춤
+
+    const expired = scripted([...folders(), session(), json(404, {})]);
+    await expect(base(expired.fetchImpl).uploadVideo({ blob: video(10), name: 'a.mp4' })).rejects.toMatchObject({ reason: 'uploadExpired' });
+
+    const none = scripted([]);
+    await expect(base(none.fetchImpl).uploadVideo({ blob: { size: 31 * MB }, name: 'a.mp4' })).rejects.toMatchObject({ reason: 'videoTooLarge' });
+    await expect(base(none.fetchImpl).uploadVideo({ blob: video(0), name: 'a.mp4' })).rejects.toBeInstanceOf(DriveError);
+    expect(none.calls).toHaveLength(0);
+  });
+
+  it('세션 열기의 권한 오류는 다시 보내지 않고 그대로 알린다', async () => {
+    const { fetchImpl, calls } = scripted([...folders(), json(401, { error: { message: 'expired' } })]);
+    await expect(base(fetchImpl).uploadVideo({ blob: video(10), name: 'a.mp4' })).rejects.toMatchObject({ reason: 'auth' });
+    expect(calls).toHaveLength(3);
+  });
+});

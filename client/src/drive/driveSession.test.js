@@ -269,3 +269,55 @@ describe('편집기 드라이브 저장', () => {
     expect(store().latestNewDraft()).toBeNull();
   });
 });
+
+describe('작품 영상 올리기', () => {
+  const blob = new Blob([new Uint8Array(16)], { type: 'video/mp4' });
+  const reply = (status, body, headers = {}) => ({ ok: status < 300, status, headers: { get: (k) => headers[k] ?? null }, json: async () => body });
+
+  /** 가짜 구글에 영상 폴더 조회와 이어 올리기 응답만 덧붙입니다. */
+  async function signedInWithVideoUpload(onChunk = () => reply(200, { id: 'v1', webViewLink: 'https://drive.example/v1' })) {
+    google = createFakeGoogle();
+    storage = memoryStorage();
+    const fetchImpl = async (url, init = {}) => {
+      const text = String(url);
+      if (text.includes('vpylabVideos')) return reply(200, { files: [{ id: 'videos' }] });
+      if (text.includes('uploadType=resumable')) return reply(200, {}, { Location: 'https://upload.example/s1' });
+      if (text === 'https://upload.example/s1') return onChunk(init);
+      return google.fetchImpl(url, init);
+    };
+    configureDrive({ clientId: 'test-client', gis: google.gis, fetchImpl, storage });
+    expect(await store().prepare()).toBe(true);
+  }
+
+  it('로그인 전에는 올리지 않고, 올린 뒤에는 진행 표시를 지우며 코드 저장 상태는 건드리지 않는다', async () => {
+    await signedInWithVideoUpload();
+    expect(await store().uploadVideo(blob, 'a.mp4')).toEqual({ status: 'error', reason: 'auth' });
+
+    expect((await store().signIn()).status).toBe('ok');
+    await store().save('sphere()', { name: '공.py' });
+    const fileBefore = store().file;
+    const result = await store().uploadVideo(blob, 'a.mp4');
+    expect(result).toEqual({ status: 'saved', file: { id: 'v1', webViewLink: 'https://drive.example/v1' } });
+    expect(store().videoUpload).toBeNull();
+    expect(store().file).toBe(fileBefore);
+    expect(store().busy).toBe('');
+    expect(store().error).toBeNull();
+  });
+
+  it('올리는 중에는 진행 상태를 보이고 겹쳐 올리지 않으며, 실패하면 이유만 돌려준다', async () => {
+    let seen = null;
+    let second = null;
+    await signedInWithVideoUpload(async () => {
+      seen = store().videoUpload;
+      second = await store().uploadVideo(blob, 'b.mp4');
+      return reply(404, {});
+    });
+    await store().signIn();
+    const result = await store().uploadVideo(blob, 'a.mp4');
+    expect(seen).toEqual({ sent: 0, total: 16 });
+    expect(second).toEqual({ status: 'busy' });
+    expect(result).toEqual({ status: 'error', reason: 'uploadExpired' });
+    expect(store().videoUpload).toBeNull();
+    expect(store().error).toBeNull();
+  });
+});
