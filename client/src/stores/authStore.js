@@ -324,6 +324,8 @@ const useAuthStore = create((set, get) => ({
       ]);
       useProjectStore.getState().closeProject();     // Realtime 채널 해제 포함
       useCodeStore.getState().resetOnSignOut();      // 자동 저장 타이머/개인 코드 목록 초기화
+      const { default: useAppStore } = await import('./appStore');
+      useAppStore.getState().clearProgressOnSignOut(); // 계정 진행률이 다음 사용자에게 남지 않게
     } catch (e) {
       console.warn('로그아웃 스토어 정리 실패:', e.message);
     }
