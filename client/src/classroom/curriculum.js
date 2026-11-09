@@ -22,7 +22,7 @@ export const kinds = {
 export const labels = Object.fromEntries(Object.entries(kinds).map(([key, value]) => [key, value.label]));
 
 const COURSE_HEX = { sky: SPECTRUM.blue, emerald: SPECTRUM.mint, amber: SPECTRUM.orange, indigo: SPECTRUM.purple, rose: SPECTRUM.coral, teal: SPECTRUM.cyan, slate: SPECTRUM.slate, blue: SPECTRUM.blue };
-const MISSION_HEX = { CT: SPECTRUM.purple, CR: SPECTRUM.coral, MA: SPECTRUM.cyan, SC: SPECTRUM.mint, AR: SPECTRUM.orange, SN: SPECTRUM.pink, AI: SPECTRUM.blue };
+const MISSION_HEX = { CT: SPECTRUM.purple, CR: SPECTRUM.coral, MA: SPECTRUM.cyan, SC: SPECTRUM.mint, AR: SPECTRUM.orange, SN: SPECTRUM.pink, PC: SPECTRUM.mint, AI: SPECTRUM.blue };
 const EXAMPLE_META = {
   space: { icon: '🪐', accent: SPECTRUM.blue }, sound: { icon: '🎵', accent: SPECTRUM.pink }, science: { icon: '🔬', accent: SPECTRUM.mint },
   art: { icon: '🎨', accent: SPECTRUM.orange }, game: { icon: '🎮', accent: SPECTRUM.coral }, creative: { icon: '✨', accent: SPECTRUM.purple },

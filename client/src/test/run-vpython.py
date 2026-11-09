@@ -24,6 +24,7 @@ from pathlib import Path
 
 API_PATH = Path(__file__).resolve().parents[1] / 'engine' / 'vpython-api.py'
 TRANSFORM_PATH = Path(__file__).resolve().parents[1] / 'engine' / 'student-code-transform.py'
+KIT_PATH = Path(__file__).resolve().parents[1] / 'engine' / 'physical-kit.py'
 RATE_CALL_LIMIT = 20000  # 무한 루프 방지 — 이 횟수를 넘으면 실행 중지 신호를 보낸다
 
 collected_commands = []
@@ -132,6 +133,11 @@ for name, value in api_namespace.items():
     if not name.startswith('_'):
         setattr(vpython_module, name, value)
 sys.modules['vpython'] = vpython_module
+
+# === 피지컬 컴퓨팅 키트 (Worker와 같이 vpython 다음에 `피지컬키트` 모듈로 등록) ===
+kit_module = types.ModuleType('피지컬키트')
+exec(compile(KIT_PATH.read_text(encoding='utf-8'), str(KIT_PATH), 'exec'), kit_module.__dict__)
+sys.modules['피지컬키트'] = kit_module
 
 StopExecution = api_namespace['_StopExecution']
 

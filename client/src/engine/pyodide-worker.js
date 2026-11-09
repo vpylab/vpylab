@@ -35,6 +35,8 @@ let vpythonApiCode = null;
 // 학생 코드 변환기(student-code-transform.py). 실행 직전 Python ast로 rate() 등이 든 함수를
 // async def로 바꾸고 호출에 await를 붙인다. 변환은 Worker 안의 Python이 맡는다.
 let transformSourceCode = null;
+// 피지컬 컴퓨팅 키트(physical-kit.py). vpython 모듈 다음에 `피지컬키트` 모듈로 등록한다.
+let physicalKitCode = null;
 
 // === 패키지 설치용 fetch 가드 ===
 // 초기화 뒤 fetch를 완전히 지우면 Pyodide의 loadPackage/micropip도 fetch를 찾지 못해
@@ -289,6 +291,19 @@ sys.modules['vpython'] = vpython_module
       // vpython API 로딩 완료
     }
 
+    // 4-1. 피지컬 컴퓨팅 키트 — 미션 장면·친구·장치를 숨겨 두는 모듈 (from 피지컬키트 import *)
+    if (physicalKitCode) {
+      pyodide.globals.set('__vpylab_kit_source__', physicalKitCode);
+      await pyodide.runPythonAsync(`
+import sys
+import types
+_kit_module = types.ModuleType('피지컬키트')
+exec(compile(__vpylab_kit_source__, '${KIT_FILENAME}', 'exec'), _kit_module.__dict__)
+sys.modules['피지컬키트'] = _kit_module
+del _kit_module, __vpylab_kit_source__
+`);
+    }
+
     sendProgress(85, '보안 샌드박스 설정 중...');
 
     // 4. pyodide.http 모듈 차단
@@ -523,6 +538,7 @@ function formatPythonError(msg) {
 const STUDENT_FILENAME = '<student>';
 const API_FILENAME = '<vpython-api>';
 const TRANSFORM_FILENAME = '<vpylab-transform>';
+const KIT_FILENAME = '<피지컬키트>';
 const RUNNER_FILENAME = '<vpylab-runner>';
 const TRACEBACK_MARKER = 'Traceback (most recent call last):';
 
@@ -597,12 +613,13 @@ function parsePythonTraceback(msg, typeHint) {
 
 // === 메시지 핸들러 ===
 self.onmessage = async (event) => {
-  const { type, code, vpythonApi, transformSource } = event.data;
+  const { type, code, vpythonApi, transformSource, physicalKit } = event.data;
 
   switch (type) {
     case 'init':
       if (vpythonApi) vpythonApiCode = vpythonApi;
       if (transformSource) transformSourceCode = transformSource;
+      if (physicalKit) physicalKitCode = physicalKit;
       await initPyodide();
       break;
 
