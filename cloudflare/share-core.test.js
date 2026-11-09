@@ -185,3 +185,22 @@ test('HTTP: 오류는 상태 코드와 한국어 안내로 돌려준다', async 
   const noDb = await onRequestGet({ params: { id: 'zzzzzz' }, env: {} });
   assert.equal(noDb.status, 503);
 });
+
+test('HTTP: 고치기(PUT)도 IP 요청 제한을 받는다 (3-way #9)', async () => {
+  const env = { DB: fakeD1() };
+  const created = await (await onRequestPost({ request: post({ code: 'a', name: 'limited' }), env })).json();
+  const put = () => onRequestPut({
+    request: new Request(`${ORIGIN}/api/share/limited`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json', Origin: ORIGIN, Authorization: `Bearer ${created.editKey}`, 'CF-Connecting-IP': '203.0.113.9' }, body: JSON.stringify({ code: 'b' }),
+    }),
+    params: { id: 'limited' },
+    env,
+  });
+  let last;
+  for (let i = 0; i < 60; i += 1) last = await put(); // 만들기 1회 + 고치기 59회까지는 통과
+  expect429(last);
+});
+
+function expect429(response) {
+  assert.equal(response.status, 429);
+}

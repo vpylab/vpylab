@@ -12,7 +12,7 @@
 import { create } from 'zustand';
 import { AuthRequiredError, createGoogleAuth, fetchUserInfo, loadGis, missingScopes } from '../drive-lab/google-auth.js';
 import { DriveError, createDriveStorage, uniqueFileName } from '../drive-lab/drive-storage.js';
-import { clearDraft, clearDrafts, deviceId as getDeviceId, loadDraft, purgeOldDrafts, saveDraft } from '../drive-lab/lab-state.js';
+import { clearDraft, clearDrafts, deviceId as getDeviceId, fileDrafts, listDrafts, purgeOldDrafts, saveDraft } from '../drive-lab/lab-state.js';
 
 export const DRIVE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 /** 드라이브 폴더 주소(사용자가 드라이브에서 직접 볼 때) */
@@ -45,7 +45,10 @@ export function reasonOf(error) {
 
 const needsReauth = (error) => error instanceof AuthRequiredError || (error instanceof DriveError && error.reason === 'auth');
 const scopeOf = (sub) => `editor-${sub}`;
-const NEW_KEY = 'new';
+/** 탭마다 초안 이름을 따로 둡니다. 한 탭의 저장이 다른 탭의 저장하지 않은 초안을 지우지 않게 합니다. */
+const TAB_ID = `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
+const NEW_KEY = `new@${TAB_ID}`;
+const ownKey = (fileId) => (fileId ? `${fileId}@${TAB_ID}` : NEW_KEY);
 
 const initialState = {
   ready: false,
@@ -70,6 +73,10 @@ let auth = null;
 let drive = null;
 /** 승인할 때마다 올립니다. 승인 전에 보낸 요청이 늦게 실패해도 새 승인을 '만료'로 되돌리지 않게 합니다. */
 let authEpoch = 0;
+/** 로그아웃·계정 전환 때마다 올립니다. 앞 계정으로 보낸 요청의 결과를 뒤 계정 화면에 넣지 않습니다. */
+let sessionEpoch = 0;
+/** 파일 열기 요청 번호. 마지막으로 고른 파일의 응답만 반영합니다. */
+let openSeq = 0;
 
 export function configureDrive(next) {
   deps = { ...deps, ...next };
@@ -104,21 +111,27 @@ export const useDriveStore = create((set, get) => {
     const { account, file } = get();
     const store = storage();
     if (!account || !store) return;
-    const key = file?.id || NEW_KEY;
+    const key = ownKey(file?.id);
     if (file && code === file.savedCode) clearDraft(store, scopeOf(account.sub), key);
     else saveDraft(store, scopeOf(account.sub), key, { code, baseVersion: file?.version ?? null, name: file?.name ?? null });
   }
 
-  function forgetDraft(fileId) {
+  /** 이 탭의 초안과, 방금 저장한 내용과 같은 초안(다른 탭 것 포함)을 지웁니다. 다른 내용의 초안은 남깁니다. */
+  function forgetDraft(fileId, savedCode = null) {
     const { account } = get();
     const store = storage();
-    if (account && store) clearDraft(store, scopeOf(account.sub), fileId || NEW_KEY);
+    if (!account || !store) return;
+    const scope = scopeOf(account.sub);
+    clearDraft(store, scope, ownKey(fileId));
+    if (fileId && typeof savedCode === 'string') {
+      for (const { fileId: key, draft } of fileDrafts(store, scope, fileId)) if (draft.code === savedCode) clearDraft(store, scope, key);
+    }
   }
 
   async function createFile(code, name) {
     const existing = get().files.map((f) => f.name);
     const meta = await drive.create({ name: uniqueFileName(name, existing), code, deviceId: getDeviceId(storage() || undefined) });
-    forgetDraft(NEW_KEY);
+    forgetDraft(null);
     set((s) => ({
       busy: '',
       file: { id: meta.id, name: meta.name, version: meta.version, headRevisionId: meta.headRevisionId, savedCode: code },
@@ -168,6 +181,7 @@ export const useDriveStore = create((set, get) => {
           const previous = get().account;
           if (previous && previous.sub !== info.sub) {
             // 공용 PC에서 다른 학생 계정이 승인된 경우: 앞 계정의 파일 정보를 지웁니다(편집기 내용은 그대로).
+            sessionEpoch += 1;
             drive.resetFolder();
             set({ file: null, files: [], conflict: null, attemptedCodes: [] });
           }
@@ -188,6 +202,7 @@ export const useDriveStore = create((set, get) => {
 
     /** clearLocal: 이 브라우저에 남은 이 계정의 초안도 지웁니다(공용 컴퓨터). */
     async signOut({ revoke = false, clearLocal = false } = {}) {
+      sessionEpoch += 1;
       const { account } = get();
       const store = storage();
       if (clearLocal && account && store) clearDrafts(store, scopeOf(account.sub));
@@ -200,12 +215,23 @@ export const useDriveStore = create((set, get) => {
 
     async listFiles() {
       const epoch = authEpoch;
-      set({ busy: 'list', error: null });
+      const session = sessionEpoch;
+      if (!get().busy) set({ busy: 'list', error: null });
       try {
         const { files, truncated } = await drive.list();
-        set({ files, truncated, busy: '', folderTrashed: false });
+        if (session !== sessionEpoch) return null; // 그사이 로그아웃·계정 전환
+        // 목록은 배경에서 읽으므로, 그사이 시작한 열기·저장의 진행 표시는 지우지 않습니다.
+        set((s) => ({ files, truncated, folderTrashed: false, busy: s.busy === 'list' ? '' : s.busy }));
         return files;
       } catch (error) {
+        if (session !== sessionEpoch) return null;
+        if (get().busy !== 'list') {
+          // 다른 작업이 진행 중이면 그 표시를 지우지 않고 오류만 알립니다.
+          const busy = get().busy;
+          fail(error, epoch);
+          set({ busy });
+          return null;
+        }
         fail(error, epoch);
         return null;
       }
@@ -213,17 +239,49 @@ export const useDriveStore = create((set, get) => {
 
     /** 파일을 열어 내용을 돌려줍니다. 저장하지 못한 초안이 있으면 함께 돌려줍니다. */
     async openFile(id) {
+      const seq = ++openSeq;
+      const session = sessionEpoch;
       set({ busy: 'open', error: null });
       try {
         const { meta, code } = await drive.open(id);
+        // 그사이 다른 파일을 골랐거나 로그아웃했으면 이 응답은 버립니다.
+        if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
         const { account } = get();
         const store = storage();
-        const draft = account && store ? loadDraft(store, scopeOf(account.sub), meta.id) : null;
+        let draft = null;
+        if (account && store) {
+          const scope = scopeOf(account.sub);
+          const drafts = fileDrafts(store, scope, meta.id);
+          // 드라이브와 같아진 초안은 정리하고, 다른 초안 가운데 가장 최근 것을 안내합니다.
+          for (const d of drafts) if (d.draft.code === code) clearDraft(store, scope, d.fileId);
+          draft = drafts.find((d) => d.draft.code !== code)?.draft || null;
+        }
         set({ busy: '', file: { id: meta.id, name: meta.name, version: meta.version, headRevisionId: meta.headRevisionId, savedCode: code }, conflict: null, attemptedCodes: [] });
-        return { status: 'opened', code, name: meta.name, draft: draft && draft.code !== code ? draft : null };
+        return { status: 'opened', code, name: meta.name, draft };
       } catch (error) {
+        if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
         return fail(error);
       }
+    },
+
+    /**
+     * 파일을 열 때 안내한 초안을 편집기로 가져옵니다. 초안이 만들어진 뒤 드라이브가 바뀌었으면
+     * 기준 내용을 모르는 상태로 두어, 저장할 때 덮어쓰지 않고 충돌로 보여 줍니다.
+     */
+    adoptDraft(draft) {
+      const { file } = get();
+      if (!file || !draft) return;
+      if (draft.baseVersion != null && String(draft.baseVersion) !== String(file.version)) {
+        set({ file: { ...file, version: String(draft.baseVersion), savedCode: null } });
+      }
+    },
+
+    /** 이 계정에서 파일로 만들지 못한 새 코드 초안 가운데 가장 최근 것(다른 탭·지난 세션 포함) */
+    latestNewDraft() {
+      const { account } = get();
+      const store = storage();
+      if (!account || !store) return null;
+      return listDrafts(store, scopeOf(account.sub)).find((d) => d.fileId.startsWith('new'))?.draft || null;
     },
 
     /** 지금 편집기 내용을 새 코드로 시작합니다(드라이브 파일과 연결을 끊음). */
@@ -258,7 +316,7 @@ export const useDriveStore = create((set, get) => {
           return { status: 'conflict' };
         }
         const meta = result.meta;
-        forgetDraft(file.id);
+        forgetDraft(file.id, code);
         set((s) => ({
           busy: '',
           file: { id: meta.id, name: meta.name || file.name, version: meta.version, headRevisionId: meta.headRevisionId, savedCode: code },
@@ -286,7 +344,7 @@ export const useDriveStore = create((set, get) => {
       if (!conflict || !file) return { status: 'none' };
       if (choice === 'remote') {
         const { meta, code } = conflict.remote;
-        forgetDraft(file.id);
+        forgetDraft(file.id, code);
         set({ conflict: null, file: { id: meta.id, name: meta.name || file.name, version: meta.version, headRevisionId: meta.headRevisionId, savedCode: code }, attemptedCodes: [] });
         return { status: 'loaded', code };
       }
@@ -306,7 +364,7 @@ export const useDriveStore = create((set, get) => {
           return { status: 'conflict' };
         }
         const meta = result.meta;
-        forgetDraft(file.id);
+        forgetDraft(file.id, conflict.mine);
         set({ busy: '', conflict: null, file: { id: meta.id, name: meta.name || file.name, version: meta.version, headRevisionId: meta.headRevisionId, savedCode: conflict.mine }, attemptedCodes: [], lastSavedAt: Date.now() });
         return { status: 'saved' };
       } catch (error) {

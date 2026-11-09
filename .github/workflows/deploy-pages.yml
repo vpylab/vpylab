@@ -63,20 +63,37 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      - uses: actions/setup-node@v7
+      # CI가 끝나는 순서는 커밋 순서와 다를 수 있습니다. 더 새 커밋이 main에 있으면 그 커밋의 실행이 배포하므로
+      # 이 실행은 건너뜁니다(오래된 코드로 되돌아가지 않게). 직접 실행(workflow_dispatch)은 언제나 배포합니다.
+      - name: Skip if a newer commit is on main
+        id: latest
         if: steps.settings.outputs.ready == 'true'
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          git fetch --quiet --depth=1 origin main
+          latest=$(git rev-parse FETCH_HEAD)
+          if [ "$EVENT" = "workflow_run" ] && [ "$latest" != "$DEPLOY_SHA" ]; then
+            echo "::notice::main에 더 새 커밋($latest)이 있어 이 실행($DEPLOY_SHA)은 배포하지 않습니다."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v7
+        if: steps.settings.outputs.ready == 'true' && steps.latest.outputs.go == 'true'
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: client/package-lock.json
 
       - name: Install dependencies
-        if: steps.settings.outputs.ready == 'true'
+        if: steps.settings.outputs.ready == 'true' && steps.latest.outputs.go == 'true'
         working-directory: client
         run: npm ci
 
       - name: Build open edition
-        if: steps.settings.outputs.ready == 'true'
+        if: steps.settings.outputs.ready == 'true' && steps.latest.outputs.go == 'true'
         working-directory: client
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
@@ -84,7 +101,7 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         id: deploy
-        if: steps.settings.outputs.ready == 'true'
+        if: steps.settings.outputs.ready == 'true' && steps.latest.outputs.go == 'true'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -93,7 +110,7 @@ jobs:
           command: pages deploy client/dist --project-name=vpylab --branch=main --commit-hash=${{ env.DEPLOY_SHA }}
 
       - name: Smoke test
-        if: steps.settings.outputs.ready == 'true'
+        if: steps.settings.outputs.ready == 'true' && steps.latest.outputs.go == 'true'
         env:
           DEPLOY_URL: ${{ steps.deploy.outputs.deployment-url }}
         run: |

@@ -49,18 +49,46 @@ describe('DriveDialog', () => {
     await waitFor(() => expect(onLoaded).toHaveBeenCalledWith('other device', '충돌.py'));
   });
 
-  it('권한이 만료되면 다시 승인 버튼을 보이고, 승인 뒤 저장을 이어 간다', async () => {
+  it('빠른 저장이 만료로 막혀 창이 열리면, 다시 승인한 뒤 그 저장을 이어서 한다 (3-way #5)', async () => {
     const store = useDriveStore.getState;
     await store().prepare();
     await store().signIn();
     await store().save('v1', { name: '만료.py' });
+    const id = store().file.id;
     google.state.tokens.clear();
     await store().save('v2');
     const onSaved = vi.fn();
-    render(<DriveDialog mode="save" getCode={() => 'v2'} onSaved={onSaved} onClose={() => {}} />);
+    render(<DriveDialog mode="save" getCode={() => 'v2'} isDirty={() => true} onSaved={onSaved} onClose={() => {}} />);
     fireEvent.click(screen.getByTestId('drive-reauth'));
-    await waitFor(() => expect(store().needsReauth).toBe(false));
-    // 대화상자를 연 원인(저장)이 대화상자 밖에서 시작됐으므로, 다시 저장 버튼으로 이어 갑니다.
-    expect((await store().save('v2')).status).toBe('saved');
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(google.state.files.get(id).content).toBe('v2');
+  });
+
+  it('저장하지 않은 변경이 있으면 "저장했습니다" 대신 저장 버튼을 보인다 (3-way #5)', async () => {
+    const store = useDriveStore.getState;
+    await store().prepare();
+    await store().signIn();
+    await store().save('v1', { name: '표시.py' });
+    render(<DriveDialog mode="save" getCode={() => 'changed'} isDirty={() => true} onClose={() => {}} />);
+    expect(screen.getByTestId('drive-save-existing')).toBeInTheDocument();
+    expect(screen.queryByText(/에 저장했습니다/)).toBeNull();
+  });
+
+  it('다시 승인에서 다른 계정이 들어오면 하려던 저장을 새 계정에 하지 않는다 (3-way #8)', async () => {
+    google = createFakeGoogle({ accounts: [{ sub: 'subA', email: 'a@school.example' }, { sub: 'subB', email: 'b@school.example' }] });
+    configureDrive({ clientId: 'test-client', gis: google.gis, fetchImpl: google.fetchImpl, storage: memoryStorage() });
+    const store = useDriveStore.getState;
+    await store().prepare();
+    await store().signIn();
+    await store().save('A code', { name: 'A.py' });
+    google.state.tokens.clear();
+    await store().save('A code 2');
+    const onSaved = vi.fn();
+    render(<DriveDialog mode="save" getCode={() => 'A code 2'} isDirty={() => true} onSaved={onSaved} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('drive-reauth'));
+    await waitFor(() => expect(store().account.email).toBe('b@school.example'));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onSaved).not.toHaveBeenCalled();
+    expect([...google.state.files.values()].some((f) => f.owner === 'subB' && !f.folder)).toBe(false);
   });
 });

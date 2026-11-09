@@ -77,6 +77,10 @@ function waitForSaveTimeout(ms, message) {
  */
 /** 오픈소스 판은 저장을 학생 본인의 구글 드라이브에 합니다(클라이언트 ID가 없는 배포는 예전 안내). */
 const DRIVE_EDITOR = OPEN_EDITION && Boolean(DRIVE_CLIENT_ID);
+/** 예제·공유 코드처럼 다른 출처의 코드를 불러오면 드라이브 파일 연결을 끊어, 다음 저장이 그 파일을 덮어쓰지 않게 합니다. */
+function detachDriveSource() {
+  if (DRIVE_EDITOR) useDriveStore.getState().detach();
+}
 
 export default function Sandbox() {
   const ui = useUiText();
@@ -182,7 +186,7 @@ export default function Sandbox() {
 
   const loadPracticeCode = useCallback((source, context) => {
     practiceContextRef.current = context;
-    homeDraftTitle.current=null; initialCodeRef.current = source;
+    homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = source;
     const draft = readPracticeDraft(context, user?.id);
     updateCode(draft ?? source);
   }, [updateCode, user?.id]);
@@ -211,7 +215,10 @@ export default function Sandbox() {
   useEffect(() => {
     if (!DRIVE_EDITOR) return undefined;
     const warn = (event) => {
-      if (!useDriveStore.getState().isDirty(codeRef.current)) return;
+      const drive = useDriveStore.getState();
+      // 드라이브 파일의 변경, 또는 로그인한 뒤 아직 파일로 만들지 않은 새 코드가 있으면 묻습니다.
+      const unsavedNew = drive.account && !drive.file && codeRef.current !== initialCodeRef.current;
+      if (!drive.isDirty(codeRef.current) && !unsavedNew) return;
       event.preventDefault(); event.returnValue = '';
     };
     window.addEventListener('beforeunload', warn);
@@ -255,7 +262,7 @@ export default function Sandbox() {
     if (location.state?.restoredCode != null) {
       stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
       updateCode(location.state.restoredCode);
-      homeDraftTitle.current=null; initialCodeRef.current = location.state.restoredCode;
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = location.state.restoredCode;
       window.history.replaceState({}, '');
       continueAfterAuth();
     } else if (returnAction === 'publish') {
@@ -277,7 +284,7 @@ export default function Sandbox() {
       consumedSharedSource.current=location.key;
       stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
       updateCode(location.state.sharedCode);
-      homeDraftTitle.current=null; initialCodeRef.current = location.state.sharedCode;
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = location.state.sharedCode;
       homeDraftTitle.current=location.state.homeDraft?String(location.state.sharedTitle||'').slice(0,80):null;
       if (location.state?.autoPlay) {
         // 극장 모드: 클릭 대기 → 클릭 시 오디오 잠금 해제 + 실행
@@ -306,7 +313,7 @@ export default function Sandbox() {
           if (!response.ok) throw new Error(ui`GitHub main.py 로드 실패 (${response.status})`);
           const repoCode = await response.text();
           updateCode(repoCode);
-          homeDraftTitle.current=null; initialCodeRef.current = repoCode;
+          homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = repoCode;
           setRepoLoadStatus(null);
           if (repoAutorun) {
             pendingPlayRef.current = repoCode;
@@ -321,7 +328,7 @@ export default function Sandbox() {
               .catch(() => null);
             if (playCode) {
               updateCode(playCode);
-              homeDraftTitle.current=null; initialCodeRef.current = playCode;
+              homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = playCode;
               pendingPlayRef.current = playCode;
               setRepoLoadStatus(null);
               setOutputs([{ text: ui("저장소를 불러올 수 없어 갤러리 스냅샷으로 실행합니다"), type: 'warning', id: Date.now() }]);
@@ -340,7 +347,7 @@ export default function Sandbox() {
       if(consumedSharedSource.current===location.key)return;
       consumedSharedSource.current=location.key;
       updateCode(shared);
-      homeDraftTitle.current=null; initialCodeRef.current = shared;
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = shared;
       if (runViewParam) {
         // 공유 링크(?view=run): /s/ 짧은 주소처럼 실행 화면부터 보여 주고, 누르면 실행합니다.
         // 코드 보기로 돌아가면 아래 외부 코드 안내가 출력 창에 남아 있습니다.
@@ -479,7 +486,7 @@ export default function Sandbox() {
         if (work) {
           stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
           updateCode(work.code);
-          homeDraftTitle.current=null; initialCodeRef.current = work.code;
+          homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = work.code;
           setRemixInfo({ title: work.title, author: work.vpylab_profiles?.display_name });
           addOutput(ui`"${work.title}" 작품을 Remix합니다. 자유롭게 수정해보세요!`, 'success');
         }
@@ -498,7 +505,7 @@ export default function Sandbox() {
       const playCode = await useGalleryStore.getState().fetchWorkCode(playId);
       if (cancelled || !playCode) return;
       updateCode(playCode);
-      homeDraftTitle.current=null; initialCodeRef.current = playCode;
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = playCode;
       pendingPlayRef.current = playCode;
     })();
     return () => { cancelled = true; };
@@ -516,7 +523,7 @@ export default function Sandbox() {
       import('../engine/pyodide-singleton').then(m => m.softStop()).catch(() => {});
       if (sceneRef.current) clearScene(sceneRef.current);
       updateCode(ex.code);
-      homeDraftTitle.current=null; initialCodeRef.current = ex.code;  // 초기화 시 이 예제로 복귀
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = ex.code;  // 초기화 시 이 예제로 복귀
       addOutput(ui`예제 "${ui(ex.title)}" 로드됨. 실행 버튼을 눌러주세요.`, 'success');
     } else {
       addOutput(ui`예제 ID "${exampleId}"를 찾을 수 없습니다.`, 'error');
@@ -616,16 +623,16 @@ export default function Sandbox() {
               const c = fetchedCode || work.code;
               stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
               updateCode(c);
-              homeDraftTitle.current=null; initialCodeRef.current = c;
+              homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = c;
             } catch {
               stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
               updateCode(work.code);
-              homeDraftTitle.current=null; initialCodeRef.current = work.code;
+              homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = work.code;
             }
           } else {
             stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
             updateCode(work.code);
-            homeDraftTitle.current=null; initialCodeRef.current = work.code;
+            homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = work.code;
           }
           setEditMode({ id: editId, githubRepo: work.github_repo, title: work.title });
           addOutput(ui`"${work.title}" 수정 모드. 수정 후 "업데이트"를 눌러주세요.`, 'success');
@@ -767,7 +774,7 @@ export default function Sandbox() {
     if (sceneRef.current) clearScene(sceneRef.current);
     clearRegistry();
     updateCode(latestCode);
-    homeDraftTitle.current=null; initialCodeRef.current = latestCode;
+    homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = latestCode;
     setActiveTab('editor');
     addOutput(ui("다른 멤버가 저장한 최신 코드를 가져왔습니다."), 'success');
   };
@@ -792,7 +799,7 @@ export default function Sandbox() {
     setOutputs([]);
     setActiveTab('editor');
     updateCode(codeRow.code);
-    homeDraftTitle.current=null; initialCodeRef.current = codeRow.code;
+    homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = codeRow.code;
     if (codeRow.id) useCodeStore.getState().setCurrentCodeId(codeRow.id);
     addOutput(ui`프로젝트 "${result.project?.title || '제목 없음'}"을 열었습니다.`, 'success');
     if (!result.project?.github_repo) {
@@ -1279,6 +1286,11 @@ export default function Sandbox() {
             addOutput(ui`구글 드라이브에서 "${name || ''}"을(를) 열었습니다.`, 'success');
             setDriveDialog(null);
           }}
+          onRestoreNew={(restored) => {
+            practiceContextRef.current = null;
+            updateCode(restored);
+            setDriveDialog(null);
+          }}
           onNewCode={() => {
             practiceContextRef.current = null;
             const starter = getDefaultCode(locale);
@@ -1490,7 +1502,7 @@ export default function Sandbox() {
                       if (sceneRef.current) clearScene(sceneRef.current);
                       clearRegistry();
                       updateCode(ex.code);
-                      homeDraftTitle.current=null; initialCodeRef.current = ex.code;
+                      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = ex.code;
                       // 예제 로드 = 활성 프로젝트와 무관 → 컨텍스트 해제
                       useProjectStore.getState().closeProject();
                       useCodeStore.getState().setCurrentCodeId(null);
@@ -1594,7 +1606,7 @@ export default function Sandbox() {
           onRestored={(snapshotCode) => {
             stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
             updateCode(snapshotCode);
-            homeDraftTitle.current=null; initialCodeRef.current = snapshotCode;
+            homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = snapshotCode;
             setHistoryTarget(null);
             addOutput(ui("VPyLab 저장 코드와 에디터를 복원했습니다. GitHub에도 맞추려면 코드 저장을 눌러주세요."), 'success');
           }}
@@ -1609,7 +1621,7 @@ export default function Sandbox() {
           onLoadCode={(loadedCode, codeId) => {
             stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
             updateCode(loadedCode);
-            homeDraftTitle.current=null; initialCodeRef.current = loadedCode;
+            homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = loadedCode;
             if (codeId) setCurrentCodeId(codeId);
             setShowSavedCodes(false);
             addOutput(ui("저장된 코드를 에디터로 불러왔습니다."), 'success');
