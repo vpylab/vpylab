@@ -225,12 +225,18 @@ export const useDriveStore = create((set, get) => {
     async listFiles() {
       const epoch = authEpoch;
       const session = sessionEpoch;
-      if (!get().busy) set({ busy: 'list', error: null });
+      // 목록은 배경에서 읽습니다. 저장 실패로 창이 열린 경우 그 오류(찾을 수 없음·휴지통 등)를 지우지 않습니다.
+      if (!get().busy) set({ busy: 'list' });
+      // 목록을 읽다 생긴 오류만 표시해 두었다가, 목록을 다시 읽는 데 성공하면 그것만 지웁니다.
+      const markListError = () => set((s) => (s.error ? { error: { ...s.error, source: 'list' } } : {}));
       try {
         const { files, truncated } = await drive.list();
         if (session !== sessionEpoch) return null; // 그사이 로그아웃·계정 전환
         // 목록은 배경에서 읽으므로, 그사이 시작한 열기·저장의 진행 표시는 지우지 않습니다.
-        set((s) => ({ files, truncated, folderTrashed: false, busy: s.busy === 'list' ? '' : s.busy }));
+        set((s) => ({
+          files, truncated, folderTrashed: false, busy: s.busy === 'list' ? '' : s.busy,
+          error: s.error?.source === 'list' ? null : s.error,
+        }));
         return files;
       } catch (error) {
         if (session !== sessionEpoch) return null;
@@ -238,10 +244,12 @@ export const useDriveStore = create((set, get) => {
           // 다른 작업이 진행 중이면 그 표시를 지우지 않고 오류만 알립니다.
           const busy = get().busy;
           fail(error, epoch);
+          markListError();
           set({ busy });
           return null;
         }
         fail(error, epoch);
+        markListError();
         return null;
       }
     },

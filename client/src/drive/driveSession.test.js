@@ -242,6 +242,25 @@ describe('편집기 드라이브 저장', () => {
     expect(store().busy).toBe('');
   });
 
+  it('저장이 실패한 뒤 목록을 다시 읽어도 저장 오류(휴지통·찾을 수 없음)를 지우지 않는다 (실계정 시험에서 발견)', async () => {
+    await signedIn();
+    await store().save('v1', { name: '목록.py' });
+    google.state.files.get(store().file.id).trashed = true;
+    expect(await store().save('v2')).toEqual({ status: 'error', reason: 'trashed' });
+    await store().listFiles(); // 저장 창이 열리면서 목록을 다시 읽음
+    expect(store().error?.reason).toBe('trashed');
+  });
+
+  it('목록을 읽다 난 오류는 다음에 목록을 읽는 데 성공하면 지운다', async () => {
+    await signedIn();
+    revokeTokens();
+    await store().listFiles();
+    expect(store().error).not.toBeNull();
+    expect((await store().signIn({ again: true })).status).toBe('ok');
+    await store().listFiles();
+    expect(store().error).toBeNull();
+  });
+
   it('파일로 만들기 전의 새 코드 초안을 다시 찾을 수 있다 (3-way #6)', async () => {
     await signedIn();
     store().rememberDraft('new idea');
