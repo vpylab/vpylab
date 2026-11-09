@@ -14,6 +14,7 @@
  * 비로그인 요청(공유 링크 생성 등)은 IP 기준 한도를 그대로 씁니다.
  * 운영 중 조정이 필요하면 환경변수로 바꿀 수 있습니다(값은 분당 횟수).
  */
+import { clientIp } from './proxy-client-ip.js';
 import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 
 const MINUTE = 60 * 1000;
@@ -40,7 +41,7 @@ export const RATE_LIMITS = Object.freeze({
 export function rateLimitKey(req) {
   const userId = req.supabaseUser?.id;
   if (userId) return `user:${userId}`;
-  return `ip:${ipKeyGenerator(req.ip || '')}`;
+  return `ip:${ipKeyGenerator(clientIp(req))}`;
 }
 
 function message(limit, scope) {
@@ -65,7 +66,7 @@ function build({ limit, scope, keyGenerator, windowMs = MINUTE, ...rest }) {
  */
 export function createIpLimiter(options = {}) {
   const limit = options.limit ?? RATE_LIMITS.ipPerMinute;
-  return build({ limit, scope: '같은 네트워크', keyGenerator: (req) => `ip:${ipKeyGenerator(req.ip || '')}`, ...options, limit });
+  return build({ limit, scope: '같은 네트워크', keyGenerator: (req) => `ip:${ipKeyGenerator(clientIp(req))}`, ...options, limit });
 }
 
 /** 사용자 층. requireSupabaseUser 뒤에 둬야 req.supabaseUser로 키를 만듭니다. */
@@ -87,5 +88,5 @@ export function createPublishLimiter(options = {}) {
 
 /** 비로그인 요청 전용(IP 기준). 공유 링크 생성처럼 토큰이 없는 경로에 씁니다. */
 export function createAnonymousLimiter({ limit, scope = '같은 네트워크', ...options }) {
-  return build({ limit, scope, keyGenerator: (req) => `ip:${ipKeyGenerator(req.ip || '')}`, ...options });
+  return build({ limit, scope, keyGenerator: (req) => `ip:${ipKeyGenerator(clientIp(req))}`, ...options });
 }
