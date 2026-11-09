@@ -66,6 +66,44 @@ const THEME_META = {
   'cyber-neon':      { label: '사이버 네온', icon: '⚡', dark: true },
 };
 
+let progressSync = null;
+
+async function runProgressSync(set) {
+  // 화면·테마만 재사용하는 새 교실은 이전 인증 클라이언트를 초기화하지 않습니다.
+  const { supabase } = await import('../lib/supabase');
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: rows, error } = await supabase
+    .from('vpylab_submissions')
+    .select('mission_id, score, created_at')
+    .eq('user_id', user.id)
+    .eq('passed', true);
+  // 조회에 실패하면 이 기기의 기록을 건드리지 않습니다.
+  if (error || !Array.isArray(rows)) return;
+
+  const owner = readProgressOwner();
+  const local = owner && owner !== user.id ? {} : useAppStore.getState().missionProgress;
+  const server = bestProgressFromSubmissions(rows);
+
+  for (const [missionId, progress] of Object.entries(local)) {
+    if (!progress?.passed || server[missionId]) continue;
+    await supabase.from('vpylab_submissions').insert({
+      user_id: user.id,
+      mission_id: missionId,
+      code: '(synced from localStorage)',
+      score: progress.score,
+      passed: true,
+    });
+  }
+
+  // 기다리는 동안 새로 통과한 미션이 있을 수 있어 최신 상태와 다시 합칩니다.
+  const latest = owner && owner !== user.id ? {} : useAppStore.getState().missionProgress;
+  const merged = mergeProgress(latest, server);
+  writeLocalProgress(merged, user.id);
+  set({ missionProgress: merged });
+}
+
 const useAppStore = create((set) => ({
   // 테마
   theme: localStorage.getItem('vpylab-theme') || 'creative-light',
@@ -110,40 +148,10 @@ const useAppStore = create((set) => ({
   // - 계정에 있는 통과 기록을 내려받아 이 기기에 복원합니다(자리를 옮기거나 기기가 초기화된 경우).
   // - 로그인 전에 이 기기에서 통과한 미션은 계정에 올립니다.
   // - 이 기기의 기록이 다른 계정의 것이면 올리지 않고 계정 기록으로 바꿉니다(공용 컴퓨터).
-  syncProgressToServer: async () => {
-    // 화면·테마만 재사용하는 새 교실은 이전 인증 클라이언트를 초기화하지 않습니다.
-    const { supabase } = await import('../lib/supabase');
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: rows, error } = await supabase
-      .from('vpylab_submissions')
-      .select('mission_id, score, created_at')
-      .eq('user_id', user.id)
-      .eq('passed', true);
-    // 조회에 실패하면 이 기기의 기록을 건드리지 않습니다.
-    if (error || !Array.isArray(rows)) return;
-
-    const owner = readProgressOwner();
-    const local = owner && owner !== user.id ? {} : useAppStore.getState().missionProgress;
-    const server = bestProgressFromSubmissions(rows);
-
-    for (const [missionId, progress] of Object.entries(local)) {
-      if (!progress?.passed || server[missionId]) continue;
-      await supabase.from('vpylab_submissions').insert({
-        user_id: user.id,
-        mission_id: missionId,
-        code: '(synced from localStorage)',
-        score: progress.score,
-        passed: true,
-      });
-    }
-
-    // 기다리는 동안 새로 통과한 미션이 있을 수 있어 최신 상태와 다시 합칩니다.
-    const latest = owner && owner !== user.id ? {} : useAppStore.getState().missionProgress;
-    const merged = mergeProgress(latest, server);
-    writeLocalProgress(merged, user.id);
-    set({ missionProgress: merged });
+  syncProgressToServer: () => {
+    // 로그인 알림이 연달아 두 번 오면 같은 미션을 두 번 올리게 되므로, 진행 중인 맞추기가 있으면 그것을 함께 기다립니다.
+    if (!progressSync) progressSync = runProgressSync(set).finally(() => { progressSync = null; });
+    return progressSync;
   },
 
   // 로그아웃 시 계정에 묶인 진행률을 이 기기에서 지웁니다(다음 사용자에게 넘어가지 않게).

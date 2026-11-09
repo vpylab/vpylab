@@ -58,6 +58,14 @@ describe('로그인 시 진행률 맞추기', () => {
     expect(useAppStore.getState().missionProgress['CT-3'].score).toBe(100);
   });
 
+  it('로그인 알림이 연달아 두 번 와도 같은 미션을 한 번만 올린다', async () => {
+    useAppStore.setState({ missionProgress: { 'CT-3': passed(100) } });
+    const first = useAppStore.getState().syncProgressToServer();
+    const second = useAppStore.getState().syncProgressToServer();
+    await Promise.all([first, second]);
+    expect(mocks.inserts.map(row => row.mission_id)).toEqual(['CT-3']);
+  });
+
   it('공용 컴퓨터에 남은 다른 계정의 기록은 올리지 않고 내 계정 기록으로 바꾼다', async () => {
     localStorage.setItem('vpylab-progress-owner', 'student-b');
     useAppStore.setState({ missionProgress: { 'CT-9': passed(100) } });
