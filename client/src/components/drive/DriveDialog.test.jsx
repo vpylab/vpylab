@@ -91,4 +91,10 @@ describe('DriveDialog', () => {
     expect(onSaved).not.toHaveBeenCalled();
     expect([...google.state.files.values()].some((f) => f.owner === 'subB' && !f.folder)).toBe(false);
   });
+
+  it('파일을 찾을 수 없으면(지워짐·권한 사라짐) "새 파일로 저장" 버튼을 보인다 (아르곤 안정성 점검)', async () => {
+    useDriveStore.setState({ error: { reason: 'notFound', detail: '404' } });
+    render(<DriveDialog mode="save" getCode={() => 'sphere()'} onClose={() => {}} />);
+    expect(await screen.findByRole('button', { name: '새 파일로 저장' })).toBeInTheDocument();
+  });
 });

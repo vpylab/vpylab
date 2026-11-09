@@ -134,7 +134,7 @@ test('제목은 제어 문자를 지우고 200자로 자른다', async () => {
   assert.ok(!title.includes('\n'));
 });
 
-test('같은 IP는 1분에 60개까지, 다음 분에는 다시 된다. IP 원문은 저장하지 않는다', async () => {
+test('같은 IP는 1분에 RATE_PER_MINUTE(120)개까지, 다음 분에는 다시 된다. IP 원문은 저장하지 않는다', async () => {
   const db = fakeD1();
   const t0 = Date.UTC(2026, 10, 9, 10, 0, 5);
   for (let i = 0; i < RATE_PER_MINUTE; i += 1) await checkRate(db, '203.0.113.7', 'salt', t0);
@@ -228,8 +228,26 @@ test('HTTP: 고치기(PUT)도 IP 요청 제한을 받는다 (3-way #9)', async (
     env,
   });
   let last;
-  for (let i = 0; i < 60; i += 1) last = await put(); // 만들기 1회 + 고치기 59회까지는 통과
+  for (let i = 0; i < RATE_PER_MINUTE; i += 1) last = await put(); // 만들기 1회 + 고치기 (한도-1)회까지는 통과
   expect429(last);
+});
+
+test('HTTP: 무작위 주소 지우기(DELETE)는 공유 요청 제한을 쓰지 않는다 (아르곤 안정성 점검)', async () => {
+  const env = { DB: fakeD1() };
+  const made = [];
+  const headers = { 'Content-Type': 'application/json', Origin: ORIGIN, 'CF-Connecting-IP': '203.0.113.20' };
+  for (let i = 0; i < RATE_PER_MINUTE; i += 1) {
+    const res = await onRequestPost({ request: new Request(`${ORIGIN}/api/share`, { method: 'POST', headers, body: JSON.stringify({ code: `c${i}` }) }), env });
+    made.push(await res.json());
+  }
+  const limited = await onRequestPost({ request: new Request(`${ORIGIN}/api/share`, { method: 'POST', headers, body: JSON.stringify({ code: 'over' }) }), env });
+  assert.equal(limited.status, 429);
+  const del = await onRequestDelete({
+    request: new Request(`${ORIGIN}/api/share/${made[0].id}`, { method: 'DELETE', headers: { Origin: ORIGIN, 'CF-Connecting-IP': '203.0.113.20', Authorization: `Bearer ${made[0].editKey}` } }),
+    params: { id: made[0].id },
+    env,
+  });
+  assert.equal(del.status, 200);
 });
 
 function expect429(response) {

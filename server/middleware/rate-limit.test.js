@@ -42,7 +42,7 @@ test('기본 한도는 교실(같은 IP 30명) 기준으로 정해져 있다', (
   assert.equal(RATE_LIMITS.userReadPerMinute, 120);
   assert.equal(RATE_LIMITS.userWritePerMinute, 30);
   assert.equal(RATE_LIMITS.userPublishPerMinute, 3);
-  assert.equal(RATE_LIMITS.anonymousSharePerMinute, 60);
+  assert.equal(RATE_LIMITS.anonymousSharePerMinute, 120); // 무작위 주소 + 이름 정하기를 30명이 1분 안에
 });
 
 test('키는 로그인 사용자면 사용자 ID, 아니면 IP로 만든다', () => {

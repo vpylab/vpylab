@@ -168,7 +168,8 @@ router.put('/:id', shareLimiter, async (req, res) => {
  * DELETE /api/share/:id — 이름을 정한 뒤 쓰이지 않게 된 무작위 주소를 지웁니다.
  * 만든 브라우저(수정 열쇠)만 지울 수 있고, 정한 이름은 지우지 않습니다. 열쇠 행은 외래 키(ON DELETE CASCADE)로 함께 지워집니다.
  */
-router.delete('/:id', shareLimiter, async (req, res) => {
+// 학급 전체가 이름을 정해도 공유 한도를 쓰지 않게 공유 제한에서 뺍니다(IP 전체 제한은 그대로 받습니다).
+router.delete('/:id', async (req, res) => {
   try {
     const id = String(req.params.id || '');
     if (!/^[A-Za-z0-9_-]{3,40}$/.test(id)) return res.status(404).json({ error: '공유 코드를 찾을 수 없습니다.', code: 'not_found' });

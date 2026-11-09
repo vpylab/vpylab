@@ -62,7 +62,7 @@ npx wrangler d1 execute vpylab-shares --remote --command "DELETE FROM shares WHE
 | `POST /api/share` `{ code, title, name? }` | 만들기. 이름이 없으면 무작위 6자. 응답의 `editKey`는 만든 브라우저(localStorage)에만 남김 |
 | `GET /api/share/:id` | 읽기 |
 | `PUT /api/share/:id` + `Authorization: Bearer <editKey>` | 같은 브라우저에서 내용 바꾸기 |
-| `DELETE /api/share/:id` + `Authorization: Bearer <editKey>` | 무작위 주소 지우기. 공유 창에서 이름을 정하면 창을 열 때 만든 무작위 주소를 지움(그 창에서 복사·QR·임베드·열기를 사용했으면 남김). 정한 이름은 409로 거절 |
+| `DELETE /api/share/:id` + `Authorization: Bearer <editKey>` | 무작위 주소 지우기. 공유 창에서 이름을 정하면 창을 열 때 만든 무작위 주소를 지움(그 창에서 복사·QR·임베드·열기를 사용했으면 남김). 정한 이름은 409로 거절. 공유 요청 제한(같은 IP 1분 120건)에서 빠짐 |
 
 <!-- 문단 문구: docs/reference/solar/short-share-261109-solar.md 블록 16·17 -->
 

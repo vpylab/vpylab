@@ -20,7 +20,8 @@ import { RESERVED_NAMES, SHARE_NAME_MESSAGES, SHARE_NAME_PATTERN, checkShareName
 export const MAX_CODE_SIZE = 50_000;
 export const MAX_TITLE = 200;
 export const MAX_BODY_BYTES = 256 * 1024;
-export const RATE_PER_MINUTE = 60;
+// 한 학급(30명)이 같은 IP에서 공유 창을 열고(무작위 주소) 이름까지 정하면 1분에 60건이 넘을 수 있어 120으로 둡니다.
+export const RATE_PER_MINUTE = 120;
 export const RANDOM_ID_LENGTH = 6;
 export const RANDOM_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789';
 
