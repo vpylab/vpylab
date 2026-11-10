@@ -30,7 +30,7 @@ VPyLab을 전 세계 학교가 사용하는 오픈소스 서비스로 키우려�
 |---|---|---|
 | 로그인 | Supabase Auth(구글·GitHub) | 브라우저가 구글에 직접 로그인(GIS 토큰 방식) |
 | 개인 코드·버전 | Supabase `vpylab_saved_code`·`vpylab_code_revisions` | 학생 드라이브 `VPyLab` 폴더, 버전은 드라이브 버전 기록 |
-| 미션 진행률 | localStorage + Supabase 동기화 | localStorage + 드라이브의 `progress.json` |
+| 미션 진행률 | localStorage + Supabase 동기화(2026-11-10부터 로그인 시 계정 기록을 내려받아 복원, 로그아웃 시 기기에서 삭제) | localStorage + 드라이브의 `progress.json` |
 | 공유 링크 | 짧은 링크(DB) + 코드를 담은 URL | 코드를 담은 URL만 |
 | 갤러리 | Supabase 목록·좋아요·조회수 | GitHub Pages 발행 결과의 정적 목록(좋아요·조회수 없음) |
 | 팀 프로젝트·동료 리뷰·교사 대시보드 | Supabase 일부 + 교실 서버 | 교실 서버(교사 맥북 LAN)로 일원화 |

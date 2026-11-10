@@ -13,7 +13,8 @@
 - **3D**: Three.js
 - **Python**: Pyodide (Web Worker)
 - **DB/인증**: Supabase Pro
-- **호스팅**: Railway (백엔드), Vercel (프론트)
+- **호스팅**: 저장소 `vpylab/vpylab` 하나에서 두 판을 배포. 수업용 판은 Vercel(`vpylab.vercel.app`)과 Railway(서버), 오픈소스 판은 Cloudflare Pages(`vpylab.pages.dev`). `main`에 병합하면 Vercel·Railway가 바로 배포하고, CI가 성공하면 `deploy-pages.yml`이 Cloudflare에 배포 (`docs/DEPLOY_TWO_EDITIONS.md`)
+- **판 구분**: `VITE_EDITION` (`client/src/lib/api-base.js`). 오픈소스 판은 서버·DB 없이 학생 구글 드라이브에 저장
 
 ## 코딩 컨벤션
 

@@ -1,50 +1,30 @@
-# VPy Lab — 다음 세션 프롬프트
+# VPyLab — 다음 세션 안내
 
-아래 내용을 복사하여 다음 세션의 첫 메시지로 사용하세요.
+2026-11-10에 갱신했습니다. 이전 내용(2026-05 기준)은 저장소와 배포 구조가 바뀌어 맞지 않아 지웠습니다.
 
----
+다음 세션은 아래 순서로 시작합니다.
 
-VPy Lab 프로젝트를 이어서 진행합니다.
+1. `CLAUDE.md`(또는 `AGENTS.md`)와 `docs/SCOPE.md`를 읽습니다. 지금은 기능 동결 기간이며, 추가 기능은 애드온 규칙을 따릅니다.
+2. 문서 색인 `docs/README.md`에서 필요한 문서를 찾습니다. 코드 구조는 `docs/ARCHITECTURE.md`, 배포는 `docs/DEPLOY_TWO_EDITIONS.md`, 방향은 `docs/GOOGLE_FIRST_PLAN.md`에 있습니다.
+3. 작업은 `main`에서 브랜치를 만들어 PR로 올립니다. `main`에 병합하면 수업용 판(Vercel, Railway)과 오픈소스 판(Cloudflare Pages)에 자동 배포됩니다.
 
-1. 먼저 다음 파일들을 읽어주세요:
-   - /Users/greatsong/greatsong-project/10_수업자료/vpylab/PROGRESS.md
-   - /Users/greatsong/greatsong-project/10_수업자료/vpylab/CLAUDE.md
+## 현재 상태 (2026-11-10)
 
-2. 현재 상태:
-   - 엔진 코어 + 미션 16개 + 사운드/차트/카메라 + 채점 시스템 완성
-   - 내보내기 v2: 모든 기능 동기화 (사운드/차트/30색/NamedList/악기/한글API/clone)
-   - 갤러리 시스템: 목록/상세/Remix/좋아요/발행모달/Fork/Update
-   - GitHub Pages 자동 발행 API: 서버에 publish/fetch/update/fork 엔드포인트
-   - GitHub 오픈소스 인프라: .github/ 19파일 + docs/ 3파일
-   - Supabase: 6테이블 + 18 RLS + 3 RPC + GitHub OAuth 활성화 완료
-   - **배포 완료**:
-     - Vercel: https://vpylab.vercel.app (프론트엔드)
-     - Railway: https://vpylab-server-production.up.railway.app (백엔드)
-     - GitHub: https://github.com/greatsong/vpylab
-   - 120개 vitest 테스트 통과, 빌드 성공
+- 저장소: `vpylab/vpylab`. 예전 저장소 `greatsong/vpylab-classroom`은 보관했습니다.
+- 배포: 수업용 판 https://vpylab.vercel.app , 오픈소스 판 https://vpylab.pages.dev
+- 최근 변경: 영상으로 저장(녹화, 드라이브 저장), 로그인 시 미션 진도 복원, 핵심 범위와 애드온 규칙, 영어 기여 문서, 변형·창작 측정 도구(`scripts/research/`)
 
-3. 다음 세션 작업 (우선순위 순):
+## 남은 일
 
-   **[긴급] 배포 문제 수정**
-   - Vercel 빌드 시 VITE_API_URL이 인라인되지 않음 → Home에서 "서버 오프라인" 표시
-   - 해결: Vercel에서 환경변수 포함 재빌드, 또는 .env.production 파일 생성
-   - Railway CORS: ALLOWED_ORIGINS에 https://vpylab.vercel.app 확인
+- 수업 연구 준비: 연구 계획의 결정 사항 확정, 측정 도구를 실제 학생 코드로 검증
+- 애드온 규칙에 맞추기: 영상 녹화 모듈을 지연 불러오기로 바꾸기
+- 세 번째 언어를 코드 수정 없이 추가할 수 있게 하기(`docs/I18N_GUIDE.md`의 목록)
+- 편집기 의존성(`monaco-editor` 안의 `dompurify`) 취약점 해결
+- 수업용 판의 영상 드라이브 저장은 꺼져 있습니다. 켜는 순서는 `docs/DEPLOY_TWO_EDITIONS.md`에 있습니다.
+- 구글 중심 전환 계획의 다음 단계
 
-   **[중요] 인증 E2E 테스트**
-   - GitHub 로그인 → 코드 저장 → 갤러리 발행 → GitHub Pages 생성 전체 플로우
-   - Google OAuth Provider 설정 (아직 미완료, GitHub만 완료됨)
+## 방침
 
-   **[보완] 갤러리 고도화**
-   - 갤러리 상세에서 3D 미리보기 (코드 자동 실행, 읽기 전용)
-   - 갤러리 카드 썸네일 (발행 시 3D 뷰포트 캡처 연결)
-   - Home 갤러리 하이라이트 동작 확인
-
-   **[향후] 기능 확장**
-   - 교사 역할 전환, 미션 추가 (50개 목표), 2D 차트, matplotlib 렌더링
-   - 프로젝트 쇼케이스 등록 (project-showcase)
-
-4. 방침:
-   - 기능 구현 후 반드시 vitest 테스트 통과 확인
-   - 화면이 있는 기능은 preview로 시각적 확인
-   - UI 텍스트는 한국어, 코드는 영어
-   - 보안: GitHub token DB 미저장, rate-limit, RLS, 민감정보 검사
+- 기능을 고치면 테스트를 통과시키고, 화면이 있는 변경은 실제 화면에서 확인합니다.
+- 화면 문구는 한국어와 영어를 함께 넣습니다. 코드의 이름은 영어입니다.
+- 확인하지 못한 것은 PR 본문에 적습니다.
