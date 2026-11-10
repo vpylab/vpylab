@@ -51,6 +51,14 @@ In **Community modules**, a public object's code starts collapsed. Sign in and f
 
 The character tutorial combines parts, moves the compound, and changes only the controlled character's tint when it collects an item. Try arrow keys, WASD, or the on-screen buttons. Partners can develop body, face, movement, and sound, then read and combine their code.
 
+## Save as video
+
+**Tools → Save as video** in Create records the 3D view and sound together, for a presentation or a submission. Recording stops by itself at 30 seconds, or when you press **Finish recording**. The video file is then downloaded to this computer. Recording happens in your browser and the video is not sent to a server. Leaving Create while recording cancels it. On a shared computer, move the file somewhere safe before the lesson ends.
+
+## Keeping your practice record
+
+When you are signed in, the missions you pass in Training are also saved to your account. Sign in with the same account on another computer and they show as passed again. If a mission has a record in both places, the higher score is shown. Missions you pass without signing in stay in that browser and move to your account when you sign in later. Signing out clears the record from that computer; signing in brings it back. On a shared computer, sign out when you finish so the next person does not see your record. Only passed missions are restored. Code you are still writing is kept only when you press Save.
+
 ## Saving and working together
 
 Create or join a team project from Create. Save a clearly named version and describe why you changed it. Compare the latest shared version before replacing someone else's work. Use the version history to inspect or restore a previous snapshot. GitHub connection is optional and creates a public repository; code and saved change notes may be public. Verify the repository or running link after saving or publishing.

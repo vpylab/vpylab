@@ -1,5 +1,15 @@
 # VPy Lab 진행 상황
 
+> 2026-11-10: 이 문서의 아래 내용은 2026-05까지의 기록입니다. 그 뒤의 변경은 `docs/`의 날짜가 붙은 기록 문서와 PR에 있습니다. 현재 상태와 다음 할 일은 `NEXT_SESSION_PROMPT.md`와 `docs/README.md`를 봅니다.
+
+## 2026-11-10 요약
+
+- 저장소를 `vpylab/vpylab` 하나로 정리하고 예전 저장소 `greatsong/vpylab-classroom`을 보관했습니다.
+- 영상으로 저장: 3D 화면과 소리를 최대 30초 녹화합니다. 오픈소스 판은 학생 구글 드라이브에도 저장합니다(PR 21, 23, 25).
+- 수업용 판: 로그인하면 계정의 미션 통과 기록을 복원하고, 로그아웃하면 기기에서 지웁니다(PR 22).
+- 핵심 범위, 기능 동결, 애드온 규칙을 `docs/SCOPE.md`로 정했습니다(PR 26).
+- 영어 기여 문서(`CONTRIBUTING.md`, `docs/ARCHITECTURE.md`, `docs/I18N_GUIDE.md`)와 변형·창작 측정 도구(`scripts/research/`)를 더했습니다(PR 26).
+
 **마지막 세션**: 2026-05-04 (VPython API 확장)
 **다음 세션 방침**: 내보내기 동기화 → OAuth 활성화 → 실제 배포 → E2E 인증 테스트
 

@@ -28,7 +28,10 @@ Paste this into **Create** and press **Run**. A glowing red sphere and a label a
 VPyLab is in active development. In the open edition (vpylab.pages.dev):
 
 - **Save goes to the student's own Google Drive.** In Create, **Save** (or Ctrl/Cmd+S) signs in with Google once, asks for a file name, and saves to a `VPyLab` folder in the student's Drive. Later saves go to the same file. **My Drive** in the toolbar lists and reopens files. If another tab or device saved first, you choose: save a copy, load the Drive version, or overwrite. **Tools → Download HTML** still works.
+- **Save as video**: **Tools → Save as video** records the 3D view and sound for up to 30 seconds, in the browser. Nothing is sent to a VPyLab server. With Google Drive connected you choose between downloading the file and saving it to a `영상` folder inside the `VPyLab` folder in your Drive; otherwise the file downloads. Files are mp4, or webm where the browser cannot record mp4.
 - **Short share links**: **Tools → Share** creates a short link such as `vpylab.pages.dev/s/k7x2p9`, or `vpylab.pages.dev/s/your-name` if you choose a name (3–30 lowercase letters, numbers or hyphens; first come, first served). The link or its QR code opens straight to the running view (tap to start; the top-left button shows the source), and an embed code is available. Only the code and its title are stored, in Cloudflare D1. No sign-in is needed. If you pick a name, the random link created when the Share window opened is deleted, so share the link shown after naming.
+
+In the classroom edition (vpylab.vercel.app), mission progress now follows the account: signing in on another computer restores the missions a student has passed, and signing out clears them from that computer. Save as video downloads the file there; saving videos to Drive is built but switched off until a Google client ID is configured for that deployment ([details](docs/DEPLOY_TWO_EDITIONS.md)).
 
 ## Two editions, one codebase
 
