@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { useUiText } from '../../i18n/ui-text';
 import { DRIVE_REASON_TEXT, useDriveStore } from '../../drive/driveSession';
 import { downloadRecording } from '../../engine/video-recorder';
+import { googleEmailOf } from '../../drive/googleHint';
+import useAuthStore from '../../stores/authStore';
 
 const megabytes = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
 
@@ -25,6 +27,8 @@ export default function VideoSaveDialog({ video, onClose }) {
   const [failure, setFailure] = useState(''); // 실패 이유(DRIVE_REASON_TEXT의 키)
   const [downloaded, setDownloaded] = useState(false);
   const uploading = Boolean(progress);
+  // 수업용 판에 구글로 로그인했으면 그 계정으로 바로 승인을 요청합니다(계정 선택 생략).
+  const knownGoogleEmail = useAuthStore((state) => googleEmailOf(state.user));
 
   // 구글 로그인 스크립트는 이 창을 열 때 불러옵니다. 연결 버튼은 준비가 끝난 뒤에 누를 수 있습니다(팝업 차단 방지).
   useEffect(() => { useDriveStore.getState().prepare(); }, []);
@@ -115,7 +119,7 @@ export default function VideoSaveDialog({ video, onClose }) {
         <div className="flex flex-wrap gap-2 justify-end">
           <button type="button" className={button} style={account ? undefined : primary} disabled={uploading} onClick={download} data-testid="video-download">{ui("내려받기")}</button>
           {!account && !prepareFailed && (
-            <button type="button" className={button} disabled={!ready || signingIn} onClick={() => connect()} data-testid="video-drive-connect">{ui("구글 드라이브 연결")}</button>
+            <button type="button" className={button} disabled={!ready || signingIn} onClick={() => connect(knownGoogleEmail ? { hint: knownGoogleEmail } : undefined)} data-testid="video-drive-connect">{ui("구글 드라이브 연결")}</button>
           )}
           {account && missingScope && (
             <button type="button" className={button} style={primary} disabled={signingIn} onClick={() => connect({ again: true, consent: true })}>{ui("드라이브 권한 다시 요청")}</button>

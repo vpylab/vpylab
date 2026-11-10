@@ -181,10 +181,11 @@ export const useDriveStore = create((set, get) => {
      * 구글 계정으로 승인합니다. 반드시 클릭 처리 안에서 부릅니다(팝업 차단 방지).
      * again=true면 같은 계정으로 다시 승인합니다(만료·철회 뒤).
      */
-    signIn({ again = false, consent = false } = {}) {
+    signIn({ again = false, consent = false, hint: knownEmail = '' } = {}) {
       if (!auth) return Promise.resolve({ status: 'not-ready' });
-      const hint = again ? get().account?.email || '' : '';
-      const tokenPromise = auth.request({ prompt: consent ? 'consent' : again ? '' : 'select_account', loginHint: hint });
+      // knownEmail: 수업용 판에 구글로 로그인한 학생의 이메일. 계정 선택을 건너뛰고, 이미 승인했으면 클릭 없이 끝납니다.
+      const hint = again ? get().account?.email || '' : knownEmail;
+      const tokenPromise = auth.request({ prompt: consent ? 'consent' : again || hint ? '' : 'select_account', loginHint: hint });
       set({ busy: 'signin', error: null });
       return (async () => {
         try {

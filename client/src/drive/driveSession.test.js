@@ -321,3 +321,17 @@ describe('작품 영상 올리기', () => {
     expect(store().error).toBeNull();
   });
 });
+
+describe('알고 있는 구글 계정으로 승인', () => {
+  it('계정을 넘기면 계정 선택 없이 그 계정으로 요청하고, 넘기지 않으면 계정을 고르게 한다', async () => {
+    google = createFakeGoogle();
+    storage = memoryStorage();
+    configureDrive({ clientId: 'test-client', gis: google.gis, fetchImpl: google.fetchImpl, storage });
+    await store().prepare();
+    await store().signIn({ hint: 'a@school.example' });
+    expect(google.state.requests[0]).toEqual({ prompt: '', login_hint: 'a@school.example' });
+    await store().signOut();
+    await store().signIn();
+    expect(google.state.requests[1]).toEqual({ prompt: 'select_account' });
+  });
+});
