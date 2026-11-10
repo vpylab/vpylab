@@ -6,6 +6,7 @@ vi.mock('../../engine/video-recorder', () => recorder);
 
 import VideoSaveDialog from './VideoSaveDialog';
 import { useDriveStore } from '../../drive/driveSession';
+import useAuthStore from '../../stores/authStore';
 
 const video = { blob: new Blob([new Uint8Array(1024 * 1024)], { type: 'video/mp4' }), name: 'vpylab_1.mp4', seconds: 12 };
 const original = { uploadVideo: useDriveStore.getState().uploadVideo, signIn: useDriveStore.getState().signIn, prepare: useDriveStore.getState().prepare, signOut: useDriveStore.getState().signOut };
@@ -14,7 +15,7 @@ beforeEach(() => {
   recorder.downloadRecording.mockClear();
   useDriveStore.setState({ account: { sub: 'a', email: 'a@school.example', name: '' }, videoUpload: null, ready: true, preparing: false, missingScope: false, error: null, busy: '', prepare: vi.fn(async () => true) });
 });
-afterEach(() => { cleanup(); useDriveStore.setState({ ...original, account: null, videoUpload: null, ready: false, missingScope: false, error: null }); });
+afterEach(() => { cleanup(); useAuthStore.setState({ user: null }); useDriveStore.setState({ ...original, account: null, videoUpload: null, ready: false, missingScope: false, error: null }); });
 
 describe('영상 저장 창', () => {
   it('길이와 크기를 보여 주고 내려받기는 이 컴퓨터에 저장한다', () => {
@@ -74,6 +75,20 @@ describe('영상 저장 창', () => {
     expect(screen.queryByTestId('video-drive-connect')).toBeNull();
     fireEvent.click(screen.getByTestId('video-drive-disconnect'));
     expect(await screen.findByTestId('video-drive-connect')).toBeTruthy();
+  });
+
+  it('수업용 판에 구글로 로그인했으면 그 계정을 승인 요청에 넘기고, GitHub 로그인이면 넘기지 않는다', () => {
+    const signIn = vi.fn(async () => ({ status: 'error' }));
+    useDriveStore.setState({ account: null, signIn });
+    useAuthStore.setState({ user: { email: 'a@school.example', app_metadata: { provider: 'google' } } });
+    const view = render(<VideoSaveDialog video={video} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('video-drive-connect'));
+    expect(signIn).toHaveBeenLastCalledWith({ hint: 'a@school.example' });
+    view.unmount();
+    useAuthStore.setState({ user: { email: 'a@x.example', app_metadata: { provider: 'github' } } });
+    render(<VideoSaveDialog video={video} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('video-drive-connect'));
+    expect(signIn).toHaveBeenLastCalledWith(undefined);
   });
 
   it('구글 로그인 준비가 끝나기 전에는 연결 버튼을 누를 수 없고, 준비에 실패하면 이유를 알리며 내려받기는 남긴다', () => {
