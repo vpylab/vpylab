@@ -36,6 +36,8 @@ jobs:
   research-tools:
     name: "연구 도구 검증"
     runs-on: ubuntu-latest
+    # 애드온이므로 실패해도 CI 전체와 배포를 막지 않습니다(작업 목록에는 실패로 표시됩니다).
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
