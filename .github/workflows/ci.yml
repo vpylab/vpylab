@@ -31,6 +31,21 @@ jobs:
       - run: node scripts/classroom/check-curriculum.mjs
 
   # ──────────────────────────────────────────────
+  # 연구 도구(앱 밖의 애드온) 검증: 앱 검사와 분리된 작업입니다.
+  # ──────────────────────────────────────────────
+  research-tools:
+    name: "연구 도구 검증"
+    runs-on: ubuntu-latest
+    # 애드온이므로 실패해도 CI 전체와 배포를 막지 않습니다(작업 목록에는 실패로 표시됩니다).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test scripts/research/*.test.mjs
+
+  # ──────────────────────────────────────────────
   # 1. 미션 데이터 무결성 검사
   # ──────────────────────────────────────────────
   validate-missions:
