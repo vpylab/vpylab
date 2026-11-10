@@ -40,7 +40,7 @@ The same code is built two ways. The `VITE_EDITION` build setting picks the edit
 | Hosting | Cloudflare Pages (static files + share-link functions) | Vercel + Railway (Express server) |
 | Server and database | Cloudflare D1 for share links only (code and title) | Supabase |
 | Login | None | Google or GitHub (Supabase Auth) |
-| Saving | Download HTML today; Google Drive in testing | Projects, version history, GitHub sync |
+| Saving | The student's own Google Drive; HTML download | Projects, version history, GitHub sync |
 | Gallery, teams, teacher tools | Off | On |
 | Build setting | `VITE_EDITION=open` | default (`classroom`) |
 
@@ -134,7 +134,7 @@ Allow pop-ups from `vpylab.pages.dev`; Google approval opens in a pop-up.
 
 **Stack:** React 19, Vite 8, Tailwind CSS 4, Monaco Editor, Three.js, Pyodide 0.27 (in a Web Worker), Web Audio. Classroom edition only: Express 5 server and Supabase.
 
-**Requirements:** Node.js 20 or later (CI runs Node 20 and 24).
+**Requirements:** Node.js 20 or later (CI runs Node 24).
 
 ```bash
 git clone https://github.com/vpylab/vpylab.git
@@ -202,6 +202,8 @@ New features that need the server or the database must be wrapped in `SERVER_FEA
 ## Contributing
 
 Teachers, students and developers are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+VPyLab is in a feature freeze: bug fixes, tests, translations, lessons and documentation are welcome; new features wait. [docs/SCOPE.md](docs/SCOPE.md) explains the core and the add-on rule. For a map of the code see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); for all documents see [docs/README.md](docs/README.md).
 
 - Lessons and missions: [docs/MISSION_SCHEMA.md](docs/MISSION_SCHEMA.md)
 - Translations: [docs/I18N_GUIDE.md](docs/I18N_GUIDE.md). The interface is in Korean and English today.

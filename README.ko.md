@@ -38,7 +38,7 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 | 호스팅 | Cloudflare Pages(정적 파일 + 공유 주소 함수) | Vercel + Railway(Express 서버) |
 | 서버·데이터베이스 | 공유 주소용 Cloudflare D1(코드·제목만) | Supabase |
 | 로그인 | 없음 | 구글 또는 GitHub(Supabase Auth) |
-| 저장 | 지금은 HTML 내려받기, 구글 드라이브는 시험 중 | 프로젝트, 저장 이력, GitHub 동기화 |
+| 저장 | 학생 본인의 구글 드라이브, HTML 내려받기 | 프로젝트, 저장 이력, GitHub 동기화 |
 | 갤러리·팀·교사 도구 | 꺼짐 | 켜짐 |
 | 빌드 설정 | `VITE_EDITION=open` | 기본값(`classroom`) |
 
@@ -113,7 +113,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 
 **기술 스택:** React 19, Vite 8, Tailwind CSS 4, Monaco Editor, Three.js, Pyodide 0.27(Web Worker), Web Audio. 수업용 판에만 Express 5 서버와 Supabase가 있습니다.
 
-**필요한 것:** Node.js 20 이상(CI는 Node 20과 24에서 실행)
+**필요한 것:** Node.js 20 이상(CI는 Node 24에서 실행)
 
 ```bash
 git clone https://github.com/vpylab/vpylab.git
@@ -170,7 +170,9 @@ npm run dev                          # 클라이언트 4033 + 서버 4034
 
 ## 기여
 
-교사, 학생, 개발자 모두 참여할 수 있습니다. [CONTRIBUTING.md](CONTRIBUTING.md)와 [행동 강령](CODE_OF_CONDUCT.md)을 먼저 읽습니다.
+교사, 학생, 개발자 모두 참여할 수 있습니다. [CONTRIBUTING.ko.md](CONTRIBUTING.ko.md)와 [행동 강령](CODE_OF_CONDUCT.md)을 먼저 읽습니다.
+
+지금은 기능 동결 기간입니다. 버그 수정, 테스트, 번역, 학습 자료, 문서를 받고 새 기능은 미룹니다. 핵심 범위와 애드온 규칙은 [docs/SCOPE.md](docs/SCOPE.md)에 있습니다.
 
 - 수업 자료와 미션: [docs/MISSION_SCHEMA.md](docs/MISSION_SCHEMA.md)
 - 번역: [docs/I18N_GUIDE.md](docs/I18N_GUIDE.md). 지금 화면은 한국어와 영어를 지원합니다.

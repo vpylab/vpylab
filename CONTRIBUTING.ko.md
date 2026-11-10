@@ -1,10 +1,8 @@
-# VPy Lab 기여 가이드 (Contributing Guide)
+# VPyLab 기여 가이드
 
-[한국어](#한국어) | [English](#english)
+[English](CONTRIBUTING.md) · 한국어
 
----
-
-## 한국어
+> 먼저 [docs/SCOPE.md](docs/SCOPE.md)를 읽어 주세요. 지금은 새 기능을 받지 않는 기간이며, 추가 기능은 애드온 규칙을 따릅니다.
 
 VPy Lab에 기여해 주셔서 감사합니다! 이 가이드는 교사, 학생, 개발자 모두를 위한 기여 안내서입니다.
 
@@ -25,7 +23,7 @@ VPy Lab에 기여해 주셔서 감사합니다! 이 가이드는 교사, 학생,
 
 ```bash
 # 리포지토리 포크 & 클론
-git clone https://github.com/<your-username>/vpylab.git
+git clone https://github.com/<your-username>/vpylab.git   # vpylab/vpylab을 포크한 저장소
 cd vpylab
 
 # 의존성 설치
@@ -220,82 +218,3 @@ feat: 갤러리 공유 기능 구현
 docs: 기여 가이드 업데이트
 refactor: Worker 메시지 핸들링 개선
 ```
-
----
-
-## English
-
-Thank you for contributing to VPy Lab! This guide is for teachers, students, and developers.
-
-### Types of Contributions
-
-| Type | Difficulty | For | Label |
-|------|-----------|-----|-------|
-| Add mission content | Easy | Teachers, Students | `mission` |
-| Translation (i18n) | Easy | Anyone | `i18n` |
-| Bug fix | Medium | Developers | `bug` |
-| Feature proposal | Medium | Anyone | `enhancement` |
-| Engine improvement | Hard | Developers | `engine` |
-| Documentation | Easy | Anyone | `docs` |
-
-### Quick Start
-
-```bash
-# Fork & clone
-git clone https://github.com/<your-username>/vpylab.git
-cd vpylab
-
-# Install dependencies
-npm install
-cd client && npm install && cd ..
-cd server && npm install && cd ..
-
-# Set up environment
-cp .env.example .env
-
-# Start dev server
-npm run dev
-# Client: http://localhost:4033
-# Server: http://localhost:4034
-```
-
-### Mission Contribution
-
-See the mission schema and category table above (in Korean section). All missions require both Korean (`ko`) and English (`en`) text for `title`, `description`, and `hints`.
-
-### Translation (i18n)
-
-1. Copy `client/src/i18n/en.json` to `<lang-code>.json`
-2. Translate all values
-3. Add import to `client/src/i18n/index.jsx`
-4. Submit a PR
-
-### Code Conventions
-
-- UI text and comments: Korean (English accepted)
-- Variable/function names: English
-- React functional components + Hooks
-- Tailwind CSS v4
-- No `innerHTML` (use `textContent` for XSS prevention)
-
-### Commit Messages
-
-```
-<type>: <description>
-
-# Examples:
-mission: add Fibonacci visualization mission CT-3
-fix: prevent crash on empty code execution
-i18n: add Japanese translation
-feat: implement gallery sharing
-```
-
----
-
-## 라이선스 (License)
-
-- 코드(Code): [AGPL v3](LICENSE)
-- 미션 콘텐츠(Mission Content): [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-
-기여하신 코드는 AGPL v3, 미션 콘텐츠는 CC BY-NC-SA 4.0 라이선스가 적용됩니다.
-PR 제출 시 이에 동의하는 것으로 간주합니다.

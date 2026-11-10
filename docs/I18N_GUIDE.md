@@ -1,168 +1,228 @@
-# 다국어(i18n) 기여 가이드
+# Internationalization guide
 
-VPy Lab의 다국어 지원 구조와 새 언어 추가 방법을 설명합니다.
+English · [한국어](I18N_GUIDE.ko.md)
 
-## 현재 지원 언어
+This guide describes how interface text and lesson text are translated in the code today, and what it would take to add a third language. It describes the current state, including the parts that are not ready.
 
-| 언어 | 코드 | UI | 미션 | 상태 |
-|------|------|----|----|------|
-| 한국어 | ko | 완료 | 완료 | 기본 언어 |
-| English | en | 완료 | 완료 | 완료 |
+**Short version:** VPyLab supports exactly two locales, `ko` and `en`. Korean is the source language. Adding a third language today requires code changes in many files and the ability to read Korean source strings (or to work from the English translations next to them). It is not a matter of adding one JSON file.
 
-## 아키텍처
+## Supported locales
 
-### UI 텍스트
+| Locale | Interface | Lessons and docs |
+|---|---|---|
+| `ko` | source language | source language |
+| `en` | translated | translated |
 
+## How the locale is chosen
+
+`client/src/i18n/locale.js` exports `readInitialLocale({ search, storage })`:
+
+1. If the URL has `?lang=ko` or `?lang=en`, that value is used and saved to `localStorage` under `vpylab-locale`.
+2. Otherwise the saved `vpylab-locale` value is used, if it is `ko` or `en`.
+3. Otherwise the locale is `ko`.
+
+An unsupported `?lang=` value is ignored and does not overwrite the saved value. The browser language (`navigator.language`) is not consulted.
+
+`client/src/stores/appStore.js` holds `locale` and `setLocale(locale)`, which also writes `vpylab-locale`. The language `<select>` is in `client/src/components/layout/Header.jsx` with two hard-coded options. `I18nProvider` (`client/src/i18n/index.jsx`) sets `document.documentElement.lang` when the locale changes.
+
+## Mechanism A: keyed dictionaries (`t()`)
+
+Files: `client/src/i18n/ko.json`, `client/src/i18n/en.json`, `client/src/i18n/context.js`, `client/src/i18n/useI18n.js`.
+
+- Both JSON files have the same nested keys (292 leaf keys each at the time of writing), for example `nav.gallery` or `editor.run`.
+- `context.js` imports both files into `messages = { ko, en }` and exports `translate(locale, key, params)`.
+- Lookup order: `messages[locale]`, then `messages.en`, then the key itself.
+- Interpolation uses double braces: `"missionCount": "{{count}} missions"` with `t('home.missionCount', { count: 8 })`.
+- Components call `const { t, locale } = useI18n()`. `useOptionalI18n(fallbackLocale = 'ko')` is for components that may render outside `I18nProvider`.
+
+About 35 source files use this hook. This is the older mechanism.
+
+## Mechanism B: the phrase catalog (`ui()`)
+
+Files: `client/src/i18n/ui-text.js`, `client/src/i18n/catalogs/en-ui-text.json`.
+
+Here the Korean sentence in the source code is the key. The catalog maps it to English:
+
+```json
+{
+  "새로고침": "Refresh",
+  "{0}Hz 종을 울렸습니다.": "Rang the {0}Hz bell."
+}
 ```
-client/src/i18n/
-  index.jsx       # I18nProvider
-  context.js      # 언어 메시지 등록
-  useI18n.js      # t/locale hook
-  catalogs/       # 고정 원문 키의 보조 사전
-  ko.json         # 한국어 (기준 파일)
-  en.json         # 영어
-  ja.json         # 새 언어 파일 예시
+
+The catalog has about 1,800 entries; about 100 contain placeholders. Around 30 source files use it.
+
+How to call it:
+
+```jsx
+import { useUiText } from '../i18n/ui-text';
+
+function Panel({ count }) {
+  const ui = useUiText();            // subscribes to locale changes
+  return <>
+    <button>{ui("새로고침")}</button>     {/* plain string form */}
+    <p>{ui`코드 ${count}개`}</p>          {/* tagged-template form */}
+  </>;
+}
 ```
 
-- JSON 키-값 구조, 중첩 지원
-- `useI18n()` hook의 `t('key.path')` 함수로 접근
-- fallback 순서: 선택 언어 -> 영어 -> 키 이름
+Outside a component, import `uiText` and call it the same way. `getUiLocale()` returns the current locale.
 
-### 미션 텍스트
+What `translateUi(locale, source, ...values)` does:
 
-미션 데이터(`missions.js`) 내에 직접 다국어 텍스트를 포함합니다:
+- **Tagged-template form.** The template parts are joined with numbered placeholders, so ``ui`코드 ${count}개` `` produces the key `코드 {0}개`. Whitespace in the key is normalized (runs of whitespace become one space, ends trimmed). If the locale is `en` and the catalog has the key, the English pattern is used; otherwise the Korean pattern is used. Then `{0}`, `{1}`, ... are replaced with the values. A translation may reorder or repeat placeholders but must use the same numbers.
+- **Plain string form.** If the locale is not `en`, the string is returned unchanged. If it is `en`, the call goes to `translateSystemMessage`.
 
-```javascript
-title: { ko: '...', en: '...', ja: '...' },
-description: { ko: '...', en: '...', ja: '...' },
-hints: [
-  { ko: '...', en: '...', ja: '...' },
-],
-```
+What `translateSystemMessage(locale, source)` does (English only):
 
-## 새 언어 추가 절차
+1. Normalize whitespace and look for an exact catalog key.
+2. If there is none, try every catalog key that contains placeholders as a pattern: each `{n}` becomes a non-greedy "match anything" group. On a match, the captured text is put into the English pattern. This is how a message that was already formatted in Korean elsewhere (in the Worker, a store, or the server) can still be translated, for example the Worker's `📦 numpy 설치 중...` matches the key `📦 {0} 설치 중...`.
+3. If nothing matches, return the source unchanged.
 
-### Step 1: UI 번역 파일 생성
+Rules that follow from this:
+
+- Do not pass student content (code, titles, names, `print` output) through `ui()` or `translateSystemMessage`. They are for text the app itself wrote. The Worker marks its own console notices with `system: true`, and `client/src/hooks/usePyodide.js` translates only those.
+- Do not use a translated string as a state value or comparison key.
+- The same Korean word can need different English in different places. One case is handled with an explicit branch in `client/src/components/courses/WorkbookCourse.jsx` (`locale==='en'?'Check':'확인'`), because the catalog can hold only one English value per Korean key.
+- `useUiText()` returns the same function object every time, so it is safe in effect dependency arrays.
+- A missing catalog entry is silent: the Korean text is shown in English mode.
+
+## Content localization
+
+Lesson and reference data in `client/src/data/` uses three different patterns.
+
+1. **Per-locale fields `{ ko, en }`.** `missions.js`, `physical-missions.js`, `tutorials.js`, `training.js`, `creative-labs.js`, `light-sound-labs.js`, `forge-tutorial.js`, `shape-guides.js`, `welcome-friends.js` and `doc-origins.js` define a helper `const text = (ko, en) => ({ ko, en })` and call it with two positional arguments. `docs.js` and course titles in `courses.js` write `{ ko: ..., en: ... }` literally. Components read `value[locale]`, usually with a fallback to `value.ko`.
+2. **Korean-only data translated through the catalog.** The two workbook courses (`light-sound-course.js`, `github-project-course.js`) keep lesson text in Korean only. `localizeCourse(course, locale)` in `client/src/i18n/owned-content.js` returns a translated copy for `en`: it walks the object and passes every string through `translateUi`, except fields named `code`, `accessibleCode`, `supportCode`, `copyCode`, `signature`, `url`, `path`, `id`, `ko`, `en`. The original object is not changed. For the two core courses (`beg-light-sound`, `beg-github-project`) `localizeLessonCode` also rewrites lesson code for English: the Korean commands `음표` and `소리` become `play_note_and_wait` and `play_sound`, and Korean note names such as `"도4"` become `"C4"`. Comments and other strings in the code are left as they are. `client/src/pages/Examples.jsx` uses the same catalog approach for example titles and descriptions (`ui(ex.title)`).
+3. **Suffix fields.** `EXAMPLE_CATEGORIES` in `examples.js` uses `label` and `labelEn`. `code-vocabulary.js` passes Korean and English as separate positional arguments. `client/src/components/shared/LoadingScreen.jsx` has `ALL_TIPS_KO` and `ALL_TIPS_EN` arrays.
+
+Other localized text outside these patterns: Python error explanations in `client/src/engine/python-error-explainer.js` (tables with `ko` and `en`), grading messages in `client/src/engine/grading-engine.js` (`pickText(value, lang)`, falling back to `ko`), and the default editor code in `client/src/data/default-code.js` (two string replacements for `en`).
+
+Python itself is not localized. Messages raised by `client/src/engine/vpython-api.py` and progress messages from `client/src/engine/pyodide-worker.js` are Korean strings; some are translated on the main thread through the catalog. Korean API aliases (`색상`, `음표`, `소리`, ...) are part of the public Python API and are not translations.
+
+## Adding a third language today
+
+The example below uses Japanese (`ja`). Every item is a code change. Nothing here is automated.
+
+### Where `ko` and `en` are hard-coded
+
+Paths are relative to the repository root. Found by searching `client/src`, `server`, `api`, `functions`, `cloudflare` and the HTML entry files; test files are not listed.
+
+**Locale list and core i18n code**
+
+| File | What is hard-coded |
+|---|---|
+| `client/src/i18n/locale.js` | `['ko', 'en']` twice; default `'ko'` |
+| `client/src/i18n/context.js` | imports `ko.json` and `en.json` only; fallback `messages.en` |
+| `client/src/i18n/index.jsx` | fallback `messages['en']` |
+| `client/src/i18n/useI18n.js` | default `fallbackLocale = 'ko'` |
+| `client/src/i18n/ui-text.js` | imports only `en-ui-text.json`; `locale === 'en'` / `locale !== 'en'` in three places; system patterns built from the English catalog only |
+| `client/src/i18n/owned-content.js` | `locale !== 'en'` returns the Korean original; skip list contains `'ko'`, `'en'`; code rewriting is English-specific |
+| `client/src/components/layout/Header.jsx` | two `<option>` elements; `ko = locale === 'ko'` |
+
+**Two-way branches where any non-Korean locale gets English** (`locale === 'ko' ? '…' : '…'`, often through a local `const ko = locale === 'ko'` or `lang === 'ko'`)
+
+- Pages: `client/src/pages/Home.jsx`, `Gallery.jsx`, `GalleryDetail.jsx`, `Missions.jsx`, `MissionPlay.jsx`, `Tutorials.jsx`, `Courses.jsx`, `Examples.jsx`, `Docs.jsx`, `SourceProject.jsx`, `Sandbox.jsx`
+- `client/src/components/auth/AuthModal.jsx`
+- `client/src/components/docs/DocCodeBlock.jsx`, `DocContent.jsx`, `DocSidebar.jsx`
+- `client/src/components/editor/CodeEditor.jsx`, `python-completions.js`
+- `client/src/components/home/HomePreviewBoundary.jsx`, `HomeProjectPlayer.jsx`, `HomeSettingsDialog.jsx`, `PersonalHomeProject.jsx`, `StageLightEditor.jsx`, `WelcomeFriends.jsx`
+- `client/src/components/learning/CodeVocabulary.jsx`, `TypingWordTip.jsx`
+- `client/src/components/shared/RuntimeStatus.jsx`, `LoadingScreen.jsx`
+
+**Two-way branches where any non-English locale gets Korean** (`locale === 'en' ? … : …`)
+
+- `client/src/engine/python-error-explainer.js` (`lang = locale === 'en' ? 'en' : 'ko'`)
+- `client/src/data/default-code.js`
+- `client/src/components/courses/WorkbookCourse.jsx`
+- `client/src/i18n/ui-text.js`, `client/src/i18n/owned-content.js` (listed above)
+
+**Fallbacks to the `ko` field or a `'ko'` default parameter**
+
+- `client/src/pages/Courses.jsx` (`title?.[lang] || title?.ko`)
+- `client/src/components/docs/DocContent.jsx`, `client/src/components/editor/python-completions.js`
+- `client/src/engine/grading-engine.js` (`pickText`, `options.lang || 'ko'`)
+- `client/src/data/docs.js` (`searchDocs(query, locale = 'ko')`)
+- `client/src/hooks/usePyodide.js` (`locale = 'ko'`)
+- `client/src/classroom/curriculum.js`, `client/src/classroom/CurriculumLibrary.jsx` (always read `.ko`)
+
+**Fixed date and number locales**
+
+- `'ko-KR'`: `client/src/stores/projectStore.js`, `client/src/pages/Sandbox.jsx`, `client/src/components/gallery/GalleryCard.jsx`, `client/src/classroom/Workspace.jsx`, `PeerReview.jsx`, `GitHubLearningPanel.jsx`
+- `'ko-KR'` or `'en-US'`: `client/src/pages/GalleryDetail.jsx`
+
+**Static files with `lang="ko"` or Korean text**
+
+- `client/index.html`, `classroom.html`, `training.html`, `drive-lab.html`, `month-projects.html`, `brand-preview.html`
+- `client/public/manifest.webmanifest` (`"lang": "ko"`, Korean description and shortcut names)
+- `server/utils/standalone-template.js`, `server/routes/projects.js`, `api/_lib/og.mjs` (generated HTML)
+
+**Data shape**
+
+- The `text(ko, en)` helper in the data files listed under "Content localization" takes exactly two arguments.
+- `labelEn` in `client/src/data/examples.js`; the positional `english` argument in `client/src/data/code-vocabulary.js`; `ALL_TIPS_KO` / `ALL_TIPS_EN` in `LoadingScreen.jsx`.
+
+**Checks and scripts**
+
+- `.github/workflows/ci.yml`: `requiredLangs = ['ko', 'en']` for missions.
+- `scripts/compat/english-browser.cjs`: a browser check written for English.
+
+The separate entry apps (`client/src/classroom/`, `client/src/training/`, `client/src/month-projects/`, `client/src/drive-lab/`) do not call `t()` or `ui()` in their main components. They appear to be Korean only and are outside the scope of a new locale unless they are internationalized first.
+
+### What a new locale gets with only the easy steps
+
+If you add `ja.json`, register it in `context.js`, allow `'ja'` in `locale.js` and add the `<option>`:
+
+- `t()` strings are Japanese.
+- `ui()` strings are **Korean**, because the catalog code handles only `en`.
+- The two-way `ko ? … : …` branches show **English**.
+- `{ ko, en }` data shows Korean where the component falls back to `.ko`, and nothing where it does not.
+
+The result is a mixed-language interface. A usable third language needs the refactoring below.
+
+### Suggested order of work
+
+1. **Open an issue first** (the template `.github/ISSUE_TEMPLATE/04-i18n-translation.yml` exists) and agree on scope with the maintainers. Steps 2 to 4 change shared code and are best done as their own pull requests, before any translation.
+2. **Make the locale list one constant.** Export a list from `client/src/i18n/locale.js` and use it in `readInitialLocale`, in the `Header.jsx` select, and in the CI mission check.
+3. **Generalize the phrase catalog.** In `client/src/i18n/ui-text.js`, load a catalog per locale (`catalogs/<locale>-ui-text.json`) instead of the single English import, build `systemPatterns` per locale, and decide the fallback for a missing entry (English is more useful to most readers than Korean). Do the same for the `locale !== 'en'` checks in `owned-content.js`; the lesson-code rewriting there should stay English-only or become a per-locale choice.
+4. **Remove the two-way branches.** Replace each `ko ? '한국어' : 'English'` with `ui("한국어")` plus a catalog entry (or a `t()` key). This is the largest part: about 30 files. It needs someone who can confirm that the existing English text is moved into the catalog unchanged. No Korean reading is needed for this step, because both strings are already in the code.
+5. **Decide the data shape.** Either extend `text(ko, en)` and the `{ ko, en }` objects with a third field and give every reader a common fallback helper (`value[locale] ?? value.en ?? value.ko`), or move that text into the catalog as the workbook courses already do. `grading-engine.js` already has `pickText`; the pages do not share one helper.
+6. **Translate.** Copy `en.json` to `ja.json` (292 keys). Copy `catalogs/en-ui-text.json` to `catalogs/ja-ui-text.json` and translate the values (about 1,800 entries). The keys are Korean, but each entry already has its English value beside it, so a translator can work from English. Keep every `{0}`, `{1}` placeholder. Then the data files: missions, docs, tutorials, courses, examples.
+7. **Fix the rest.** Date formats (`'ko-KR'`), `python-error-explainer.js`, `default-code.js`, `LoadingScreen.jsx` tips, and `manifest.webmanifest` if the installed app name should change.
+8. **Add tests** next to the existing ones (see below) for the new locale, and extend the browser check if you can run it.
+
+Do not translate: Python keywords and API names (`sphere`, `vector`, `rate`), `from vpython import *`, or the Korean API aliases. Do translate code comments in starter code where the data has a per-locale field for them.
+
+## How translations are checked
+
+Continuous integration:
+
+- `.github/workflows/ci.yml`, job `validate-i18n`: flattens the keys of every `*.json` file directly in `client/src/i18n/` and fails if a file lacks a key that `en.json` has. Extra keys only produce a warning. The `catalogs/` subfolder is not read by this job, so a new `ja.json` is checked automatically and a new catalog file is not.
+- `.github/workflows/ci.yml`, job `validate-mission-i18n`: imports `client/src/data/missions.js` and fails if any mission lacks `ko` or `en` in `title`, `description` or a hint.
+- `.github/workflows/i18n-check.yml`: on pull requests that touch `client/src/i18n/**` or `client/src/data/missions.js`, posts a comment with key coverage per language compared with `en.json`. It reports and does not fail the build.
+- The Vitest run (`validate-missions` job) includes the i18n tests below.
+
+Nothing in CI checks that every Korean string passed to `ui()` has a catalog entry.
+
+Tests you can run locally:
 
 ```bash
-# en.json을 기준으로 복사
-cp client/src/i18n/en.json client/src/i18n/ja.json
+# all client tests
+npm --prefix client run test:run
+
+# only the i18n tests
+npm --prefix client run test:run -- src/i18n
+
+# related tests
+npm --prefix client run test:run -- src/components/courses/WorkbookCourse.test.jsx src/hooks/usePyodide.test.jsx
 ```
 
-`ja.json`의 모든 값(value)을 일본어로 번역합니다.
-키(key)는 변경하지 않습니다.
+- `client/src/i18n/locale.test.js`: `?lang=` handling, unsupported values, blocked storage.
+- `client/src/i18n/ui-text.test.jsx`: placeholders are preserved and interpolated text is not re-interpreted; the function identity is stable across a locale switch; both workbook courses localize to English with no Hangul left in guide text or lesson code while the original data is unchanged; unknown output is returned verbatim.
+- `client/src/hooks/usePyodide.test.jsx`: only `system` output is translated.
+- `scripts/compat/english-browser.cjs`: a Puppeteer check of the English interface against a running app. It is not part of CI, and `scripts/compat/README.md` does not describe it. How to run it was not verified for this guide.
 
-### Step 2: i18n 모듈에 등록
+## Not verified
 
-`client/src/i18n/context.js`에 import를 추가합니다:
-
-```javascript
-import ko from './ko.json';
-import en from './en.json';
-import ja from './ja.json';   // 추가
-
-const messages = { ko, en, ja };  // 추가
-```
-
-### Step 3: 미션 텍스트 번역
-
-`client/src/data/missions.js`의 각 미션에 새 언어 키를 추가합니다:
-
-```javascript
-title: {
-  ko: '첫 번째 구',
-  en: 'Your First Sphere',
-  ja: '最初の球',           // 추가
-},
-```
-
-### Step 4: PR 제출
-
-브랜치: `i18n/add-japanese`
-커밋 메시지: `i18n: add Japanese translation`
-
-## 번역 규칙
-
-### 번역하지 않는 것
-
-- 프로그래밍 키워드: `sphere`, `box`, `vector`, `color`, `rate`
-- VPy Lab API: `from vpython import *`
-- 함수명: `sphere()`, `cylinder()`, `math.sin()`
-- 변수명: `ball`, `v`, `dt`, `g`
-
-### 번역하는 것
-
-- UI 텍스트 (버튼, 메뉴, 안내 문구)
-- 미션 제목, 설명, 힌트
-- 코드 내 주석 (`# 여기에 코드를 작성하세요`)
-- 에러 메시지, 콘솔 출력 안내
-
-### 한국어 특수 함수명 처리
-
-VPy Lab은 한국어 함수명도 지원합니다 (Python alias):
-
-| 한국어 | 영어 | 설명 |
-|--------|------|------|
-| 소리() | sound() / play_sound() | 주파수 소리 재생 |
-| 음표() | play_note() | 음표 재생 |
-| 효과음() | sfx() | 효과음 재생 |
-| 배경음악() | bgm() | BGM 재생 |
-| 배경음악정지() | stop_bgm() | BGM 정지 |
-| 화음() | chord() | 화음 재생 |
-| 악기() | play_instrument() | 악기 음색으로 음표 재생 |
-
-한국어 변수/상수도 공식 API입니다:
-
-| 한국어 | 영어 | 설명 |
-|--------|------|------|
-| 색상 | color | 30색 색상 팔레트 |
-| 음계 | scale | C4~C5 기본 음계 |
-| 높은음계 | high_scale | C5~C6 높은 음계 |
-| 낮은음계 | low_scale | C3~C4 낮은 음계 |
-| 무지개 | rainbow | 무지개 7색 |
-| 따뜻한색 | warm_colors | 빨강/주황/노랑 계열 |
-| 차가운색 | cool_colors | 하늘/파랑/보라 계열 |
-| 기본색 | basic_colors | 흰/검/빨/초/파 |
-| 파스텔 | pastel_colors | 부드러운 파스텔 색상 |
-
-다른 언어 번역 시에도 예제 코드의 한국어 함수명은 유지할 수 있습니다. 필요한 경우 주석에서 영어 별칭을 병기합니다:
-
-```python
-# 음표("솔4", 0.4)  또는  play_note("G4", 0.4)
-음표("솔4", 0.4)
-```
-
-## CI 자동 검증
-
-PR 제출 시 자동으로 다음을 검사합니다:
-
-1. **키 완전성**: en.json 대비 누락 키 검출
-2. **미션 i18n**: 모든 미션의 title/description/hints에 필수 언어(ko, en) 존재
-3. **커버리지 리포트**: PR 코멘트로 번역 진행률 표시
-
-## Crowdin 연동 (계획)
-
-Phase 2에서 Crowdin 또는 Weblate 연동을 계획하고 있습니다:
-
-1. `en.json`을 소스 파일로 설정
-2. 번역자가 Crowdin 웹 에디터에서 번역
-3. GitHub Action이 번역 결과를 자동으로 PR 생성
-4. 리뷰 후 머지
-
-이 방식은 비개발자(교사, 학부모)도 번역에 쉽게 참여할 수 있게 합니다.
-
-## 2026-11-07 영문판 구현 기준
-
-- `?lang=en` / `?lang=ko`는 명시된 공유 링크 언어를 선택하고 브라우저에 기억합니다. 잘못된 값은 저장된 유효 언어로 돌아갑니다. `I18nProvider`는 문서의 `html.lang`도 갱신합니다.
-- 기존 키 기반 UI는 `t()`와 `ko.json`/`en.json`을 유지합니다. 추가된 고정 UI는 `useUiText()`와 `catalogs/en-ui-text.json`을 사용합니다. 한국어 원문이 키이며 동적 문자열은 ``ui`원문 ${value}` `` 형태입니다. 사전의 `{0}`, `{1}` 등 자리표시자 개수와 번호를 보존해야 합니다.
-- `useUiText()`는 언어를 구독하지만 반환 함수의 참조는 유지합니다. 소스 로드·Worker 수명 효과에 언어 변경 때문에 불필요한 재실행을 만들지 않습니다.
-- 사용자 제목·설명·이름·코드·stdout에 번역기를 일괄 적용하지 않습니다. `translateSystemMessage()`는 서비스가 만든 안내·오류 전용입니다. Worker의 패키지 안내는 `system:true`로 구분하며 같은 문자열을 학생이 print해도 번역하지 않습니다.
-- `localizeCourse()`는 서비스 교재의 표시 사본만 만듭니다. 원본 데이터는 변경하지 않습니다. 기초 8차시·GitHub 4차시의 영문 사본에는 동등한 `play_note_and_wait`/C4 등의 표기를 사용하고, 만들기에서 처음 여는 해당 차시에도 같은 코드를 제공합니다. 기존 수정 초안은 그대로 보존합니다.
-- 문맥에 따라 번역을 구분합니다. 예를 들어 대화상자의 `확인`은 OK, 학습 확인 단계는 Check입니다. 일반 고정 문구 사전을 내부 상태 값·비교용 키로 사용하지 않습니다.
-- 번역 검증: `ui-text.test.jsx`, `locale.test.js`, 영문 `WorkbookCourse.test.jsx`, `usePyodide.test.jsx`의 출력 보존 검사와 실제 브라우저 `scripts/compat/english-browser.cjs`를 사용합니다. 학생 원문과 실행 코드는 고정 UI의 한글 잔존 검사에서 구분합니다.
-
-영문 사용자 안내: [USER_GUIDE_EN.md](USER_GUIDE_EN.md).
-
-언어별 같은 키를 가진 `ko.json`/`en.json`과 한국어 원문 키의 보조 사전 `catalogs/en-ui-text.json`은 구조가 다릅니다. 보조 사전은 하위 폴더에 두고 자체 자리표시자·교재 검사를 적용하며, 기존 언어 키 비교 검사는 그대로 유지합니다.
-
-새 언어를 추가할 때는 `locale.js`의 허용 코드, Header의 언어 선택, `ui-text.js`의 보조 사전 연결도 함께 준비합니다. 현재 공개 지원 언어는 한국어와 영어입니다.
+- Whether every Korean message produced by the Worker, the stores and the server has a catalog entry.
+- Whether server responses (`server/routes/`) are localized anywhere other than through the catalog on the client.
+- The Crowdin or Weblate integration mentioned in the earlier Korean guide: no configuration for either exists in the repository.
