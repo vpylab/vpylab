@@ -64,7 +64,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   // 보안: 제목을 HTML 엔티티로 이스케이프 (저장형 XSS 방지)
   const safeTitle = escapeHTML(title);
   const safeOpenInVpylabUrl = options.openInVpylabUrl ? escapeHTML(options.openInVpylabUrl) : '';
-  const safeRepoUrl = options.repoUrl ? escapeHTML(options.repoUrl) : 'https://github.com/greatsong/vpylab';
+  const safeRepoUrl = options.repoUrl ? escapeHTML(options.repoUrl) : 'https://github.com/vpylab/vpylab';
   const openInVpylabLink = safeOpenInVpylabUrl
     ? ` · <a href="${safeOpenInVpylabUrl}" target="_blank">VPyLab에서 열기</a>`
     : '';
