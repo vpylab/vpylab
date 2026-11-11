@@ -454,3 +454,24 @@ describe('팀원 초대', () => {
     await rejectsWith(api.acceptInvitation(-1), 'notFound');
   });
 });
+
+describe('새 저장소의 기본 브랜치', () => {
+  it('빈 저장소에 첫 파일을 올릴 때 브랜치 이름을 함께 보낸다(계정 설정이 main이 아니어도 어긋나지 않게)', async () => {
+    const { github } = setup();
+    const bodies = [];
+    const api = createGitHubApi({
+      getToken: () => 'token-ada',
+      fetchImpl: async (url, init = {}) => {
+        if (init.method === 'PUT' && String(url).includes('/contents/')) bodies.push(JSON.parse(init.body));
+        return github.fetchImpl(url, init);
+      },
+      sleep: async () => {},
+      now: () => NOW,
+      randomSuffix: () => 'rand06',
+    });
+    await api.createProject({ title: 'Branch Test', code: 'sphere()' });
+    expect(github.state.emptyTreeFails).toBe(true); // 빈 저장소에서는 Contents API로 첫 파일을 올리는 경로를 탑니다
+    expect(bodies.length).toBeGreaterThan(0);
+    expect(bodies[0].branch).toBe('main');
+  });
+});

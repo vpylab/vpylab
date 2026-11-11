@@ -470,9 +470,10 @@ export function createGitHubApi({
     return commit.sha;
   }
 
-  async function bootstrapEmptyRepoWithContents(owner, repo, file, message) {
+  async function bootstrapEmptyRepoWithContents(owner, repo, file, message, branch) {
+    // 브랜치를 적지 않으면 GitHub가 계정 설정의 기본 브랜치(예: master)를 만들어, 뒤이은 ref 갱신과 이름이 어긋납니다.
     const result = await request(`/repos/${owner}/${repo}/contents/${encodeURIComponent(file.path)}`, {
-      method: 'PUT', body: { message, content: encodeBase64Utf8(file.content) },
+      method: 'PUT', body: { message, content: encodeBase64Utf8(file.content), ...(branch ? { branch } : {}) },
     });
     return result.commit?.sha || null;
   }
@@ -494,7 +495,7 @@ export function createGitHubApi({
       if (parentSha || !isRepoStillPreparing(error)) throw error;
       // 완전히 빈 공개 저장소는 Git Data API의 tree 만들기도 409로 거절할 수 있습니다.
       // Contents API로 첫 파일을 만들어 브랜치를 세운 뒤 나머지 파일을 맞춥니다.
-      parentSha = await bootstrapEmptyRepoWithContents(owner, repo, files[0], `${message} (bootstrap)`);
+      parentSha = await bootstrapEmptyRepoWithContents(owner, repo, files[0], `${message} (bootstrap)`, branch);
       if (!parentSha) throw error;
       if (files.length === 1) return parentSha;
       baseTreeSha = await getCommitTreeSha(owner, repo, parentSha);
@@ -674,7 +675,8 @@ export function createGitHubApi({
       const baseName = customName || `vpylab-${await sanitizeRepoName(cleanTitle)}`;
       const created = await createUniqueRepo(baseName, cleanTitle.slice(0, 350), { allowFallbackNames: !hasCustomName });
       const repo = created.name;
-      const branch = 'main';
+      // 새 저장소의 기본 브랜치 이름은 학생 계정의 설정을 따릅니다(대개 main). 그 이름으로 첫 커밋과 Pages를 맞춥니다.
+      const branch = typeof created.default_branch === 'string' && created.default_branch ? created.default_branch : 'main';
 
       try {
         const page = await resolveHtml(html, htmlContext({ owner, repo, title: cleanTitle, code, openUrl }));

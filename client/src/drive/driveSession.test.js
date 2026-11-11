@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeGoogle, memoryStorage } from '../drive-lab/fake-google.js';
-import { DRIVE_TAB_KEY, configureDrive, hasStoredDriveSession, storedDriveFileId, useDriveStore } from './driveSession.js';
+import { DRIVE_TAB_KEY, configureDrive, expiredDriveTabFile, hasStoredDriveSession, storedDriveFileId, useDriveStore } from './driveSession.js';
 import { TOKEN_STORAGE_KEY } from '../drive-lab/google-auth.js';
 
 let google;
@@ -442,6 +442,45 @@ describe('드라이브 연결 유지', () => {
     expect(store().account).toBeNull();
     expect(tab.getItem(TOKEN_STORAGE_KEY)).toBeNull();
     expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+  });
+
+  it('파일을 열어 둔 채 토큰이 만료된 뒤 새로 고치면 한 번만 알리고 표식을 지운다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '만료표식.py' });
+    const id = store().file.id;
+    expect(expiredDriveTabFile()).toBe(false); // 토큰이 유효한 동안에는 해당 없음
+    reload();
+    tab.setItem(DRIVE_TAB_KEY, JSON.stringify({ fileId: id }));
+    clock += 3_600_000;
+    expect(storedDriveFileId()).toBeNull();
+    expect(expiredDriveTabFile()).toBe(true);
+    expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+    expect(expiredDriveTabFile()).toBe(false);
+  });
+
+  it('다시 승인하면서 드라이브 권한을 빼면 저장을 시도하지 않고 권한 안내를 남긴다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '권한.py' });
+    const id = store().file.id;
+    clock += 3_600_000;
+    // 다음 승인 요청은 드라이브 권한 없이 돌아옵니다(승인 화면에서 체크 상자를 비운 경우).
+    const original = google.gis.accounts.oauth2.initTokenClient;
+    reload();
+    google.gis.accounts.oauth2.initTokenClient = (config) => ({
+      requestAccessToken: () => {
+        const token = 'tok-noscope';
+        google.state.tokens.set(token, { sub: 'subA', email: 'a@school.example' });
+        queueMicrotask(() => config.callback({ access_token: token, expires_in: 3599, scope: 'openid email profile' }));
+      },
+    });
+    await store().prepare();
+    useDriveStore.setState({ account: { sub: 'subA', email: 'a@school.example', name: '' }, file: { id, name: '권한.py', version: '1', headRevisionId: 'r', savedCode: 'v1' } });
+    expect(await store().save('v2')).toEqual({ status: 'error', reason: 'scope' });
+    expect(store().missingScope).toBe(true);
+    expect(store().error).toEqual({ reason: 'scope' });
+    expect(store().busy).toBe('');
+    expect(google.state.files.get(id).content).toBe('v1');
+    google.gis.accounts.oauth2.initTokenClient = original;
   });
 
   it('로그아웃하면 탭 저장소의 토큰과 파일 표식을 지운다', async () => {

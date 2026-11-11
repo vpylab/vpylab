@@ -322,8 +322,8 @@ export const useGitHubStore = create((set, get) => {
       return { status: 'saved', headSha: result.headSha, commitUrl: result.commitUrl, ...(result.pagesWarning ? { pagesWarning: result.pagesWarning } : {}) };
     } catch (error) {
       if (stale()) return staleResult();
-      // 시간 초과·연결 끊김은 GitHub에 반영됐는지 알 수 없습니다. 다음 저장에서 내 저장으로 인정합니다.
-      if (error instanceof GitHubError && (error.reason === 'timeout' || error.reason === 'network')) {
+      // 시간 초과·연결 끊김·서버 오류(5xx)는 GitHub에 반영됐는지 알 수 없습니다. 다음 저장에서 내 저장으로 인정합니다.
+      if (error instanceof GitHubError && (error.reason === 'timeout' || error.reason === 'network' || error.reason === 'server')) {
         attemptedCodes = [...attemptedCodes, code].slice(-5);
       }
       return fail(error, epoch);

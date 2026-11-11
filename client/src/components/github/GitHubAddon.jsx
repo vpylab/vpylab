@@ -50,6 +50,8 @@ export default function GitHubAddon({ controlRef, code, getCode, defaultTitle, s
         if (baseline == null) {
           const pulled = await useGitHubStore.getState().pullLatest();
           if (pulled.status !== 'loaded') return;
+          // 읽는 사이 다른 코드를 불러와 연결을 끊었거나 다른 프로젝트를 열었으면 편집기를 건드리지 않습니다.
+          if (useGitHubStore.getState().project?.fullName !== restored.fullName) return;
           baseline = pulled.code;
         }
         const draft = readProjectDraft(restored.fullName);

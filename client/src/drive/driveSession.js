@@ -138,6 +138,16 @@ export function storedDriveFileId() {
   return hasStoredDriveSession() ? readTabFile() : null;
 }
 
+/**
+ * 드라이브 파일을 열어 둔 채 토큰이 만료된 뒤 새로 고친 탭인지 확인하고, 그 표식을 지웁니다.
+ * 만들기 화면이 "다시 로그인하면 저장하지 않은 변경을 되살릴 수 있다"고 한 번 안내하는 데 사용합니다.
+ */
+export function expiredDriveTabFile() {
+  if (!deps.clientId || hasStoredDriveSession() || !readTabFile()) return false;
+  writeTabFile(null);
+  return true;
+}
+
 export const useDriveStore = create((set, get) => {
   /** 오류를 상태에 반영합니다. 재승인이 필요하면 needsReauth, 폴더가 휴지통이면 folderTrashed. */
   function fail(error, epoch = authEpoch) {
@@ -437,6 +447,8 @@ export const useDriveStore = create((set, get) => {
       try {
         if (renewal && await renewal) epoch = authEpoch;
         if (session !== sessionEpoch) return staleResult(token);
+        // 다시 승인하면서 드라이브 권한을 빼고 승인했으면, 저장을 시도해 그 안내를 다른 오류로 덮지 않습니다.
+        if (get().missingScope) { rememberDraft(code); set({ busy: '', error: { reason: 'scope' } }); return { status: 'error', reason: 'scope' }; }
         if (!file) return await createFile(code, name || '제목 없음.py', session, token);
         const attempted = get().attemptedCodes;
         const result = await drive.save({

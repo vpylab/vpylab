@@ -25,7 +25,7 @@ import { createShareLink, decodeCodeFromURL, loadSharedCode, SHARE_RUN_VIEW } fr
 import ShareLinkDialog from '../components/share/ShareLinkDialog';
 import DriveDialog from '../components/drive/DriveDialog';
 import VideoSaveDialog from '../components/drive/VideoSaveDialog';
-import { DRIVE_CLIENT_ID, storedDriveFileId, useDriveStore } from '../drive/driveSession';
+import { DRIVE_CLIENT_ID, expiredDriveTabFile, storedDriveFileId, useDriveStore } from '../drive/driveSession';
 import { GITHUB_ADDON, SERVER_FEATURES } from '../lib/api-base.js';
 import { storedGitHubProject } from '../github/tab-session.js';
 import AddonBoundary from '../components/shared/AddonBoundary';
@@ -350,18 +350,30 @@ export default function Sandbox() {
   // 자유 코딩 초안 남기기: 불러온 원본에서 달라진 코드만 이 브라우저에 남깁니다(탭을 닫아도 이어서 할 수 있게).
   // 학습 자료의 연습 코드(탭 단위 보관), 드라이브 파일, 팀 프로젝트, 계정 자동 저장을 쓰는 로그인 사용자는 각자의 저장 방식을 따릅니다.
   useEffect(() => {
-    if (practiceContextRef.current || driveFile || activeProject || githubProject || (ACCOUNT_SAVE && user)) return undefined;
+    // 구글 드라이브에 로그인한 동안에는 계정별 드라이브 초안(driveSession.rememberDraft)이 맡습니다. 공용 컴퓨터에서 로그아웃한 뒤 코드가 남지 않게 합니다.
+    if (practiceContextRef.current || driveFile || driveAccount || activeProject || githubProject || (ACCOUNT_SAVE && user)) return undefined;
     const timer = setTimeout(() => {
       if (codeRef.current !== code) return;
       if (code === initialCodeRef.current) { if (isStarterCode(code)) clearSandboxDraft(); return; }
       writeSandboxDraft(code);
     }, 800);
     return () => clearTimeout(timer);
-  }, [code, driveFile, activeProject, githubProject, user]);
-  // 드라이브 파일이나 팀 프로젝트로 옮겨 가면 그 전의 자유 코딩 초안은 지웁니다(다음에 열 때 옛 코드가 나오지 않게).
+  }, [code, driveFile, driveAccount, activeProject, githubProject, user]);
+  // 드라이브(로그인·파일)나 팀 프로젝트로 옮겨 가면 그 전의 자유 코딩 초안은 지웁니다(다음에 열 때 옛 코드가 나오지 않게).
   useEffect(() => {
-    if (driveFile || activeProject || githubProject) clearSandboxDraft();
-  }, [driveFile, activeProject, githubProject]);
+    if (driveFile || driveAccount || activeProject || githubProject) clearSandboxDraft();
+  }, [driveFile, driveAccount, activeProject, githubProject]);
+  // 드라이브에서 로그아웃하거나 팀 프로젝트 연결을 끊은 직후의 코드는 이 브라우저에 익명 초안으로 남기지 않습니다.
+  // 그 시점의 코드를 기준으로 삼아, 그 뒤에 새로 고친 내용만 초안이 됩니다(공용 컴퓨터에서 앞 학생의 코드가 넘어가지 않게).
+  const previousSources = useRef({ driveAccount: null, githubProject: null });
+  useEffect(() => {
+    const previous = previousSources.current;
+    if ((previous.driveAccount && !driveAccount) || (previous.githubProject && !githubProject)) {
+      clearSandboxDraft();
+      initialCodeRef.current = codeRef.current;
+    }
+    previousSources.current = { driveAccount, githubProject };
+  }, [driveAccount, githubProject]);
 
   // 드라이브 연결 복구: 새로 고침한 뒤 이 탭에 남은 토큰으로 계정을 되살리고, 열어 두었던 파일을 다시 엽니다.
   const driveResumed = useRef(false);
@@ -371,12 +383,31 @@ export default function Sandbox() {
     const plain = isPlainEntry(location, sharedRouteId);
     (async () => {
       const drive = useDriveStore.getState();
-      const resumed = await drive.resume();
-      if (resumed.status !== 'resumed' || !resumed.fileId) return;
+      // 다른 화면에 다녀온 경우(새로 고침 아님)에는 스토어에 계정과 연 파일이 그대로 있습니다. 편집기는 새로 그려져 기본 코드이므로
+      // 그 파일을 다시 읽어 넣습니다. 그대로 두면 "저장"이 기본 코드로 드라이브 파일을 덮어씁니다.
+      const stillOpen = drive.account && drive.file ? drive.file.id : null;
+      const expiredFile = !stillOpen && plain && expiredDriveTabFile();
+      const resumed = stillOpen ? { status: 'resumed', fileId: stillOpen } : await drive.resume();
+      if (resumed.status !== 'resumed') {
+        // 드라이브 파일을 열어 둔 채 연결이 만료된 뒤 새로 고친 경우: 저장하지 않은 변경은 계정별 초안에 남아 있습니다.
+        if (expiredFile) addOutput(ui("구글 드라이브 연결이 만료되어 열어 두었던 파일을 다시 열지 못했습니다. \"내 드라이브\"에서 로그인하고 파일을 열면 저장하지 않은 변경을 되살릴 수 있습니다."), 'warning');
+        return;
+      }
+      if (!resumed.fileId) {
+        // 계정만 되살아난 경우: 파일로 만들지 않은 새 코드의 초안이 있으면 이어서 엽니다.
+        const draft = plain && codeRef.current === initialCodeRef.current ? useDriveStore.getState().latestNewDraft() : null;
+        if (draft?.code && !isStarterCode(draft.code) && !(GITHUB_ADDON && storedGitHubProject())) {
+          practiceContextRef.current = null;
+          updateCode(draft.code);
+          setOutputs([{ text: ui("저장하지 않은 코드를 이 브라우저의 초안에서 이어서 열었습니다. 새로 시작하려면 도구 메뉴의 \"초기 코드로 돌아가기\"를 누르십시오."), type: 'log', id: Date.now() }]);
+        }
+        return;
+      }
       // 팀 프로젝트를 열어 두었던 탭이면 그 프로젝트를 되살리는 쪽이 우선입니다(드라이브 파일과 동시에 열지 않음).
-      if (GITHUB_ADDON && storedGitHubProject()) return;
-      // 그사이 다른 코드를 불러왔거나 편집을 시작했으면 덮어쓰지 않습니다.
-      if (!plain || useDriveStore.getState().file || codeRef.current !== initialCodeRef.current) return;
+      if (GITHUB_ADDON && storedGitHubProject()) { if (stillOpen) useDriveStore.getState().detach(); return; }
+      // 다른 코드(공유 링크·학습 자료 등)로 들어온 화면은 그 코드를 불러올 때 파일 연결을 끊습니다. 편집을 시작했으면 덮어쓰지 않습니다.
+      if (!plain || codeRef.current !== initialCodeRef.current) return;
+      if (!stillOpen && useDriveStore.getState().file) return;
       const opened = await useDriveStore.getState().openFile(resumed.fileId);
       if (opened.status !== 'opened' || codeRef.current !== initialCodeRef.current) return;
       let next = opened.code;
@@ -561,6 +592,8 @@ export default function Sandbox() {
     if (fromExternal) {
       useProjectStore.getState().closeProject();
       useCodeStore.getState().setCurrentCodeId(null);
+      // 불러오기가 늦거나 실패해도, 열어 둔 드라이브 파일·팀 프로젝트에 다른 코드가 저장되지 않게 먼저 연결을 끊습니다.
+      detachDriveSource();
     }
   }, [location.state, repoParam, searchParams]);
 
@@ -1498,10 +1531,18 @@ export default function Sandbox() {
               defaultTitle={shareTitle()}
               shouldRestore={() => githubRestoreAllowed.current && !githubDetachPending && codeRef.current === initialCodeRef.current}
               onReady={() => { githubDetachPending = false; }}
-              onProjectChange={setGithubProject}
+              onProjectChange={(next) => {
+                // 팀 프로젝트를 여는 순간부터 저장은 GitHub로 갑니다. 열어 둔 드라이브 파일과 동시에 연결해 두지 않습니다(빈 저장소 포함).
+                if (next && DRIVE_EDITOR) useDriveStore.getState().detach();
+                setGithubProject(next);
+              }}
               onRestore={({ code: restored, baseline, title, restoredDraft }) => {
-                // 새로 고침 뒤: 그사이 편집을 시작했으면 덮어쓰지 않습니다.
-                if (codeRef.current !== initialCodeRef.current) return;
+                // 새로 고침 뒤: 그사이 편집을 시작했으면 덮어쓰지 않습니다. 이때 프로젝트 연결도 끊어, 저장이 지금 코드를 팀 저장소에 올리지 않게 합니다.
+                if (codeRef.current !== initialCodeRef.current) {
+                  githubControl.current?.detach();
+                  addOutput(ui`편집을 시작한 뒤라 팀 프로젝트 "${title || ''}"을(를) 다시 열지 않았습니다. "팀 프로젝트" 버튼에서 다시 열 수 있습니다.`, 'warning');
+                  return;
+                }
                 practiceContextRef.current = null;
                 if (DRIVE_EDITOR) useDriveStore.getState().detach();
                 updateCode(restored);
@@ -1565,6 +1606,7 @@ export default function Sandbox() {
           }}
           onRestoreNew={(restored) => {
             practiceContextRef.current = null;
+            detachGitHubSource();
             updateCode(restored);
             setDriveDialog(null);
           }}
