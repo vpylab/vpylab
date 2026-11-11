@@ -17,7 +17,10 @@ VPyLab은 저장소 하나(`vpylab/vpylab`)에서 두 판을 배포합니다. �
 
 - `EDITION`: `classroom` 또는 `open`
 - `SERVER_FEATURES`: 운영 서버·DB가 필요한 기능을 켤지. 오픈소스 판과 교실 LAN 모드에서는 꺼집니다.
-- 오픈소스 판에서 꺼지는 것: 로그인 버튼, 갤러리 메뉴. "저장"을 누르면 로그인 창 대신 드라이브 저장 준비 안내가 뜹니다.
+- `DRIVE_SAVE`: 구글 클라이언트 ID(`VITE_GOOGLE_CLIENT_ID`)가 있는 배포. 두 판 모두 개인 코드를 학생 본인의 구글 드라이브에 저장하고, 머리글의 로그인 버튼을 감춥니다.
+- `GITHUB_ADDON`: 오픈소스 판에 GitHub 클라이언트 ID(`VITE_GITHUB_CLIENT_ID`)를 넣은 배포. 서버 없는 GitHub 팀 프로젝트가 켜집니다.
+- `TEAM_PROJECTS`: 만들기 화면에 팀 프로젝트가 있는 배포(수업용 판의 운영 서버 방식 또는 위 애드온).
+- 오픈소스 판에서 꺼지는 것: 로그인 버튼, 갤러리 메뉴. 구글 클라이언트 ID가 없는 배포에서 "저장"을 누르면 드라이브 저장 준비 안내가 표시됩니다.
 - 오픈소스 판은 커밋된 `client/.env.production`에 Supabase·Railway 값이 있어도 사용하지 않습니다. `build:open`이 이 값을 비우고 빌드하므로 번들에 주소가 남지 않습니다. CSP에서도 두 주소를 뺍니다.
 
 새 기능이 운영 서버나 Supabase를 쓴다면 `SERVER_FEATURES`로 감싸 오픈소스 판에서 꺼지게 합니다.
@@ -78,11 +81,39 @@ npx wrangler d1 execute vpylab-shares --remote --command "DELETE FROM shares WHE
 npx wrangler pages dev client/dist --port 4087
 ```
 
+## 개인 코드의 드라이브 저장 (두 판, 2026-11-12)
+
+빌드에 `VITE_GOOGLE_CLIENT_ID`가 있으면 만들기 화면의 "저장"은 학생 본인의 구글 드라이브에 저장합니다. 오픈소스 판은 이미 켜져 있습니다. 수업용 판(Vercel)은 이 값을 넣기 전까지 예전 방식(계정 로그인과 GitHub 프로젝트)으로 동작합니다.
+
+수업용 판에서 켜면 달라지는 것은 다음과 같습니다.
+
+- 저장: 팀 프로젝트를 열어 두지 않았으면 구글 드라이브에 저장합니다. 팀 프로젝트를 열어 둔 동안에는 예전처럼 GitHub 커밋입니다. 판단 위치는 `client/src/pages/Sandbox.jsx`의 `handleSave`입니다.
+- 로그인: 머리글의 로그인 버튼을 감춥니다. 로그인 창은 팀 프로젝트, 갤러리, 교사 화면에서 필요할 때 열리고 GitHub 로그인을 먼저 보여 줍니다. 교사 계정을 위해 구글 로그인 링크는 남깁니다.
+- 운영 계정에 하던 개인 코드 자동 저장, "다른 이름으로 저장", 개인 코드의 "저장 이력"은 꺼집니다. 이미 계정에 저장된 코드는 지우지 않습니다.
+- 개인정보 처리방침에 드라이브 저장 구역이 표시됩니다(`client/src/pages/Privacy.jsx`).
+
+켜는 순서는 아래 "수업용 판의 영상 드라이브 저장"의 3~5번과 같습니다(승인된 원본 추가, Vercel 환경변수, 실제 계정 확인). 끄려면 환경변수를 지우고 다시 배포합니다.
+
+## GitHub 팀 프로젝트 애드온 (오픈소스 판, 2026-11-12)
+
+오픈소스 판은 운영 서버 없이 브라우저가 GitHub API를 직접 호출합니다(`client/src/github/`). GitHub의 토큰 발급 주소는 브라우저 호출을 허용하지 않으므로 Pages 함수 `functions/api/github/token.js`가 로그인 코드를 토큰으로 바꿉니다. 함수는 토큰을 저장하거나 기록하지 않습니다. 설정이 없으면 애드온은 꺼지고 실행과 드라이브 저장은 그대로 동작합니다.
+
+켜는 순서는 다음과 같습니다.
+
+1. GitHub에서 OAuth 앱을 만듭니다(조직 `vpylab` → Settings → Developer settings → OAuth Apps). Homepage URL은 사이트 주소, Authorization callback URL은 `https://<사이트 주소>/github/callback`입니다. OAuth 앱은 콜백 주소를 하나만 가지므로 로컬 확인용 앱(`http://localhost:4086/github/callback`)은 따로 만듭니다.
+2. 클라이언트 ID를 저장소 Actions 변수 `VITE_GITHUB_CLIENT_ID`에 넣습니다(공개해도 되는 값).
+3. Cloudflare Pages 프로젝트 `vpylab`의 Settings → Variables and Secrets에 `GITHUB_CLIENT_ID`와 `GITHUB_CLIENT_SECRET`(비밀값)을 넣습니다. 비밀값은 저장소나 `VITE_` 변수에 넣지 않습니다.
+4. 배포한 뒤 만들기 화면의 "팀 프로젝트"에서 연결, 프로젝트 만들기, 저장, 초대를 실제 계정 두 개로 확인합니다.
+
+요청하는 GitHub 권한은 `public_repo`(공개 저장소 만들기와 커밋)와 `repo:invite`(받은 초대 수락)입니다. 프로젝트 저장소는 공개 저장소이며 topic `vpylab-project`로 구분합니다. 토큰은 브라우저 탭 저장소에 두므로 탭을 닫으면 다시 연결해야 합니다. 본 앱 CSP에는 `VITE_GITHUB_CLIENT_ID`가 있는 빌드에서만 `https://api.github.com`이 들어갑니다(`client/scripts/cloudflare-pages.mjs`의 `withGitHubApi`).
+
+수업용 판의 팀 프로젝트는 기존 운영 서버 방식(Supabase 로그인, `server/routes/projects.js`)을 그대로 사용합니다. 두 방식의 프로젝트는 서로 보이지 않습니다.
+
 ## 수업용 판의 영상 드라이브 저장 (2026-11-10, 꺼져 있음)
 
 영상으로 저장은 두 판에서 모두 동작합니다. 드라이브에 저장하는 선택지는 빌드에 `VITE_GOOGLE_CLIENT_ID`가 있을 때만 나타납니다. 오픈소스 판은 이 값이 있어 켜져 있고, 수업용 판(Vercel)은 값이 없어 내려받기만 동작합니다.
 
-- 판단 위치: `client/src/pages/Sandbox.jsx`의 `DRIVE_VIDEO`. 코드 저장을 드라이브로 보내는 `DRIVE_EDITOR`와 별개이며, 수업용 판의 코드 저장은 Supabase와 GitHub에 그대로 둡니다.
+- 판단 위치: `client/src/pages/Sandbox.jsx`의 `DRIVE_VIDEO`. 2026-11-12부터 같은 환경변수가 개인 코드의 드라이브 저장(`DRIVE_EDITOR`)도 함께 켭니다(위 구역).
 - 보안 정책: `vercel.json`의 본 앱 CSP에 구글 로그인과 드라이브 주소가 들어 있습니다(임베드 경로 제외). `vercel.json`은 환경변수에 따라 달라질 수 없어서, 클라이언트 ID가 없는 배포에도 이 주소가 허용됩니다.
 - 드라이브 연결은 Supabase 로그인과 별개의 구글 승인입니다. 구글로 로그인한 학생은 그 계정이 승인 요청에 전달되어 계정 선택을 건너뜁니다. GitHub로 로그인한 학생은 계정을 직접 고릅니다.
 

@@ -2,6 +2,7 @@ import { useUiText } from "../i18n/ui-text";
 import { Link } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import CodeVocabulary from '../components/learning/CodeVocabulary';
+import GuideWays from '../components/guide/GuideWays';
 
 function GuideSection({ id, title, children }) {
   return (
@@ -28,8 +29,10 @@ export default function Guide() {
         </header>
 
         <nav aria-label={ui("사용 안내 목차")} className="flex flex-wrap gap-3 mb-10 text-sm" style={{ color: 'var(--color-accent)' }}>
-          {[['start',ui("처음 시작하기")],['forge',ui("대장간")],['fork',ui("포크와 출처")],['character',ui("캐릭터 튜토리얼")],['projects',ui("팀 프로젝트")]].map(([id,label]) => <a key={id} href={'#'+id}>{label}</a>)}
+          {[['ways',ui("세 가지 방법으로 만들기")],['start',ui("처음 시작하기")],['forge',ui("대장간")],['fork',ui("포크와 출처")],['character',ui("캐릭터 튜토리얼")],['projects',ui("팀 프로젝트")]].map(([id,label]) => <a key={id} href={'#'+id}>{label}</a>)}
         </nav>
+
+        <GuideWays />
 
         <GuideSection id="start" title={ui("어디에서 시작할까요?")}>
           <ul className="list-disc pl-5 space-y-2">

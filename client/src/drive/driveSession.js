@@ -8,9 +8,15 @@
  *
  * 화면은 이 저장소의 상태만 보고 그립니다. 구글 승인 창은 반드시 클릭 처리 안에서 열어야 하므로
  * signIn()은 await 없이 바로 승인 요청을 보냅니다.
+ *
+ * 연결 유지 (구글 토큰의 수명 1시간은 바꿀 수 없으므로 다시 누르는 횟수를 줄입니다)
+ *   - 토큰과 연 파일의 ID를 탭 저장소(sessionStorage)에 둡니다. 새로 고침하면 resume()이 계정과 파일을 되살립니다.
+ *     탭을 닫으면 브라우저가 지우므로 공용 컴퓨터에 남지 않습니다.
+ *   - 저장·열기처럼 클릭으로 시작한 작업은 토큰이 만료됐으면 그 클릭 안에서 같은 계정으로 다시 승인받고 이어서 합니다
+ *     (renewInGesture). 승인 창을 열지 못하면 예전처럼 "다시 승인" 안내로 넘어갑니다.
  */
 import { create } from 'zustand';
-import { AuthRequiredError, createGoogleAuth, fetchUserInfo, loadGis, missingScopes } from '../drive-lab/google-auth.js';
+import { AuthRequiredError, createGoogleAuth, fetchUserInfo, loadGis, missingScopes, readStoredToken } from '../drive-lab/google-auth.js';
 import { DriveError, createDriveStorage, uniqueFileName } from '../drive-lab/drive-storage.js';
 import { clearDraft, clearDrafts, deviceId as getDeviceId, fileDrafts, listDrafts, purgeOldDrafts, saveDraft } from '../drive-lab/lab-state.js';
 
@@ -45,6 +51,9 @@ export function reasonOf(error) {
   return 'unknown';
 }
 
+/** 이 탭에서 연 드라이브 파일(새로 고침 뒤 다시 열 대상). 탭 저장소에 둡니다. */
+export const DRIVE_TAB_KEY = 'vpylab:drive:tab:v1';
+
 const needsReauth = (error) => error instanceof AuthRequiredError || (error instanceof DriveError && error.reason === 'auth');
 const scopeOf = (sub) => `editor-${sub}`;
 /** 탭마다 초안 이름을 따로 둡니다. 한 탭의 저장이 다른 탭의 저장하지 않은 초안을 지우지 않게 합니다. */
@@ -71,7 +80,7 @@ const initialState = {
 };
 
 /** 테스트에서 구글 흉내(gis·fetch)와 저장소를 바꿔 끼웁니다. */
-let deps = { clientId: DRIVE_CLIENT_ID, gis: null, fetchImpl: null, storage: null };
+let deps = { clientId: DRIVE_CLIENT_ID, gis: null, fetchImpl: null, storage: null, tabStorage: undefined, now: null };
 let auth = null;
 let drive = null;
 /** 승인할 때마다 올립니다. 승인 전에 보낸 요청이 늦게 실패해도 새 승인을 '만료'로 되돌리지 않게 합니다. */
@@ -93,6 +102,40 @@ export function configureDrive(next) {
 function storage() {
   if (deps.storage) return deps.storage;
   try { return window.localStorage; } catch { return null; }
+}
+
+/** 탭 저장소. 테스트에서 null을 주면 사용하지 않습니다(토큰을 메모리에만 둠). */
+function tabStorage() {
+  if (deps.tabStorage !== undefined) return deps.tabStorage;
+  try { return window.sessionStorage; } catch { return null; }
+}
+
+const nowMs = () => (deps.now ? deps.now() : Date.now());
+
+function readTabFile() {
+  try {
+    const data = JSON.parse(tabStorage()?.getItem(DRIVE_TAB_KEY) || 'null');
+    return typeof data?.fileId === 'string' && data.fileId ? data.fileId : null;
+  } catch { return null; }
+}
+
+function writeTabFile(fileId) {
+  const store = tabStorage();
+  if (!store) return;
+  try {
+    if (fileId) store.setItem(DRIVE_TAB_KEY, JSON.stringify({ fileId }));
+    else store.removeItem(DRIVE_TAB_KEY);
+  } catch { /* 저장소를 쓸 수 없는 환경 */ }
+}
+
+/** 이 탭에 되살릴 드라이브 연결이 남아 있는지(구글 스크립트를 불러오기 전에 확인) */
+export function hasStoredDriveSession() {
+  return Boolean(deps.clientId && readStoredToken(tabStorage(), nowMs()));
+}
+
+/** 새로 고침 전에 이 탭에서 열어 둔 드라이브 파일이 있는지 */
+export function storedDriveFileId() {
+  return hasStoredDriveSession() ? readTabFile() : null;
 }
 
 export const useDriveStore = create((set, get) => {
@@ -155,6 +198,38 @@ export const useDriveStore = create((set, get) => {
     return { status: 'created', meta };
   }
 
+  /**
+   * 클릭 처리 안에서 부릅니다. 토큰이 만료됐으면 같은 계정으로 승인 창을 바로 열어 하던 작업을 이어 갑니다.
+   * 이미 승인한 계정이면 창이 열렸다가 스스로 닫힙니다. 결과: null(연장할 필요 없음) | Promise<boolean>
+   */
+  function renewInGesture() {
+    const { account, missingScope } = get();
+    if (!auth || !account || missingScope || auth.isValid()) return null;
+    const session = sessionEpoch;
+    const tokenPromise = auth.request({ prompt: '', loginHint: account.email });
+    return (async () => {
+      try {
+        const token = await tokenPromise;
+        const info = await fetchUserInfo(token.accessToken, deps.fetchImpl || undefined);
+        if (session !== sessionEpoch) return false;
+        if (info.sub !== account.sub) {
+          // 다른 계정이 승인됐습니다. 그 계정에 저장하지 않도록 토큰을 버리고 "다시 승인" 안내로 넘깁니다.
+          auth.forget();
+          return false;
+        }
+        if (missingScopes(token.scope).length) {
+          set({ missingScope: true, error: { reason: 'scope' } });
+          return false;
+        }
+        authEpoch += 1;
+        set({ needsReauth: false });
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+  }
+
   return {
     ...initialState,
 
@@ -165,7 +240,7 @@ export const useDriveStore = create((set, get) => {
       set({ preparing: true });
       try {
         const gis = deps.gis || await loadGis();
-        auth = createGoogleAuth({ clientId: deps.clientId, gis });
+        auth = createGoogleAuth({ clientId: deps.clientId, gis, tokenStore: tabStorage(), ...(deps.now ? { now: deps.now } : {}) });
         drive = createDriveStorage({ getToken: () => auth.getToken(), ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}) });
         const store = storage();
         if (store) purgeOldDrafts(store);
@@ -174,6 +249,33 @@ export const useDriveStore = create((set, get) => {
       } catch {
         set({ preparing: false, error: { reason: 'gis' } });
         return false;
+      }
+    },
+
+    /**
+     * 새로 고침한 뒤 이 탭에 남은 토큰으로 계정을 되살립니다(승인 창 없음). 만들기 화면이 열릴 때 부릅니다.
+     * 남은 토큰이 없으면 구글 스크립트도 불러오지 않습니다.
+     * 결과: { status: 'none' } | { status: 'resumed', fileId: string | null }
+     */
+    async resume() {
+      if (get().account) return { status: 'resumed', fileId: get().file ? null : readTabFile() };
+      if (!hasStoredDriveSession()) return { status: 'none' };
+      const session = sessionEpoch;
+      if (!(await get().prepare()) || !auth?.isValid()) return { status: 'none' };
+      try {
+        const token = auth.current();
+        const info = await fetchUserInfo(token.accessToken, deps.fetchImpl || undefined);
+        // 그사이 사용자가 직접 로그인했거나 로그아웃했으면 그 결과를 따릅니다.
+        if (session !== sessionEpoch || get().account) return { status: 'none' };
+        const missing = missingScopes(token.scope);
+        authEpoch += 1;
+        set({ account: { sub: info.sub, email: info.email, name: info.name || '' }, needsReauth: false, missingScope: missing.length > 0 });
+        if (missing.length) return { status: 'none' };
+        return { status: 'resumed', fileId: readTabFile() };
+      } catch {
+        // 철회됐거나 받을 수 없는 토큰은 버립니다. 사용자는 평소처럼 로그인하면 됩니다.
+        if (session === sessionEpoch && !get().account) { auth?.forget(); writeTabFile(null); }
+        return { status: 'none' };
       }
     },
 
@@ -262,8 +364,10 @@ export const useDriveStore = create((set, get) => {
     async openFile(id) {
       const seq = ++openSeq;
       const session = sessionEpoch;
+      const renewal = renewInGesture();
       set({ busy: 'open', error: null });
       try {
+        if (renewal) await renewal;
         const { meta, code } = await drive.open(id);
         // 그사이 다른 파일을 골랐거나 로그아웃했으면 이 응답은 버립니다.
         if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
@@ -326,10 +430,13 @@ export const useDriveStore = create((set, get) => {
       if (get().busy === 'save') return { status: 'busy' };
       const { file } = get();
       const session = sessionEpoch;
-      const epoch = authEpoch;
+      let epoch = authEpoch;
       const token = ++saveSeq;
+      const renewal = renewInGesture();
       set({ busy: 'save', error: null });
       try {
+        if (renewal && await renewal) epoch = authEpoch;
+        if (session !== sessionEpoch) return staleResult(token);
         if (!file) return await createFile(code, name || '제목 없음.py', session, token);
         const attempted = get().attemptedCodes;
         const result = await drive.save({
@@ -378,10 +485,13 @@ export const useDriveStore = create((set, get) => {
       }
       if (get().busy === 'save') return { status: 'busy' };
       const session = sessionEpoch;
-      const epoch = authEpoch;
+      let epoch = authEpoch;
       const token = ++saveSeq;
+      const renewal = renewInGesture();
       set({ busy: 'save', error: null });
       try {
+        if (renewal && await renewal) epoch = authEpoch;
+        if (session !== sessionEpoch) return staleResult(token);
         if (choice === 'copy') {
           const base = (file.name || '제목 없음.py').replace(/\.py$/i, '');
           return await createFile(conflict.mine, `${base} (사본).py`, session, token);
@@ -410,10 +520,13 @@ export const useDriveStore = create((set, get) => {
     async saveAsNew(code, name) {
       if (get().busy === 'save') return { status: 'busy' };
       const session = sessionEpoch;
-      const epoch = authEpoch;
+      let epoch = authEpoch;
       const token = ++saveSeq;
+      const renewal = renewInGesture();
       set({ busy: 'save', error: null, file: null });
       try {
+        if (renewal && await renewal) epoch = authEpoch;
+        if (session !== sessionEpoch) return staleResult(token);
         return await createFile(code, name, session, token);
       } catch (error) {
         if (session !== sessionEpoch) return staleResult(token);
@@ -429,9 +542,11 @@ export const useDriveStore = create((set, get) => {
       if (get().videoUpload) return { status: 'busy' };
       if (!drive || !get().account) return { status: 'error', reason: 'auth' };
       const session = sessionEpoch;
-      const epoch = authEpoch;
+      let epoch = authEpoch;
+      const renewal = renewInGesture();
       set({ videoUpload: { sent: 0, total: blob.size } });
       try {
+        if (renewal && await renewal) epoch = authEpoch;
         const file = await drive.uploadVideo({
           blob, name,
           onProgress: (sent, total) => { if (session === sessionEpoch) set({ videoUpload: { sent, total } }); },
@@ -459,4 +574,10 @@ export const useDriveStore = create((set, get) => {
       }
     },
   };
+});
+
+// 이 탭에서 연 파일을 탭 저장소에 적어 둡니다(새로 고침 뒤 resume()이 다시 엽니다). 로그아웃·연결 끊기에서는 지웁니다.
+useDriveStore.subscribe((state, previous) => {
+  if (state.file?.id !== previous.file?.id) writeTabFile(state.account ? state.file?.id || null : null);
+  else if (previous.account && !state.account) writeTabFile(null);
 });

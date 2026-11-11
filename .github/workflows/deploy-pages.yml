@@ -3,7 +3,9 @@
 # 필요한 설정(저장소 Settings → Secrets and variables → Actions)
 #   - 비밀값 CLOUDFLARE_API_TOKEN: Cloudflare "Cloudflare Pages: Edit" 권한만 준 API 토큰
 #   - 변수 CLOUDFLARE_ACCOUNT_ID: Cloudflare 계정 ID(공개해도 되는 값)
-#   - 변수 VITE_GOOGLE_CLIENT_ID: 드라이브 실험용 구글 OAuth 클라이언트 ID(공개해도 되는 값)
+#   - 변수 VITE_GOOGLE_CLIENT_ID: 구글 드라이브 저장용 구글 OAuth 클라이언트 ID(공개해도 되는 값)
+#   - 변수 VITE_GITHUB_CLIENT_ID(선택): GitHub 팀 프로젝트 애드온용 GitHub OAuth 앱의 클라이언트 ID(공개해도 되는 값).
+#     없으면 애드온 없이 빌드합니다. 켜려면 Cloudflare Pages 프로젝트에 GITHUB_CLIENT_ID·GITHUB_CLIENT_SECRET 비밀값도 넣습니다(docs/DEPLOY_TWO_EDITIONS.md).
 # 비밀값이 없으면 배포 단계를 건너뛰고 안내만 남깁니다(포크에서 실패로 표시되지 않게).
 #
 # 안전장치
@@ -97,6 +99,7 @@ jobs:
         working-directory: client
         env:
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+          VITE_GITHUB_CLIENT_ID: ${{ vars.VITE_GITHUB_CLIENT_ID }}
         run: npm run build:open
 
       - name: Deploy to Cloudflare Pages

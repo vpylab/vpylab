@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildCloudflareConfig, toCloudflarePath, openEditionCsp, spaExcludedDirs, withGoogleSignIn } from './cloudflare-pages.mjs';
+import { buildCloudflareConfig, toCloudflarePath, openEditionCsp, spaExcludedDirs, withGitHubApi, withGoogleSignIn } from './cloudflare-pages.mjs';
 
 const clientRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const vercel = JSON.parse(readFileSync(resolve(clientRoot, '../vercel.json'), 'utf8'));
@@ -101,5 +101,24 @@ describe('SPA 대체에서 뺀 폴더', () => {
     const classroomBlocks = parse(classroom.headers);
     expect(classroomBlocks['/*'].find((l) => l.startsWith('Content-Security-Policy:'))).toContain('https://accounts.google.com/gsi/client');
     expect(classroomBlocks['/embed/*'].find((l) => l.startsWith('Content-Security-Policy:'))).not.toContain('accounts.google.com');
+  });
+});
+
+describe('GitHub 팀 프로젝트 애드온의 CSP', () => {
+  const cspOf = (config, path) => parse(config.headers)[path].find((line) => line.startsWith('Content-Security-Policy:'));
+
+  it('connect-src에만 api.github.com을 더한다', () => {
+    expect(withGitHubApi("default-src 'self'; connect-src 'self'; frame-src 'none'")).toBe("default-src 'self'; connect-src 'self' https://api.github.com; frame-src 'none'");
+    expect(withGitHubApi("connect-src 'self' https://api.github.com")).toBe("connect-src 'self' https://api.github.com");
+  });
+
+  it('GitHub 클라이언트 ID를 넣은 오픈소스 판 빌드의 본 앱에만 적용한다', () => {
+    const plain = buildCloudflareConfig(vercel, { edition: 'open' });
+    const withGitHub = buildCloudflareConfig(vercel, { edition: 'open', github: true });
+    expect(cspOf(plain, '/*')).not.toContain('https://api.github.com');
+    expect(cspOf(withGitHub, '/*')).toContain('https://api.github.com');
+    for (const path of ['/embed/*', '/assets/*', '/drive-lab.html']) expect(cspOf(withGitHub, path) || '').not.toContain('https://api.github.com');
+    // 수업용 판은 운영 서버가 GitHub를 호출하므로 더하지 않습니다.
+    expect(cspOf(buildCloudflareConfig(vercel, { edition: 'classroom', github: true }), '/*')).not.toContain('https://api.github.com');
   });
 });

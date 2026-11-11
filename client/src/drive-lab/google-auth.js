@@ -1,7 +1,9 @@
 // 구글 로그인과 드라이브 권한 (Google Identity Services 토큰 방식)
 //
 // 서버 없이 브라우저가 액세스 토큰을 직접 받습니다. refresh token은 없으므로
-// 만료되면 사용자가 버튼을 눌러 다시 승인해야 합니다(팝업 차단을 피하려면 클릭 이벤트 안에서 요청).
+// 만료되면 다시 승인해야 합니다(팝업 차단을 피하려면 클릭 이벤트 안에서 요청).
+// 토큰 수명(약 1시간)은 구글이 정합니다. tokenStore(탭 저장소)를 주면 새로 고침한 뒤에도
+// 남은 시간 동안 다시 승인하지 않습니다. 탭을 닫으면 브라우저가 지웁니다.
 
 export const GIS_SRC = 'https://accounts.google.com/gsi/client';
 export const DRIVE_FILE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -10,6 +12,25 @@ export const ALL_SCOPES = [...IDENTITY_SCOPES, DRIVE_FILE_SCOPE];
 /** 만료 직전 요청이 실패하지 않도록 남은 시간이 이보다 짧으면 만료로 봅니다. */
 export const EXPIRY_MARGIN_MS = 60_000;
 export const REVOKE_TIMEOUT_MS = 5_000;
+export const TOKEN_STORAGE_KEY = 'vpylab:drive:token:v1';
+
+/** 탭 저장소에 남은 토큰을 읽습니다. 만료됐거나 형식이 다르면 지우고 null */
+export function readStoredToken(tokenStore, now = Date.now()) {
+  if (!tokenStore) return null;
+  try {
+    const data = JSON.parse(tokenStore.getItem(TOKEN_STORAGE_KEY) || 'null');
+    const valid = data && typeof data.accessToken === 'string' && data.accessToken
+      && Number.isFinite(data.expiresAt) && data.expiresAt - now > EXPIRY_MARGIN_MS;
+    if (!valid) {
+      if (data !== null) tokenStore.removeItem(TOKEN_STORAGE_KEY);
+      return null;
+    }
+    return { accessToken: data.accessToken, expiresAt: data.expiresAt, scope: typeof data.scope === 'string' ? data.scope : '' };
+  } catch {
+    try { tokenStore.removeItem(TOKEN_STORAGE_KEY); } catch { /* 저장소를 쓸 수 없는 환경 */ }
+    return null;
+  }
+}
 
 export class AuthRequiredError extends Error {
   constructor(message = '구글 권한 승인이 필요합니다.') {
@@ -79,10 +100,20 @@ export function missingScopes(scopeString, required = ALL_SCOPES) {
  * @param {string} options.clientId
  * @param {object} options.gis window.google
  * @param {() => number} [options.now]
+ * @param {Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null} [options.tokenStore] 탭 저장소(sessionStorage). 없으면 메모리에만 둡니다.
  */
-export function createGoogleAuth({ clientId, gis, now = () => Date.now() }) {
-  let token = null; // { accessToken, expiresAt, scope }
+export function createGoogleAuth({ clientId, gis, now = () => Date.now(), tokenStore = null }) {
+  let token = readStoredToken(tokenStore, now()); // { accessToken, expiresAt, scope }
   let pending = null;
+  /** 토큰을 바꾸고 탭 저장소에도 반영합니다. 저장소가 막혀 있어도 메모리의 토큰으로 계속 동작합니다. */
+  const setToken = (next) => {
+    token = next;
+    if (!tokenStore) return;
+    try {
+      if (next) tokenStore.setItem(TOKEN_STORAGE_KEY, JSON.stringify(next));
+      else tokenStore.removeItem(TOKEN_STORAGE_KEY);
+    } catch { /* 저장소를 쓸 수 없는 환경 */ }
+  };
   const client = gis.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: ALL_SCOPES.join(' '),
@@ -94,11 +125,11 @@ export function createGoogleAuth({ clientId, gis, now = () => Date.now() }) {
         done.reject(new Error(explainAuthError(response.error, response.error_description)));
         return;
       }
-      token = {
+      setToken({
         accessToken: response.access_token,
         expiresAt: now() + Number(response.expires_in || 0) * 1000,
         scope: response.scope || '',
-      };
+      });
       done.resolve(token);
     },
     error_callback: (error) => {
@@ -134,15 +165,15 @@ export function createGoogleAuth({ clientId, gis, now = () => Date.now() }) {
     },
     /** 실험용: 1시간을 기다리지 않고 만료 상황을 만듭니다. */
     expireNow() {
-      if (token) token = { ...token, expiresAt: now() - 1 };
+      if (token) setToken({ ...token, expiresAt: now() - 1 });
     },
     /** 실험용: 토큰 값을 망가뜨려 구글이 401을 돌려주게 합니다. */
     corrupt() {
-      if (token) token = { ...token, accessToken: `${token.accessToken}x` };
+      if (token) setToken({ ...token, accessToken: `${token.accessToken}x` });
     },
     revoke() {
       const value = token?.accessToken;
-      token = null;
+      setToken(null);
       return new Promise((resolve) => {
         if (!value) return resolve();
         // 네트워크 오류로 콜백이 오지 않아도 로그아웃이 멈추지 않게 5초 뒤 끝냅니다.
@@ -151,7 +182,7 @@ export function createGoogleAuth({ clientId, gis, now = () => Date.now() }) {
       });
     },
     forget() {
-      token = null;
+      setToken(null);
     },
   };
 }

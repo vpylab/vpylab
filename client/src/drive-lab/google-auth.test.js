@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   createGoogleAuth, missingScopes, AuthRequiredError, ALL_SCOPES, DRIVE_FILE_SCOPE, explainAuthError, loadGis,
+  readStoredToken, TOKEN_STORAGE_KEY,
 } from './google-auth.js';
+import { memoryStorage } from './fake-google.js';
 
 function fakeGis() {
   const state = { config: null, requests: [], revoked: [] };
@@ -147,5 +149,72 @@ describe('AuthRequiredError', () => {
   it('이름으로 구분할 수 있다', () => {
     expect(new AuthRequiredError().name).toBe('AuthRequiredError');
     expect(vi).toBeDefined();
+  });
+});
+
+describe('탭 저장소에 두는 토큰', () => {
+  it('승인받은 토큰을 탭 저장소에 두고, 새로 만든 인증 객체가 그 토큰으로 이어 간다', async () => {
+    const { gis, state } = fakeGis();
+    const tokenStore = memoryStorage();
+    let t = 1_000_000;
+    const first = createGoogleAuth({ clientId: 'cid', gis, now: () => t, tokenStore });
+    expect(first.isValid()).toBe(false);
+    const promise = first.request();
+    state.config.callback({ access_token: 'A', expires_in: 3599, scope: 'openid' });
+    await promise;
+    expect(JSON.parse(tokenStore.getItem(TOKEN_STORAGE_KEY))).toEqual({ accessToken: 'A', expiresAt: 1_000_000 + 3_599_000, scope: 'openid' });
+
+    // 새로 고침: 같은 탭 저장소로 다시 만듭니다.
+    t += 600_000;
+    const second = createGoogleAuth({ clientId: 'cid', gis, now: () => t, tokenStore });
+    expect(second.isValid()).toBe(true);
+    expect(second.getToken()).toBe('A');
+    expect(state.requests).toHaveLength(1);
+  });
+
+  it('만료된 토큰과 형식이 다른 값은 지우고 사용하지 않는다', () => {
+    const { gis } = fakeGis();
+    const tokenStore = memoryStorage({ [TOKEN_STORAGE_KEY]: JSON.stringify({ accessToken: 'A', expiresAt: 2_000_000, scope: '' }) });
+    expect(readStoredToken(tokenStore, 1_000_000)?.accessToken).toBe('A');
+    expect(createGoogleAuth({ clientId: 'cid', gis, now: () => 1_950_000, tokenStore }).isValid()).toBe(false); // 만료 1분 이내
+    expect(tokenStore.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+
+    for (const bad of ['{깨진 값', '"문자열"', JSON.stringify({ accessToken: 5, expiresAt: 9e15 }), JSON.stringify({ accessToken: 'A', expiresAt: '내일' })]) {
+      tokenStore.setItem(TOKEN_STORAGE_KEY, bad);
+      expect(readStoredToken(tokenStore, 1_000_000)).toBeNull();
+      expect(tokenStore.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+    }
+    expect(readStoredToken(null)).toBeNull();
+  });
+
+  it('잊기·철회·만료 흉내를 탭 저장소에도 반영한다', async () => {
+    const { gis, state } = fakeGis();
+    const tokenStore = memoryStorage();
+    const auth = createGoogleAuth({ clientId: 'cid', gis, now: () => 1_000_000, tokenStore });
+    const grant = async () => { const p = auth.request(); state.config.callback({ access_token: 'A', expires_in: 3599, scope: '' }); await p; };
+
+    await grant();
+    auth.forget();
+    expect(tokenStore.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+
+    await grant();
+    await auth.revoke();
+    expect(tokenStore.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+    expect(state.revoked).toEqual(['A']);
+
+    await grant();
+    auth.expireNow();
+    expect(readStoredToken(tokenStore, 1_000_000)).toBeNull();
+  });
+
+  it('탭 저장소가 막혀 있어도 메모리의 토큰으로 동작한다', async () => {
+    const { gis, state } = fakeGis();
+    const broken = { getItem() { throw new Error('막힘'); }, setItem() { throw new Error('막힘'); }, removeItem() { throw new Error('막힘'); } };
+    const auth = createGoogleAuth({ clientId: 'cid', gis, tokenStore: broken });
+    const promise = auth.request();
+    state.config.callback({ access_token: 'A', expires_in: 3599, scope: '' });
+    await promise;
+    expect(auth.getToken()).toBe('A');
+    expect(() => auth.forget()).not.toThrow();
   });
 });

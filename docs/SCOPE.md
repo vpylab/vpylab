@@ -20,6 +20,7 @@ VPyLab is **Python that students write in the browser and see and hear at once a
 | The Create screen: editor, 3D view, console, run and stop | `client/src/pages/Sandbox.jsx` |
 | Lessons that lead from first run to an original project (Training, Tutorials) and the reference docs | `client/src/data/` |
 | Google sign-in and saving to the student's own Google Drive ([plan](GOOGLE_FIRST_PLAN.md)) | `client/src/drive-lab/`, `client/src/drive/` |
+| Working without an account: opening and downloading code files, the draft kept in the browser, share links | `client/src/utils/code-file.js`, `sandbox-draft.js`, `share.js` |
 | Two editions from one codebase, and the classroom edition's existing sign-in, saving and team flow | `client/src/lib/api-base.js`, `client/src/stores/`, `server/` |
 | Interface in Korean and English | `client/src/i18n/` |
 
@@ -43,7 +44,7 @@ Features that already exist stay. Nothing is removed by this file.
 
 ## The add-on rule
 
-Anything that is not core is an add-on, including features that already exist: video recording and saving videos to Drive, the Forge, the gallery, the physical-computing pilot missions, classroom LAN mode, the teacher-training app.
+Anything that is not core is an add-on, including features that already exist: video recording and saving videos to Drive, the Forge, the gallery, the physical-computing pilot missions, classroom LAN mode, the teacher-training app, GitHub team projects in the open edition.
 
 An add-on must meet all of these:
 
@@ -57,6 +58,11 @@ An add-on must meet all of these:
 Existing add-ons were not all written to this rule. Bringing them in line is welcome work during the freeze. Known gaps today:
 
 - Video recording is imported directly by `Sandbox.jsx`. It fails safely when the browser cannot record, but the Create screen would not build if the module were deleted.
+
+## Recorded decisions (rule 6)
+
+- **2026-11-12, GitHub team projects in the open edition** (`client/src/github/`, `functions/api/github/token.js`). The maintainer decided the three-step flow in [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md) section 0: no sign-in to start, Google Drive to save, GitHub only for team projects. This add-on adds, only in builds that set `VITE_GITHUB_CLIENT_ID`: the network origin `https://api.github.com` in the main app's CSP, the GitHub permissions `public_repo` and `repo:invite` requested from a student who chooses to connect, and one Pages Function that exchanges the sign-in code for a token and stores nothing. The project stores no student data for it. The token stays in the browser tab's storage.
+- **2026-11-12, the Google access token moves from page memory to the browser tab's storage** (`sessionStorage`), so a refresh does not disconnect Drive. It is removed when the tab closes or the student signs out.
 
 ## How to propose a feature anyway
 
@@ -86,6 +92,7 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 - 만들기 화면(편집기, 3D 화면, 출력, 실행과 정지)
 - 첫 실행에서 자기 작품까지 이어지는 학습 자료(트레이닝, 튜토리얼)와 문서
 - 구글 로그인과 학생 본인의 구글 드라이브 저장([계획](GOOGLE_FIRST_PLAN.md))
+- 계정 없이 작업하기(코드 파일 열기와 내려받기, 브라우저에 남는 초안, 공유 링크)
 - 코드 하나로 두 판을 배포하는 구조, 수업용 판의 기존 로그인·저장·팀 흐름
 - 한국어와 영어 화면
 
@@ -109,7 +116,7 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 
 ### 애드온 규칙
 
-핵심이 아닌 것은 모두 애드온입니다. 이미 있는 기능도 포함합니다. 영상 녹화와 영상의 드라이브 저장, 대장간, 갤러리, 피지컬 컴퓨팅 시범 미션, 교실 LAN 모드, 교사 연수용 앱이 애드온입니다.
+핵심이 아닌 것은 모두 애드온입니다. 이미 있는 기능도 포함합니다. 영상 녹화와 영상의 드라이브 저장, 대장간, 갤러리, 피지컬 컴퓨팅 시범 미션, 교실 LAN 모드, 교사 연수용 앱, 오픈소스 판의 GitHub 팀 프로젝트가 애드온입니다.
 
 애드온은 아래를 모두 지켜야 합니다.
 
@@ -123,6 +130,11 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 이미 있는 애드온이 모두 이 규칙대로 만들어진 것은 아닙니다. 규칙에 맞게 고치는 작업은 동결 기간에 받습니다. 지금 알고 있는 차이는 다음과 같습니다.
 
 - 영상 녹화 모듈을 `Sandbox.jsx`가 직접 불러옵니다. 녹화를 지원하지 않는 브라우저에서는 안전하게 안내하지만, 모듈을 지우면 만들기 화면이 빌드되지 않습니다.
+
+### 기록한 결정 (규칙 6)
+
+- **2026-11-12, 오픈소스 판의 GitHub 팀 프로젝트** (`client/src/github/`, `functions/api/github/token.js`). 관리자가 [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md) 0절의 세 단계(로그인 없이 시작, 저장은 구글 드라이브, 팀 프로젝트만 GitHub)를 정했습니다. 이 애드온은 `VITE_GITHUB_CLIENT_ID`를 넣은 빌드에서만 다음을 더합니다. 본 앱 CSP의 외부 주소 `https://api.github.com`, 연결을 고른 학생에게 요청하는 GitHub 권한 `public_repo`와 `repo:invite`, 로그인 코드를 토큰으로 바꾸고 아무것도 저장하지 않는 Pages 함수 하나입니다. 운영자가 보관하는 학생 데이터는 없습니다. 토큰은 브라우저 탭 저장소에 둡니다.
+- **2026-11-12, 구글 접근 토큰을 페이지 메모리에서 브라우저 탭 저장소**(`sessionStorage`)**로 옮김.** 새로 고침해도 드라이브 연결이 유지됩니다. 탭을 닫거나 로그아웃하면 지워집니다.
 
 ### 그래도 기능을 제안하려면
 
