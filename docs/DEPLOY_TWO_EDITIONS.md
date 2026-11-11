@@ -147,3 +147,5 @@ Vercel 프로젝트 환경변수 `VITE_API_URL`은 `client/.env.production`보�
 4. 두 서비스 모두 이 저장소 `main`(dfb5985)으로 배포되는 것을 확인했습니다.
 
 남은 일: `greatsong/vpylab-classroom` 보관(archive), 예전 수업용 작업 폴더(`10_수업자료/vpylab`)의 원격 주소 정리. 그 폴더에는 커밋하지 않은 변경이 남아 있어 손대지 않았습니다.
+
+2026-11-10에 `greatsong/vpylab-classroom`을 보관했습니다. 2026-11-12에 로컬 폴더 이름을 저장소와 같게 통일했습니다. 이 저장소의 작업 폴더는 `10_수업자료/vpylab`이고, 예전 수업용 작업 폴더는 `10_수업자료/_보관/vpylab-classroom`으로 옮겼습니다.
