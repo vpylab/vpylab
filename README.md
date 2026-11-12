@@ -60,7 +60,8 @@ The same code is built two ways. The `VITE_EDITION` build setting picks the edit
 | Login | None | Google or GitHub (Supabase Auth) |
 | Saving | The student's own Google Drive; download and open files | The student's own Google Drive once a Google client ID is configured; team projects use GitHub repositories and version history |
 | Team projects | GitHub add-on (deployments that configure it) | Through the classroom server |
-| Gallery, teams, teacher tools | Off | On |
+| Gallery | GitHub gallery with teacher approval, no server (deployments that configure it) | On (Supabase) |
+| Teams, teacher tools | Off | On |
 | Build setting | `VITE_EDITION=open` | default (`classroom`) |
 
 The classroom edition is used in classes at Danggok High School. Since 2026-11-09 both editions deploy from this repository (Vercel and Railway for the classroom edition, Cloudflare Pages for the open edition).

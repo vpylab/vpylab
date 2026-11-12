@@ -33,6 +33,7 @@ export const GITHUB_REASON_TEXT = {
   forbidden: 'GitHub가 요청을 거부했습니다. 이 저장소에 대한 권한이 없거나 조직 정책으로 제한되었을 수 있습니다.',
   readOnly: '이 저장소에 저장할 권한이 없습니다. 저장소 소유자가 내 GitHub 아이디를 초대하고, 내가 초대를 수락하면 저장할 수 있습니다.',
   adminRequired: '팀원 초대는 저장소 소유자만 할 수 있습니다.',
+  galleryOwnerOnly: '갤러리에 올리거나 내리는 것은 저장소 소유자만 할 수 있습니다.',
   twoFactor: 'GitHub 계정에 2단계 인증이 필요합니다. GitHub 보안 설정에서 2단계 인증을 켠 뒤 다시 시도할 수 있습니다.',
   notFound: '저장소를 찾을 수 없습니다. 삭제되었거나 이름이 바뀌었을 수 있습니다.',
   userNotFound: '그 GitHub 아이디를 찾을 수 없습니다. 아이디를 다시 확인해야 합니다.',
@@ -77,6 +78,7 @@ export function reasonOf(error) {
       return { username: 'invalidUser', taken: 'nameTaken', title: 'titleRequired', fullName: 'notFound' }[detail] || 'invalidName';
     }
     if (reason === 'forbidden' && detail === 'adminRequired') return 'adminRequired';
+    if (reason === 'forbidden' && detail === 'galleryOwnerOnly') return 'galleryOwnerOnly';
     if (reason === 'rejected' && detail === 'invite') return 'inviteRejected';
     if (reason === 'notFound' && detail === 'user') return 'userNotFound';
     if (reason === 'notFound' && detail === 'invitation') return 'invitationGone';
@@ -92,14 +94,14 @@ const sameLogin = (a, b) => String(a || '').toLowerCase() === String(b || '').to
 
 const initialState = {
   account: null, // { login, name, avatarUrl }
-  project: null, // { fullName, owner, repo, title, htmlUrl, pagesUrl, canPush, canAdmin, isOwner, headSha, savedCode }
+  project: null, // { fullName, owner, repo, title, htmlUrl, pagesUrl, canPush, canAdmin, isOwner, inGallery, headSha, savedCode }
   projects: [],
   invitations: [], // 내가 받은 초대
   invitationsUnavailable: false,
   collaborators: [], // 연 프로젝트의 팀원
   pending: [], // 연 프로젝트가 보낸 초대 가운데 대기 중인 것
   commits: [], // 연 프로젝트의 최근 저장 기록
-  busy: '', // 'connect' | 'create' | 'open' | 'save' | 'pull' | 'invite' | 'cancel' | 'accept'
+  busy: '', // 'connect' | 'create' | 'open' | 'save' | 'pull' | 'invite' | 'cancel' | 'accept' | 'gallery'
   listing: false,
   teamLoading: false,
   error: null, // { reason, detail?, source? }
@@ -125,7 +127,6 @@ let deps = {
 };
 let token = null;
 let grantedScope = '';
-let api = null;
 let pendingLogin = null;
 /** 결과를 모르는 내 저장 시도(시간 초과·연결 끊김)의 코드. 다음 저장의 충돌 판정에서 내 저장으로 인정합니다. */
 let attemptedCodes = [];
@@ -148,7 +149,6 @@ export function configureGitHub(next = {}) {
   pendingLogin = null;
   token = null;
   grantedScope = '';
-  api = null;
   attemptedCodes = [];
   pagesBlocked.clear();
   sessionEpoch += 1;
@@ -170,15 +170,18 @@ function originOf() {
   return deps.origin || globalThis.location?.origin || '';
 }
 
+/**
+ * GitHub API 묶음. 동작 하나(저장, 만들기 등)는 요청을 여러 번 보냅니다. 그 도중에 다른 계정으로 바뀌면
+ * 남은 요청이 새 계정의 토큰으로 나가지 않게, 부른 때의 계정(sessionEpoch)에서만 토큰을 내줍니다.
+ * 같은 계정으로 다시 연결한 경우(sessionEpoch 그대로)에는 새 토큰으로 이어서 진행합니다.
+ */
 function client() {
-  if (!api) {
-    api = createGitHubApi({
-      getToken: () => token,
-      ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
-      ...(deps.apiOptions || {}),
-    });
-  }
-  return api;
+  const session = sessionEpoch;
+  return createGitHubApi({
+    getToken: () => (session === sessionEpoch ? token : null),
+    ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+    ...(deps.apiOptions || {}),
+  });
 }
 
 function readSession() {
@@ -297,6 +300,7 @@ export const useGitHubStore = create((set, get) => {
       const result = await client().commit({
         fullName, code, html, openUrl, title: project.title, message, record, author: account.login,
         baseSha: project.headSha,
+        baseCode: typeof project.savedCode === 'string' ? project.savedCode : undefined,
         force,
         ownCodes: attemptedCodes,
         pages: Boolean(project.canAdmin && !project.pagesUrl && !pagesBlocked.has(fullName)),
@@ -475,11 +479,13 @@ export const useGitHubStore = create((set, get) => {
       if (blocked) return blocked;
       const session = sessionEpoch;
       const epoch = authEpoch;
+      const seq = ++openSeq;
       set({ busy: 'create', error: null });
       try {
         const { openUrl, html } = await pageParts(code);
         const result = await client().createProject({ title, code, html, repoName, openUrl });
-        if (session !== sessionEpoch) return { status: 'stale' };
+        // 만드는 사이 다른 코드를 열어 연결을 끊었으면(detach) 편집기에 붙이지 않습니다. 저장소는 GitHub에 만들어져 프로젝트 목록에 나타납니다.
+        if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
         const project = { ...result.project, headSha: result.headSha, savedCode: code };
         attemptedCodes = [];
         if (result.pagesWarning && result.pagesWarning !== 'pending') pagesBlocked.add(project.fullName);
@@ -498,7 +504,7 @@ export const useGitHubStore = create((set, get) => {
         persist();
         return { status: 'created', project, headSha: result.headSha, ...(result.pagesWarning ? { pagesWarning: result.pagesWarning } : {}) };
       } catch (error) {
-        if (session !== sessionEpoch) return { status: 'stale' };
+        if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
         return fail(error, epoch);
       }
     },
@@ -609,8 +615,13 @@ export const useGitHubStore = create((set, get) => {
 
     /** 프로젝트와 연결을 끊습니다. 편집기 내용과 GitHub 저장소는 그대로입니다. */
     detach() {
+      // 진행 중인 열기·만들기의 결과가 뒤늦게 프로젝트를 다시 붙이지 않게 합니다(그 동작들은 openSeq로 최신 요청만 반영합니다).
+      openSeq += 1;
       attemptedCodes = [];
-      set({ project: null, conflict: null, collaborators: [], pending: [], commits: [], pagesWarning: '', lastCommitUrl: '' });
+      set((s) => ({
+        busy: s.busy === 'open' || s.busy === 'create' ? '' : s.busy,
+        project: null, conflict: null, collaborators: [], pending: [], commits: [], pagesWarning: '', lastCommitUrl: '',
+      }));
       persist();
     },
 
@@ -697,6 +708,93 @@ export const useGitHubStore = create((set, get) => {
       } catch (error) {
         if (session !== sessionEpoch) return { status: 'stale' };
         return fail(error, epoch);
+      }
+    },
+
+    // ── 갤러리(선택 기능, client/src/gallery/) ────────────────
+
+    /**
+     * 연 프로젝트를 갤러리에 올리거나(listed: true) 내립니다. 올릴 때 thumbnail(JPEG data URL)이 있으면 저장소에 thumbnail.jpg로 커밋합니다.
+     * 그림을 올리지 못해도 올리기는 진행합니다. 결과: { status: 'listed' | 'unlisted', thumbnail: 'saved' | 'none' | 'failed' } | error | busy | stale
+     * 목록에 실리는 것은 교사가 승인한 뒤이고, 목록은 주기적으로 갱신됩니다.
+     */
+    async setGalleryListing(listed, { thumbnail } = {}) {
+      const { project } = get();
+      if (!project) return noProject();
+      if (get().busy) return { status: 'busy' };
+      const blocked = notReady();
+      if (blocked) return blocked;
+      const session = sessionEpoch;
+      const epoch = authEpoch;
+      const fullName = project.fullName;
+      const stale = () => session !== sessionEpoch || get().project?.fullName !== fullName;
+      const staleResult = () => {
+        if (session === sessionEpoch && get().busy === 'gallery') set({ busy: '' });
+        return { status: 'stale' };
+      };
+      set({ busy: 'gallery', error: null });
+      try {
+        let picture = 'none';
+        if (listed && typeof thumbnail === 'string' && thumbnail) {
+          try {
+            const saved = await client().putThumbnail(fullName, thumbnail);
+            if (stale()) return staleResult();
+            picture = 'saved';
+            // 그림 커밋이 내가 알던 최신 커밋 바로 위에 올라갔을 때만 기준 커밋을 옮깁니다. 그사이 팀원의 저장이 있었다면 다음 저장이 확인합니다.
+            if (saved.headSha && saved.parentSha && saved.parentSha === get().project.headSha) {
+              set((s) => ({ project: { ...s.project, headSha: saved.headSha } }));
+              persist();
+            }
+          } catch (error) {
+            if (stale()) return staleResult();
+            if (isAuthError(error)) throw error;
+            picture = 'failed';
+          }
+        }
+        const result = await client().setGalleryListing(fullName, listed);
+        if (stale()) return staleResult();
+        set((s) => ({
+          busy: '',
+          project: { ...s.project, inGallery: result.inGallery },
+          projects: s.projects.map((item) => (item.fullName === fullName ? { ...item, inGallery: result.inGallery } : item)),
+        }));
+        persist();
+        return { status: result.inGallery ? 'listed' : 'unlisted', thumbnail: picture };
+      } catch (error) {
+        if (stale()) return staleResult();
+        return fail(error, epoch);
+      }
+    },
+
+    /** 갤러리의 스타(좋아요): 내가 눌렀는지와 지금의 스타 수({ starred, stars })를 읽습니다. 연결이 없으면 disconnected. 이 창의 진행 표시(busy)와 오류는 건드리지 않습니다. */
+    async starStatus(fullName) {
+      if (!get().account || !token) return { status: 'disconnected' };
+      const session = sessionEpoch;
+      const epoch = authEpoch;
+      try {
+        const api = client();
+        // 목록 파일의 스타 수는 마지막 갱신 때의 값입니다. 지금 값을 함께 읽고, 읽지 못하면 stars는 null입니다.
+        const [starred, stars] = await Promise.all([api.isStarred(fullName), api.starCount(fullName).catch(() => null)]);
+        return session === sessionEpoch ? { status: 'ok', starred, stars } : { status: 'stale' };
+      } catch (error) {
+        if (session !== sessionEpoch) return { status: 'stale' };
+        if (isAuthError(error)) { loseAuth(epoch); return { status: 'disconnected' }; }
+        return { status: 'error', reason: reasonOf(error) };
+      }
+    },
+
+    /** 스타를 누르거나 취소합니다(GitHub 권한 public_repo). 결과: { status: 'ok', starred } | disconnected | error | stale */
+    async setStar(fullName, starred) {
+      if (!get().account || !token) return { status: 'disconnected' };
+      const session = sessionEpoch;
+      const epoch = authEpoch;
+      try {
+        const result = await client().setStarred(fullName, starred);
+        return session === sessionEpoch ? { status: 'ok', starred: result.starred } : { status: 'stale' };
+      } catch (error) {
+        if (session !== sessionEpoch) return { status: 'stale' };
+        if (isAuthError(error)) { loseAuth(epoch); return { status: 'disconnected' }; }
+        return { status: 'error', reason: reasonOf(error) };
       }
     },
   };

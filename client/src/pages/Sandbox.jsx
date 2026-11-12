@@ -485,7 +485,8 @@ export default function Sandbox() {
         pendingPlayRef.current = null;
         setOutputs([{ text: ui`${repoParam} 프로젝트 코드를 불러오는 중입니다.`, type: 'log', id: Date.now() }]);
         try {
-          const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/main.py`);
+          // HEAD는 저장소의 기본 브랜치입니다. 계정 설정에 따라 기본 브랜치가 main이 아닐 수 있습니다.
+          const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/main.py`);
           if (!response.ok) throw new Error(ui`GitHub main.py 로드 실패 (${response.status})`);
           const repoCode = await response.text();
           updateCode(repoCode);
@@ -1539,6 +1540,8 @@ export default function Sandbox() {
               code={code}
               getCode={() => codeRef.current}
               defaultTitle={shareTitle()}
+              // 갤러리에 올릴 때의 미리보기 그림: 지금 3D 화면이 편집기의 코드를 실행한 모습일 때만 넘깁니다(JPEG, 없으면 null).
+              getThumbnail={() => (lastStartedCode.current === codeRef.current ? captureThumbnail(sceneRef.current?._renderer?.domElement, 640, 0.8, 'jpeg') : null)}
               shouldRestore={() => githubRestoreAllowed.current && !githubDetachPending && codeRef.current === initialCodeRef.current}
               onReady={() => { githubDetachPending = false; }}
               onProjectChange={(next) => {

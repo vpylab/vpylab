@@ -134,9 +134,10 @@ function isImageDataUseful(imageData) {
  * @param {HTMLCanvasElement} canvas - renderer.domElement
  * @param {number} maxWidth - 최대 너비 (기본 800)
  * @param {number} quality - 이미지 품질 0~1 (기본 0.82)
+ * @param {'auto'|'jpeg'} format - 'jpeg'이면 항상 JPEG로 만듭니다(GitHub 갤러리의 thumbnail.jpg). 기본은 WebP, 안 되면 JPEG.
  * @returns {string|null} data URL 문자열. 빈 화면이면 null.
  */
-export function captureThumbnail(canvas, maxWidth = 800, quality = 0.82) {
+export function captureThumbnail(canvas, maxWidth = 800, quality = 0.82, format = 'auto') {
   if (!canvas || !canvas.width || !canvas.height) return null;
 
   const targetWidth = Math.min(maxWidth, canvas.width);
@@ -166,6 +167,10 @@ export function captureThumbnail(canvas, maxWidth = 800, quality = 0.82) {
     ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, targetWidth, targetHeight);
     const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
     if (!isImageDataUseful(imageData)) return null;
+    if (format === 'jpeg') {
+      const jpeg = offscreen.toDataURL('image/jpeg', quality);
+      return jpeg.startsWith('data:image/jpeg') ? jpeg : null;
+    }
     return webpOrJpeg(offscreen, quality);
   } catch {
     return null;

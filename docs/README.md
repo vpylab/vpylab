@@ -26,7 +26,8 @@ This folder holds two kinds of files. **Living documents** describe how VPyLab w
 | Drive experiment and using your own Google OAuth client | [DRIVE_LAB.md](DRIVE_LAB.md) |
 | Classroom LAN mode | [CLASSROOM_LAN_MODE.md](CLASSROOM_LAN_MODE.md) |
 | Sharing, embedding, installing | [SHARE_EMBED_INSTALL.md](SHARE_EMBED_INSTALL.md) |
-| Gallery | [GALLERY_SYSTEM.md](GALLERY_SYSTEM.md) |
+| Gallery (classroom edition) | [GALLERY_SYSTEM.md](GALLERY_SYSTEM.md) |
+| Gallery on GitHub (open edition): how teachers approve work | [GALLERY_GITHUB.md](GALLERY_GITHUB.md) |
 | Team projects on GitHub | [TEAM_COLLABORATION_FLOW.md](TEAM_COLLABORATION_FLOW.md), [classroom-github.md](classroom-github.md) |
 | User guides | [GUIDE.ko.md](GUIDE.ko.md), [USER_GUIDE_KO.md](USER_GUIDE_KO.md), [USER_GUIDE_EN.md](USER_GUIDE_EN.md) (EN) |
 | Testing at another school | [TESTERS.ko.md](TESTERS.ko.md) |

@@ -96,6 +96,7 @@ About 6,200 lines. Defines the VPython-compatible classes and functions (`vector
 | `SERVER_FEATURES` | `!LAN_MODE && !OPEN_EDITION` |
 | `API_BASE` | `''` in the open edition; otherwise `VITE_API_URL`, or `http://localhost:4034` in development |
 | `SHARE_BACKEND` | `'pages'` (open), `'server'` (classroom), `'none'` (LAN) |
+| `GITHUB_GALLERY` | open edition with `VITE_GALLERY_INDEX_URL` set to an allowed list address |
 
 | | Open edition | Classroom edition |
 |---|---|---|
@@ -105,13 +106,14 @@ About 6,200 lines. Defines the VPython-compatible classes and functions (`vector
 | Login | none | Supabase Auth |
 | Saving | the student's Google Drive | Supabase, with GitHub sync |
 | Share links | Pages Functions + D1 | Express + Supabase |
-| Gallery menu, sign-in button | hidden | shown |
+| Gallery menu | hidden, or the GitHub gallery when `VITE_GALLERY_INDEX_URL` is set | shown (Supabase gallery) |
+| Sign-in button | hidden | shown |
 
 What the code does for the open edition:
 
 - `build:open` clears `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_API_URL` before building, so the committed `client/.env.production` values do not reach the bundle.
 - `client/src/lib/supabase.js` points the Supabase client at `https://no-supabase.invalid` when `OPEN_EDITION` is true.
-- `Header.jsx` hides the gallery link and the sign-in button when `SERVER_FEATURES` is false. The routes in `client/src/App.jsx` are the same in both editions; they are not removed, only unlinked.
+- `Header.jsx` hides the sign-in button when `SERVER_FEATURES` is false, and shows the gallery link when `SERVER_FEATURES` or `GITHUB_GALLERY` is true. The routes in `client/src/App.jsx` are the same in both editions; they are not removed, only unlinked. The one exception is `/gallery`, which renders `pages/GitHubGallery.jsx` instead of `pages/Gallery.jsx` when `GITHUB_GALLERY` is true.
 
 New code that needs the server or Supabase must be guarded by `SERVER_FEATURES`. Deployment details are in `docs/DEPLOY_TWO_EDITIONS.md` (Korean).
 
@@ -146,6 +148,11 @@ Open edition:
 - `client/src/drive-lab/drive-storage.js`: Drive v3 adapter (`list`, `create`, `open`, `save`, `revisions`, `revisionContent`, `trash`), a `VPyLab` folder, 100 KB code limit, retries, conflict detection.
 - `client/src/drive/driveSession.js`: the Zustand store that the editor uses on top of those two modules, plus local drafts from `client/src/drive-lab/lab-state.js`. `resume()` restores the account and the open file after a reload. `renewInGesture()` asks Google for a new token inside the same click when the old one has expired, so Save continues without a separate step. The client ID comes from `VITE_GOOGLE_CLIENT_ID`.
 - Share links: `functions/api/share/index.js` (POST) and `functions/api/share/[id].js` (GET, PUT, DELETE) are thin Cloudflare Pages Functions over `cloudflare/share-core.js`. Data is in the D1 database bound as `DB` in `wrangler.toml`; the schema is `cloudflare/migrations/0001_shares.sql`. Name rules are shared with the classroom server through `server/shared/share-names.js`. The client side is `client/src/utils/share.js`.
+- GitHub gallery (add-on, only when `VITE_GALLERY_INDEX_URL` is set; no server, no database). Three parts:
+  - Publishing: in the team project window, "Add to gallery" adds the topic `vpylab-gallery` to the student's repository and commits the current 3D view as `thumbnail.jpg` (`setGalleryListing` and `putThumbnail` in `client/src/github/github-api.js`, the store action `setGalleryListing` in `githubSession.js`). The Create screen passes the picture through the optional `getThumbnail` prop of `GitHubAddon`; publishing works without it.
+  - The list: `.github/workflows/gallery-index.yml` runs every 30 minutes. `scripts/gallery/build-index.mjs` searches GitHub for public repositories with the topic, keeps only those named in the approval file `approvals.txt`, and writes `gallery.json` (approved), `pending.json` and `PENDING.md` (waiting). The workflow commits them to the branch `gallery-data`. Teachers approve by editing `approvals.txt` on that branch in the GitHub web interface (`docs/GALLERY_GITHUB.md`, Korean). Nothing enters `gallery.json` before approval; `scripts/gallery/gallery-index.test.mjs` fixes that rule.
+  - Reading: `client/src/gallery/gallery-index.js` fetches that one file from `raw.githubusercontent.com`. The app never calls GitHub search. `client/src/pages/GitHubGallery.jsx` and `client/src/components/gallery/GitHubGalleryView.jsx` show cards (preview image, title, GitHub username, date, star count). A card opens the published page in a new tab or the code in the Create screen (`/sandbox?repo=owner/repo`). A student whose tab is connected to GitHub can star from the app (`public_repo` covers starring); otherwise the app links to the repository.
+  - Both sides validate entries with `server/shared/gallery-rules.js`: titles and usernames are plain text, and a URL is accepted only if it equals the address rebuilt from the repository name on `github.com`, `<owner>.github.io` or `raw.githubusercontent.com`.
 - GitHub team projects (add-on, only when `VITE_GITHUB_CLIENT_ID` is set): `client/src/github/github-oauth.js` opens the GitHub approval in a pop-up (state and PKCE); `client/src/pages/GitHubCallback.jsx` passes the result back over a `BroadcastChannel`; the Pages Function `functions/api/github/token.js` (rules in `cloudflare/github-oauth-core.js`) exchanges the code for a token with the client secret and stores nothing. `client/src/github/github-api.js` then calls `api.github.com` from the browser: one public repository per project (topic `vpylab-project`) with `main.py`, `history.md`, `index.html` for GitHub Pages and a README. The logic is ported from `server/routes/projects.js`. `client/src/github/githubSession.js` is the store and `client/src/components/github/GitHubProjectDialog.jsx` the window. The token is kept in the tab's `sessionStorage`.
 
 ## Content as data
@@ -180,15 +187,16 @@ Tests run real mission code under CPython, not Pyodide:
 | `client/src/i18n/` | Locale selection and translations (see `docs/I18N_GUIDE.md`) |
 | `client/src/stores/` | Zustand stores (mostly classroom edition) |
 | `client/src/drive-lab/`, `client/src/drive/` | Google sign-in and Drive saving |
+| `client/src/github/`, `client/src/gallery/` | GitHub team projects and the GitHub gallery (open edition add-ons) |
 | `client/src/classroom/`, `training/`, `month-projects/`, `forge/` | Separate entry apps and the Forge data |
 | `client/src/test/` | CPython test runner |
 | `client/scripts/` | Build helpers: Pyodide assets, service worker plugin, Cloudflare config |
 | `server/` | Express server: `routes/`, `middleware/`, `lan/`, `classroom/`, `utils/` |
-| `server/shared/` | Modules imported by both the client and the server (geometry, share-name rules) |
+| `server/shared/` | Modules imported by both the client and the server (geometry, share-name rules), and the gallery list rules shared by the client and `scripts/gallery/` |
 | `api/` | Vercel functions: link preview cards (`og.mjs`, `og-image.mjs`) and the Railway proxy (`srv.mjs`) |
 | `functions/`, `cloudflare/` | Cloudflare Pages Functions and their core logic and D1 migrations |
 | `supabase/migrations/` | Classroom edition database schema |
-| `scripts/` | Classroom tools, GlowScript compatibility harness (`scripts/compat/`) |
+| `scripts/` | Classroom tools, GlowScript compatibility harness (`scripts/compat/`), gallery list builder (`scripts/gallery/`) |
 | `docs/` | Design notes and reports, mostly Korean |
 
 ## Where do I change X
@@ -216,6 +224,7 @@ Commands that exist in the `package.json` files:
 | `npm --prefix server test` | `node --test` over `server/classroom`, `middleware`, `lan`, `routes`, `utils` |
 | `npm run test:classroom` | Classroom server tests, client tests and the curriculum check |
 | `npm run compat:check` | GlowScript compatibility corpus (uses `python3.12` unless `PYTHON` is set) |
+| `node --test scripts/gallery/*.test.mjs` | Gallery list builder: approval rules, URL rules, fake GitHub search |
 
 `.github/workflows/ci.yml` runs on pushes and pull requests to `main`, with Node 24 and Python 3.12:
 
@@ -227,7 +236,9 @@ Commands that exist in the `package.json` files:
 6. `build`: `npm run build` in `client/`, after jobs 2 to 5 pass.
 7. `security`: `grep` for `.innerHTML =`, `.outerHTML =` and `.insertAdjacentHTML(` in `client/src` (test files excluded), and for secret-like strings in the repository.
 
-Other workflows: `i18n-check.yml` (translation coverage comment on pull requests), `mission-review.yml` (runs `src/data/missions.test.js` on pull requests that match its path filter), `deploy-pages.yml` (open edition deploy), `stale.yml`, `welcome.yml`.
+CI also has two jobs for tools outside the app: `research-tools` (`node --test scripts/research/*.test.mjs`, allowed to fail) and `gallery-index` (`node --test scripts/gallery/*.test.mjs`, must pass).
+
+Other workflows: `gallery-index.yml` (builds the gallery list on a schedule and commits it to the branch `gallery-data`; runs only when the repository variable `GALLERY_INDEX` is `on`), `i18n-check.yml` (translation coverage comment on pull requests), `mission-review.yml` (runs `src/data/missions.test.js` on pull requests that match its path filter), `deploy-pages.yml` (open edition deploy), `stale.yml`, `welcome.yml`.
 
 ## Known rough edges
 

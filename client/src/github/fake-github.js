@@ -31,6 +31,7 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
     repos: new Map(), // 소문자 fullName → repo
     userInvitations: [], // { id, repoKey, invitee, inviter, expired }
     log: [], // { method, path, login }
+    starred: new Set(), // '아이디 소유자/저장소'(소문자)
     failures: [], // { method, test, status, body, times, network, hang }
     seq: 0,
     /** 빈 저장소에서 tree 만들기를 409로 거절할지(실제 GitHub의 동작) */
@@ -60,6 +61,8 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
       topics: [...repo.topics],
       has_pages: repo.pages !== null,
       default_branch: 'main',
+      // 스타 수: 흉내가 시작할 때의 수(repo.stars)에 이 흉내에서 누른 스타를 더합니다.
+      stargazers_count: (repo.stars || 0) + [...state.starred].filter((key) => key.endsWith(` ${keyOf(repo.owner, repo.name)}`)).length,
       pushed_at: repo.pushedAt,
       updated_at: repo.pushedAt,
       permissions: permissionsOf(repo, login),
@@ -118,6 +121,15 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
         return respond(422, { message: 'Repository creation failed.', errors: [{ message: 'name already exists on this account' }] });
       }
       return respond(201, publicRepo(createRepo(login, body.name, { description: body.description }), login));
+    }
+
+    let star;
+    if ((star = path.match(/^\/user\/starred\/([^/]+)\/([^/]+)$/))) {
+      if (!state.repos.has(keyOf(star[1], star[2]))) return notFound();
+      const key = `${login} ${keyOf(star[1], star[2])}`;
+      if (method === 'GET') return state.starred.has(key) ? respond(204) : notFound();
+      if (method === 'PUT') { state.starred.add(key); return respond(204); }
+      if (method === 'DELETE') { state.starred.delete(key); return respond(204); }
     }
 
     if (path === '/user/repository_invitations' && method === 'GET') {
@@ -186,7 +198,8 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
     if ((sub = rest.match(/^\/contents\/(.+)$/))) {
       const filePath = decodeURIComponent(sub[1]);
       if (method === 'GET') {
-        const ref = query.get('ref') || repo.head;
+        const asked = query.get('ref');
+        const ref = !asked || asked === 'main' ? repo.head : asked; // 브랜치 이름으로도 읽습니다.
         if (!ref || !repo.commits.has(ref)) return repo.head ? notFound() : respond(404, { message: 'This repository is empty.' });
         const files = filesAt(repo, ref);
         return files.has(filePath)
@@ -196,9 +209,12 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
       if (method === 'PUT') {
         if (!perms.push) return respond(403, { message: 'Resource not accessible' });
         const files = new Map(repo.head ? filesAt(repo, repo.head) : []);
+        // 실제 API처럼 이미 있는 파일을 바꿀 때는 그 파일의 sha가 있어야 합니다.
+        if (files.has(filePath) && !body.sha) return respond(422, { message: 'Invalid request. "sha" wasn\'t supplied.' });
         files.set(filePath, decode(body.content));
-        repo.head = addCommit(repo, { files: [...files], parents: repo.head ? [repo.head] : [], message: body.message, login });
-        return respond(201, { commit: { sha: repo.head } });
+        const parent = repo.head;
+        repo.head = addCommit(repo, { files: [...files], parents: parent ? [parent] : [], message: body.message, login });
+        return respond(201, { commit: { sha: repo.head, parents: parent ? [{ sha: parent }] : [] } });
       }
     }
 

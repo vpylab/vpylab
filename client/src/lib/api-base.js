@@ -1,3 +1,5 @@
+import { isAllowedIndexUrl } from '../../../server/shared/gallery-rules.js';
+
 /**
  * Express API 주소. 운영은 VITE_API_URL(Railway), 개발은 localhost:4034.
  * 교실 LAN 모드(VITE_LAN_MODE=1)는 같은 출처('')로 보내 LAN 서버가 안내 응답을 돌려줍니다.
@@ -31,6 +33,15 @@ export const DRIVE_SAVE = Boolean((import.meta.env.VITE_GOOGLE_CLIENT_ID || '').
  * GitHub OAuth 앱의 클라이언트 ID가 설정된 배포에서만 켜집니다. 없어도 실행·드라이브 저장은 그대로 동작합니다.
  */
 export const GITHUB_ADDON = OPEN_EDITION && Boolean((import.meta.env.VITE_GITHUB_CLIENT_ID || '').trim());
+/**
+ * 오픈소스 판의 GitHub 연동 갤러리(서버·DB 없음, client/src/gallery/). 앱은 정적 목록 파일 하나만 읽습니다.
+ * 목록 주소(VITE_GALLERY_INDEX_URL)가 설정된 배포에서만 켜집니다. 주소는 본 앱의 CSP가 허용하는
+ * https://raw.githubusercontent.com/… 또는 같은 출처의 경로여야 하고, 아니면 꺼집니다.
+ * 목록은 .github/workflows/gallery-index.yml이 만듭니다. 올리기는 위의 GitHub 애드온이 있을 때만 보입니다.
+ */
+const galleryIndexUrl = (import.meta.env.VITE_GALLERY_INDEX_URL || '').trim();
+export const GALLERY_INDEX_URL = OPEN_EDITION && isAllowedIndexUrl(galleryIndexUrl) ? galleryIndexUrl : '';
+export const GITHUB_GALLERY = Boolean(GALLERY_INDEX_URL);
 /** 만들기 화면에 팀 프로젝트(GitHub)가 있는 배포인지. 수업용 판은 운영 서버 방식, 오픈소스 판은 위의 애드온입니다. */
 export const TEAM_PROJECTS = SERVER_FEATURES || GITHUB_ADDON;
 /** 공유 주소의 이름을 정할 수 있는지. 두 판의 저장소가 모두 지원합니다(규칙: server/shared/share-names.js). */

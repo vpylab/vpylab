@@ -44,7 +44,7 @@ Features that already exist stay. Nothing is removed by this file.
 
 ## The add-on rule
 
-Anything that is not core is an add-on, including features that already exist: video recording and saving videos to Drive, the Forge, the gallery, the physical-computing pilot missions, classroom LAN mode, the teacher-training app, GitHub team projects in the open edition.
+Anything that is not core is an add-on, including features that already exist: video recording and saving videos to Drive, the Forge, the gallery, the physical-computing pilot missions, classroom LAN mode, the teacher-training app, GitHub team projects in the open edition, the GitHub gallery in the open edition.
 
 An add-on must meet all of these:
 
@@ -63,6 +63,11 @@ Existing add-ons were not all written to this rule. Bringing them in line is wel
 
 - **2026-11-12, GitHub team projects in the open edition** (`client/src/github/`, `functions/api/github/token.js`). The maintainer decided the three-step flow in [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md) section 0: no sign-in to start, Google Drive to save, GitHub only for team projects. This add-on adds, only in builds that set `VITE_GITHUB_CLIENT_ID`: the network origin `https://api.github.com` in the main app's CSP, the GitHub permissions `public_repo` and `repo:invite` requested from a student who chooses to connect, and one Pages Function that exchanges the sign-in code for a token and stores nothing. The project stores no student data for it. The token stays in the browser tab's storage.
 - **2026-11-12, the Google access token moves from page memory to the browser tab's storage** (`sessionStorage`), so a refresh does not disconnect Drive. It is removed when the tab closes or the student signs out.
+- **2026-11-12, the gallery is rebuilt on GitHub for the open edition** (`client/src/gallery/`, `scripts/gallery/`, `.github/workflows/gallery-index.yml`). The maintainer decided to rebuild the gallery with no server and no database, on top of the GitHub team projects add-on. It is on only in open-edition builds that set `VITE_GALLERY_INDEX_URL`. The classroom edition's existing gallery is unchanged.
+  - Network origins: none added to the CSP. The app reads one static list file and the preview images from `https://raw.githubusercontent.com`, which `connect-src` and `img-src` already allowed. Starring from the app calls `https://api.github.com`, which is in the CSP only in builds with the GitHub add-on. Running pages open in a new tab, so nothing is added to `frame-src`.
+  - Permissions: none added. Adding a project to the gallery (repository topics and a `thumbnail.jpg` commit) and starring use the `public_repo` permission that the GitHub add-on already requests. GitHub's "Scopes for OAuth apps" page says `public_repo` is "also required for starring public repositories".
+  - Stored data: nothing on a server. The branch `gallery-data` of this repository holds public repository metadata written by a scheduled workflow: the approved list, the list waiting for approval (repository name, title, GitHub username, date), and the approval file that teachers edit. The student's own repository gains the topic `vpylab-gallery` and a preview image.
+  - Work appears in the gallery only after a teacher adds it to the approval file. The workflow's token has `contents: write` only in the job that commits to `gallery-data`.
 
 ## How to propose a feature anyway
 
@@ -116,7 +121,7 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 
 ### 애드온 규칙
 
-핵심이 아닌 것은 모두 애드온입니다. 이미 있는 기능도 포함합니다. 영상 녹화와 영상의 드라이브 저장, 대장간, 갤러리, 피지컬 컴퓨팅 시범 미션, 교실 LAN 모드, 교사 연수용 앱, 오픈소스 판의 GitHub 팀 프로젝트가 애드온입니다.
+핵심이 아닌 것은 모두 애드온입니다. 이미 있는 기능도 포함합니다. 영상 녹화와 영상의 드라이브 저장, 대장간, 갤러리, 피지컬 컴퓨팅 시범 미션, 교실 LAN 모드, 교사 연수용 앱, 오픈소스 판의 GitHub 팀 프로젝트, 오픈소스 판의 GitHub 연동 갤러리가 애드온입니다.
 
 애드온은 아래를 모두 지켜야 합니다.
 
@@ -135,6 +140,11 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 
 - **2026-11-12, 오픈소스 판의 GitHub 팀 프로젝트** (`client/src/github/`, `functions/api/github/token.js`). 관리자가 [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md) 0절의 세 단계(로그인 없이 시작, 저장은 구글 드라이브, 팀 프로젝트만 GitHub)를 정했습니다. 이 애드온은 `VITE_GITHUB_CLIENT_ID`를 넣은 빌드에서만 다음을 더합니다. 본 앱 CSP의 외부 주소 `https://api.github.com`, 연결을 고른 학생에게 요청하는 GitHub 권한 `public_repo`와 `repo:invite`, 로그인 코드를 토큰으로 바꾸고 아무것도 저장하지 않는 Pages 함수 하나입니다. 운영자가 보관하는 학생 데이터는 없습니다. 토큰은 브라우저 탭 저장소에 둡니다.
 - **2026-11-12, 구글 접근 토큰을 페이지 메모리에서 브라우저 탭 저장소**(`sessionStorage`)**로 옮김.** 새로 고침해도 드라이브 연결이 유지됩니다. 탭을 닫거나 로그아웃하면 지워집니다.
+- **2026-11-12, 오픈소스 판의 갤러리를 GitHub 연동으로 다시 만듦** (`client/src/gallery/`, `scripts/gallery/`, `.github/workflows/gallery-index.yml`). 관리자가 갤러리를 서버와 DB 없이, GitHub 팀 프로젝트 애드온 위에 다시 만들기로 정했습니다. `VITE_GALLERY_INDEX_URL`을 넣은 오픈소스 판 빌드에서만 켜집니다. 수업용 판의 기존 갤러리는 그대로입니다.
+  - 외부 주소: CSP에 더한 주소가 없습니다. 앱은 정적 목록 파일 하나와 미리보기 그림을 `https://raw.githubusercontent.com`에서 읽으며, 이 주소는 `connect-src`와 `img-src`에 이미 있었습니다. 앱에서 스타를 누를 때는 `https://api.github.com`을 호출하고, 이 주소는 GitHub 애드온을 넣은 빌드의 CSP에만 있습니다. 실행 화면은 새 탭으로 열기 때문에 `frame-src`에 더한 것이 없습니다.
+  - 권한: 새로 요청하는 권한이 없습니다. 갤러리에 올리기(저장소 topic 변경과 `thumbnail.jpg` 커밋)와 스타는 GitHub 애드온이 이미 요청하는 `public_repo`로 동작합니다. GitHub 문서 "Scopes for OAuth apps"에 `public_repo`가 공개 저장소의 스타에도 필요한 권한이라고 적혀 있습니다.
+  - 보관 데이터: 서버에 보관하는 것이 없습니다. 이 저장소의 `gallery-data` 브랜치에 예약 워크플로가 공개 저장소의 정보를 적습니다. 승인된 목록, 승인 대기 목록(저장소 이름, 제목, GitHub 아이디, 날짜), 교사가 고치는 승인 파일입니다. 학생의 저장소에는 topic `vpylab-gallery`와 미리보기 그림이 더해집니다.
+  - 교사가 승인 파일에 추가한 작품만 갤러리에 표시됩니다. 워크플로의 토큰은 `gallery-data`에 커밋하는 작업에서만 `contents: write`를 갖습니다.
 
 ### 그래도 기능을 제안하려면
 
