@@ -165,6 +165,12 @@ export const useDriveStore = create((set, get) => {
     return { status: 'error', reason };
   }
 
+  /** 다시 승인에서 드라이브 권한이 빠졌을 때: 진행 표시를 풀고 권한 안내를 유지합니다. */
+  function scopeBlocked() {
+    set({ busy: '', error: { reason: 'scope' } });
+    return { status: 'error', reason: 'scope' };
+  }
+
   function rememberDraft(code) {
     const { account, file } = get();
     const store = storage();
@@ -229,6 +235,8 @@ export const useDriveStore = create((set, get) => {
           return false;
         }
         if (missingScopes(token.scope).length) {
+          // 드라이브 권한이 빠진 토큰은 버립니다(탭 저장소에 남아 다음 요청이 다른 오류로 끝나지 않게).
+          auth.forget();
           set({ missingScope: true, error: { reason: 'scope' } });
           return false;
         }
@@ -375,10 +383,12 @@ export const useDriveStore = create((set, get) => {
     async openFile(id) {
       const seq = ++openSeq;
       const session = sessionEpoch;
+      let epoch = authEpoch;
       const renewal = renewInGesture();
       set({ busy: 'open', error: null });
       try {
-        if (renewal) await renewal;
+        if (renewal && await renewal) epoch = authEpoch;
+        if (get().missingScope) return scopeBlocked();
         const { meta, code } = await drive.open(id);
         // 그사이 다른 파일을 골랐거나 로그아웃했으면 이 응답은 버립니다.
         if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
@@ -396,7 +406,7 @@ export const useDriveStore = create((set, get) => {
         return { status: 'opened', code, name: meta.name, draft };
       } catch (error) {
         if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
-        return fail(error);
+        return fail(error, epoch);
       }
     },
 
@@ -413,7 +423,7 @@ export const useDriveStore = create((set, get) => {
         ? draft.baseRevision === file.headRevisionId
         : draft.baseVersion == null || String(draft.baseVersion) === String(file.version);
       if (!sameBase) {
-        set({ file: { ...file, version: String(draft.baseVersion), savedCode: null } });
+        set({ file: { ...file, version: String(draft.baseVersion ?? ''), savedCode: null } });
       }
     },
 
@@ -426,7 +436,11 @@ export const useDriveStore = create((set, get) => {
     },
 
     /** 지금 편집기 내용을 새 코드로 시작합니다(드라이브 파일과 연결을 끊음). */
-    detach() { set({ file: null, conflict: null, attemptedCodes: [] }); },
+    detach() {
+      // 새로 고침 직후처럼 스토어에 파일이 없어도 탭 표식은 남아 있을 수 있어 직접 지웁니다(끊은 파일이 다음 새로 고침에 다시 열리지 않게).
+      writeTabFile(null);
+      set({ file: null, conflict: null, attemptedCodes: [] });
+    },
 
     rememberDraft,
     forgetDraft,
@@ -454,7 +468,7 @@ export const useDriveStore = create((set, get) => {
         if (renewal && await renewal) epoch = authEpoch;
         if (session !== sessionEpoch) return staleResult(token);
         // 다시 승인하면서 드라이브 권한을 빼고 승인했으면, 저장을 시도해 그 안내를 다른 오류로 덮지 않습니다.
-        if (get().missingScope) { rememberDraft(code); set({ busy: '', error: { reason: 'scope' } }); return { status: 'error', reason: 'scope' }; }
+        if (get().missingScope) { rememberDraft(code); return scopeBlocked(); }
         if (!file) return await createFile(code, name || '제목 없음.py', session, token);
         const attempted = get().attemptedCodes;
         const result = await drive.save({
@@ -510,6 +524,7 @@ export const useDriveStore = create((set, get) => {
       try {
         if (renewal && await renewal) epoch = authEpoch;
         if (session !== sessionEpoch) return staleResult(token);
+        if (get().missingScope) return scopeBlocked();
         if (choice === 'copy') {
           const base = (file.name || '제목 없음.py').replace(/\.py$/i, '');
           return await createFile(conflict.mine, `${base} (사본).py`, session, token);
@@ -541,10 +556,15 @@ export const useDriveStore = create((set, get) => {
       let epoch = authEpoch;
       const token = ++saveSeq;
       const renewal = renewInGesture();
-      set({ busy: 'save', error: null, file: null });
+      set({ busy: 'save', error: null });
       try {
-        if (renewal && await renewal) epoch = authEpoch;
+        const renewed = renewal ? await renewal : true;
+        if (renewal && renewed) epoch = authEpoch;
         if (session !== sessionEpoch) return staleResult(token);
+        if (get().missingScope) { rememberDraft(code); return scopeBlocked(); }
+        // 다시 승인에 실패했으면(창을 닫음·다른 계정) 열어 둔 파일 정보를 그대로 두고 재승인을 안내합니다.
+        if (!renewed) { rememberDraft(code); return fail(new AuthRequiredError(), epoch); }
+        set({ file: null });
         return await createFile(code, name, session, token);
       } catch (error) {
         if (session !== sessionEpoch) return staleResult(token);
@@ -565,6 +585,7 @@ export const useDriveStore = create((set, get) => {
       set({ videoUpload: { sent: 0, total: blob.size } });
       try {
         if (renewal && await renewal) epoch = authEpoch;
+        if (get().missingScope) { set({ videoUpload: null }); return { status: 'error', reason: 'scope' }; }
         const file = await drive.uploadVideo({
           blob, name,
           onProgress: (sent, total) => { if (session === sessionEpoch) set({ videoUpload: { sent, total } }); },

@@ -281,7 +281,14 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
           {busy === 'create' ? ui("만드는 중…") : ui("지금 코드로 프로젝트 만들기")}
         </button>
       </div>
-      <p className="m-0 text-xs" style={muted}>{ui("프로젝트는 GitHub의 공개 저장소로 만들어지며 누구나 코드를 볼 수 있습니다.")}</p>
+      {busy === 'create' ? (
+        <p className="m-0 flex items-center gap-2 text-xs" role="status" aria-live="polite" style={{ color: 'var(--color-text-primary)' }} data-testid="github-create-progress">
+          <span aria-hidden="true" className="inline-block h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-2 border-solid" style={{ borderColor: 'var(--color-accent)', borderTopColor: 'transparent' }} />
+          {ui("프로젝트를 만들고 있습니다. 저장소 만들기, 첫 저장, 게시 주소 켜기를 차례로 진행하며 20초쯤 걸릴 수 있습니다. 이 창을 닫지 마십시오.")}
+        </p>
+      ) : (
+        <p className="m-0 text-xs" style={muted}>{ui("프로젝트는 GitHub의 공개 저장소로 만들어지며 누구나 코드를 볼 수 있습니다.")}</p>
+      )}
     </form>
   );
 

@@ -518,6 +518,30 @@ describe('드라이브 연결 유지', () => {
     expect(tab.getItem(TOKEN_STORAGE_KEY)).not.toBeNull();
   });
 
+  it('새로 고침 직후(스토어에 파일이 없을 때) 연결을 끊어도 탭의 파일 표식을 지운다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '표식.py' });
+    const id = store().file.id;
+    reload();
+    tab.setItem(DRIVE_TAB_KEY, JSON.stringify({ fileId: id }));
+    expect(store().file).toBeNull();
+    store().detach(); // 다른 코드(공유 링크·팀 프로젝트)를 불러오며 끊는 경우
+    expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+    expect(storedDriveFileId()).toBeNull();
+  });
+
+  it('새 파일로 저장하려다 다시 승인에 실패하면 열어 둔 파일 정보를 지우지 않는다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '유지.py' });
+    const id = store().file.id;
+    clock += 3_600_000;
+    google.state.accountQueue.push({ sub: 'subB', email: 'b@school.example' }); // 다른 계정이 승인됨 → 다시 승인 실패
+    const result = await store().saveAsNew('v2', '유지.py');
+    expect(result.status).toBe('error');
+    expect(store().file?.id).toBe(id);
+    expect([...google.state.files.values()].filter((f) => f.name?.startsWith('유지') && f.name.endsWith('.py'))).toHaveLength(1);
+  });
+
   it('탭 저장소를 사용할 수 없어도 로그인과 저장이 된다', async () => {
     google = createFakeGoogle();
     const broken = { getItem() { throw new Error('막힘'); }, setItem() { throw new Error('막힘'); }, removeItem() { throw new Error('막힘'); } };

@@ -331,6 +331,8 @@ export default function Sandbox() {
   // 자유 코딩 초안 되살리기: 빈 만들기 화면으로 들어왔고 이 브라우저에 남은 코드가 있으면 이어서 엽니다.
   // 새로 고침 전에 드라이브 파일을 열어 두었으면 아래의 드라이브 연결 복구가 그 파일을 엽니다.
   const entryHandled = useRef(false);
+  // 익명 자유 코딩 초안에서만 사용하는 기준 코드(로그아웃·연결 해제 직후의 코드). 이 코드와 같으면 초안을 남기지 않습니다.
+  const sandboxBaselineRef = useRef(null);
   // 빈 만들기 화면으로 들어왔을 때만, 탭에 남은 팀 프로젝트를 편집기에 되살립니다.
   const githubRestoreAllowed = useRef(isPlainEntry(location, sharedRouteId));
   useEffect(() => {
@@ -355,6 +357,9 @@ export default function Sandbox() {
     const timer = setTimeout(() => {
       if (codeRef.current !== code) return;
       if (code === initialCodeRef.current) { if (isStarterCode(code)) clearSandboxDraft(); return; }
+      // 로그아웃·연결 해제 직후의 코드는 남기지 않습니다(아래 sandboxBaselineRef). 그 뒤에 고친 내용부터 남깁니다.
+      if (code === sandboxBaselineRef.current) return;
+      sandboxBaselineRef.current = null;
       writeSandboxDraft(code);
     }, 800);
     return () => clearTimeout(timer);
@@ -364,13 +369,14 @@ export default function Sandbox() {
     if (driveFile || driveAccount || activeProject || githubProject) clearSandboxDraft();
   }, [driveFile, driveAccount, activeProject, githubProject]);
   // 드라이브에서 로그아웃하거나 팀 프로젝트 연결을 끊은 직후의 코드는 이 브라우저에 익명 초안으로 남기지 않습니다.
-  // 그 시점의 코드를 기준으로 삼아, 그 뒤에 새로 고친 내용만 초안이 됩니다(공용 컴퓨터에서 앞 학생의 코드가 넘어가지 않게).
+  // 그 시점의 코드를 익명 초안 전용 기준(sandboxBaselineRef)으로 삼아, 그 뒤에 새로 고친 내용만 초안이 됩니다
+  // (공용 컴퓨터에서 앞 학생의 코드가 넘어가지 않게). "초기 코드로 돌아가기"와 저장하지 않은 변경 판단의 기준(initialCodeRef)은 바꾸지 않습니다.
   const previousSources = useRef({ driveAccount: null, githubProject: null });
   useEffect(() => {
     const previous = previousSources.current;
     if ((previous.driveAccount && !driveAccount) || (previous.githubProject && !githubProject)) {
       clearSandboxDraft();
-      initialCodeRef.current = codeRef.current;
+      sandboxBaselineRef.current = codeRef.current;
     }
     previousSources.current = { driveAccount, githubProject };
   }, [driveAccount, githubProject]);
@@ -588,14 +594,15 @@ export default function Sandbox() {
       || !!searchParams.get('showcase')
       || !!repoParam
       || window.location.hash.startsWith('#code=')
-      || window.location.hash.startsWith('#b64=');
+      || window.location.hash.startsWith('#b64=')
+      || !!sharedRouteId;
     if (fromExternal) {
       useProjectStore.getState().closeProject();
       useCodeStore.getState().setCurrentCodeId(null);
       // 불러오기가 늦거나 실패해도, 열어 둔 드라이브 파일·팀 프로젝트에 다른 코드가 저장되지 않게 먼저 연결을 끊습니다.
       detachDriveSource();
     }
-  }, [location.state, repoParam, searchParams]);
+  }, [location.state, repoParam, searchParams, sharedRouteId]);
 
   useEffect(() => {
     if (!mobileMore) return;
