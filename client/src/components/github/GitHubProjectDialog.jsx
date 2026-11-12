@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUiText } from '../../i18n/ui-text';
 import { GITHUB_PAGES_WARNING_TEXT, GITHUB_REASON_TEXT, isGitHubConfigured, useGitHubStore } from '../../github/githubSession';
+import { markHelpDone } from '../help/help-memory';
+import HelpSlot from '../help/HelpSlot';
 
 const GITHUB_LOGOUT_URL = 'https://github.com/logout';
 
@@ -24,6 +26,8 @@ const firstLine = (text) => String(text || '').split('\n')[0];
  *   mode='projects': 내 프로젝트 열기, 받은 초대 수락, 새 프로젝트 만들기, 연 프로젝트의 팀원·초대·저장 기록.
  *   mode='commit': 저장 메시지와 선택 기록 세 칸을 적어 연 프로젝트에 저장. 충돌·만료·권한 문제도 여기서 안내합니다.
  * GitHub 연결이 없거나 실패해도 이 창 안에서만 안내하고, 실행과 드라이브 저장에는 영향을 주지 않습니다.
+ * 그 자리 안내(HelpSlot): GitHub 창·팝업 차단·초대·충돌을 만나는 상태마다 할 일을 알려 줍니다.
+ *   안내가 없거나 실패해도 이 창의 연결·저장 동작은 그대로입니다(components/help/HelpSlot.jsx).
  *
  * @param {object} props
  * @param {'projects'|'commit'} props.mode
@@ -78,6 +82,9 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
     teamFor.current = project.fullName;
     store().loadTeam();
   }, [mode, account, needsReauth, project, store]);
+
+  // GitHub 연결을 한 번 마친 브라우저에서는 다음부터 연결 순서 안내를 접어 둡니다.
+  useEffect(() => { if (account && !needsReauth && !missingScope) markHelpDone('github-connect'); }, [account, needsReauth, missingScope]);
 
   const dirty = () => {
     if (isDirty) return isDirty();
@@ -249,6 +256,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
     && !(reason === 'scope' && missingScope)
     && !(reason === 'notConfigured' && !configured);
   const heading = mode === 'commit' ? ui("GitHub에 저장") : ui("GitHub 팀 프로젝트");
+  const popupBlocked = reason === 'popupBlocked';
 
   const projectSummary = project && (
     <div className="flex flex-col gap-1 text-sm" data-testid="github-project">
@@ -287,7 +295,10 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
           {ui("프로젝트를 만들고 있습니다. 저장소 만들기, 첫 저장, 게시 주소 켜기를 차례로 진행하며 20초쯤 걸릴 수 있습니다. 이 창을 닫지 마십시오.")}
         </p>
       ) : (
-        <p className="m-0 text-xs" style={muted}>{ui("프로젝트는 GitHub의 공개 저장소로 만들어지며 누구나 코드를 볼 수 있습니다.")}</p>
+        <>
+          <p className="m-0 text-xs" style={muted}>{ui("프로젝트는 GitHub의 공개 저장소로 만들어지며 누구나 코드를 볼 수 있습니다.")}</p>
+          <HelpSlot topic="github-create" />
+        </>
       )}
     </form>
   );
@@ -309,6 +320,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
               </button>
             </div>
           ))}
+          {invitations.length > 0 && <HelpSlot topic="github-invited" />}
         </section>
       )}
       <section className="flex flex-col gap-1" aria-label={ui("내 프로젝트")}>
@@ -336,11 +348,14 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
             </button>
           ))}
         </div>
+        {invitations.length === 0 && <HelpSlot topic="github-missing-invite" />}
       </section>
       {createForm}
     </>
   );
 
+  // help: 지금 상태에서 학생이 할 일을 알려 주는 안내. 오류·알림 문구가 가려지지 않게 그 아래에 그립니다.
+  let help = null;
   let body;
   if (!configured) {
     body = <p className="m-0 text-sm" style={secondary} data-testid="github-not-configured">{ui(GITHUB_REASON_TEXT.notConfigured)}</p>;
@@ -356,6 +371,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
         </button>
       </>
     );
+    help = <HelpSlot topic="github-connect" waiting={busy === 'connect'} popupBlocked={popupBlocked} />;
   } else if (needsReauth || missingScope) {
     body = (
       <>
@@ -365,6 +381,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
         </button>
       </>
     );
+    help = <HelpSlot topic="github-reconnect" waiting={busy === 'connect'} popupBlocked={popupBlocked} />;
   } else if (conflict) {
     body = (
       <>
@@ -379,6 +396,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
         </div>
       </>
     );
+    help = <HelpSlot topic="github-conflict" />;
   } else if (mode === 'commit' && project) {
     body = (
       <>
@@ -457,6 +475,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
                 </button>
               </form>
             )}
+            {project.canAdmin && <HelpSlot topic="github-invite" />}
             {pending.length > 0 && (
               <ul className="m-0 p-0 flex flex-col gap-1 text-xs" style={{ listStyle: 'none' }} data-testid="github-pending">
                 {pending.map((item) => (
@@ -525,6 +544,8 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
             {!account && <a href={GITHUB_LOGOUT_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)' }}>{ui("공용 컴퓨터에서는 GitHub에서도 로그아웃해야 합니다.")}</a>}
           </p>
         )}
+        {help}
+        {mode === 'projects' && account && !needsReauth && !missingScope && !conflict && <HelpSlot topic="leaving" />}
       </div>
     </div>,
     document.body,

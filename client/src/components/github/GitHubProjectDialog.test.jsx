@@ -299,3 +299,102 @@ describe('GitHubProjectDialog', () => {
     expect(store().account).toBeNull();
   });
 });
+
+describe('GitHubProjectDialog: 그 자리 안내', () => {
+  beforeEach(() => { localStorage.clear(); });
+
+  it('연결 전: 버튼 아래에 누르면 일어나는 일과 계정이 없을 때 할 일을 보이고, 연결에 성공하면 다음부터 접어 둔다', async () => {
+    const first = render(<GitHubProjectDialog mode="projects" getCode={() => ''} onClose={() => {}} />);
+    const toggle = await screen.findByRole('button', { name: '버튼을 누르면 일어나는 일' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const help = first.baseElement.querySelector('[data-help="github-connect"]');
+    expect(screen.getByTestId('github-connect').compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const steps = help.querySelectorAll('ol.vh-steps > li');
+    expect(steps).toHaveLength(3);
+    expect(steps[1]).toHaveTextContent('초록색 "Authorize vpylab" 버튼을 누릅니다.');
+    expect(steps[1]).toHaveTextContent('"Public repositories and repository invites"');
+    fireEvent.click(within(help).getByRole('button', { name: 'GitHub 계정이 없을 때' }));
+    expect(help).toHaveTextContent('GitHub 계정은 13세 이상만 만들 수 있습니다.');
+
+    fireEvent.click(screen.getByTestId('github-connect'));
+    await waitFor(() => expect(screen.getByTestId('github-account')).toHaveTextContent('ada'));
+    expect(first.baseElement.querySelector('[data-help="github-connect"]')).toBeNull();
+    fireEvent.click(screen.getByTestId('github-disconnect'));
+    expect(await screen.findByRole('button', { name: '버튼을 누르면 일어나는 일' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('GitHub 창을 기다리는 동안: 지금 열린 GitHub 창에서 할 일을 그림과 함께 보인다', async () => {
+    logins = [new Promise(() => {})];
+    const { baseElement } = render(<GitHubProjectDialog mode="projects" getCode={() => ''} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('github-connect'));
+    expect(screen.getByTestId('github-connect')).toHaveTextContent('GitHub 창에서 연결을 진행하고 있습니다…');
+    expect(await screen.findByText('지금 열린 GitHub 창에서 할 일')).toBeInTheDocument();
+    const picture = within(baseElement.querySelector('[data-sketch="github-authorize"]')).getByRole('img');
+    expect(picture).toHaveTextContent('Authorize vpylab');
+    expect(screen.getByText(/전에 승인한 적이 있으면 GitHub 창이 열렸다가 바로 닫힐 수 있습니다/)).toBeInTheDocument();
+  });
+
+  it('브라우저가 GitHub 창을 막으면: 팝업을 허용하는 순서를 펼쳐 보인다', async () => {
+    logins = [new GitHubOAuthError('popupBlocked')];
+    const { baseElement } = render(<GitHubProjectDialog mode="projects" getCode={() => ''} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('github-connect'));
+    expect(await screen.findByTestId('github-error')).toHaveTextContent('팝업 차단을 해제');
+    await waitFor(() => expect(screen.getByRole('button', { name: '창이 열리지 않을 때' })).toHaveAttribute('aria-expanded', 'true'));
+    expect(baseElement.querySelector('[data-sketch="popup-blocked"]')).not.toBeNull();
+  });
+
+  it('프로젝트 목록: 만들면 생기는 것, 초대가 보이지 않을 때, 공용 컴퓨터 정리 순서를 접어서 둔다', async () => {
+    render(<GitHubProjectDialog mode="projects" getCode={() => 'sphere()'} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('github-connect'));
+    const create = await screen.findByRole('button', { name: '프로젝트를 만들면 생기는 것' });
+    expect(create).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByTestId('github-create-form')).toContainElement(create);
+    fireEvent.click(create);
+    expect(screen.getByText(/"게시 주소"가 생깁니다.*1~2분 걸릴 수 있습니다/)).toBeInTheDocument();
+    // 펼치기 버튼은 양식을 제출하지 않습니다.
+    expect(store().busy).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: '초대가 보이지 않을 때' }));
+    expect(screen.getByText(/이 창 위쪽에 표시된 내 GitHub 아이디와 같은지/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '공용 컴퓨터 사용을 마칠 때' })).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('받은 초대가 있으면 수락한 뒤 일어나는 일을 알리고, 연 프로젝트의 소유자에게는 초대하는 순서를 보인다', async () => {
+    github.createRepo('bo', 'team', { description: '우리 팀', topics: [PROJECT_TOPIC], files: { 'main.py': 'x' } });
+    github.state.userInvitations.push({ id: 77, repoKey: 'bo/team', invitee: 'ada', inviter: 'bo', expired: false });
+    github.repo('bo/team').invitations.push({ id: 77, invitee: 'ada', inviter: 'bo', expired: false });
+    await connectedWithProject('v1');
+    render(<GitHubProjectDialog mode="projects" getCode={() => 'v1'} onClose={() => {}} />);
+    const invitations = await screen.findByTestId('github-invitations');
+    expect(await within(invitations).findByText(/"수락"을 누르면 그 프로젝트가 "내 프로젝트" 목록에 나타납니다/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '초대가 보이지 않을 때' })).toBeNull();
+    const invite = await screen.findByRole('button', { name: '팀원을 초대하는 순서' });
+    fireEvent.click(invite);
+    const steps = invite.closest('[data-help="github-invite"]').querySelectorAll('ol.vh-steps > li');
+    expect(steps).toHaveLength(4);
+    expect(steps[1]).toHaveTextContent('"초대할 GitHub 아이디" 칸에 아이디를 입력하고 "초대"를 누릅니다.');
+    expect(steps[2]).toHaveTextContent('"받은 초대"에서 "수락"을 누릅니다.');
+  });
+
+  it('충돌: 두 버튼 아래에 고르면 일어나는 일을 버튼마다 보인다', async () => {
+    const fullName = await connectedWithProject('v1');
+    github.remoteCommit(fullName, { 'main.py': 'teammate' });
+    await store().commit('mine', { message: '내 저장' });
+    const { baseElement } = render(<GitHubProjectDialog mode="commit" getCode={() => 'mine'} onClose={() => {}} />);
+    expect(await screen.findByRole('button', { name: '두 선택지의 차이' })).toHaveAttribute('aria-expanded', 'true');
+    const help = baseElement.querySelector('[data-help="github-conflict"]');
+    expect([...help.querySelectorAll('.vh-choice dt')].map((term) => term.textContent)).toEqual(
+      ['github-conflict-remote', 'github-conflict-overwrite'].map((id) => screen.getByTestId(id).textContent),
+    );
+    expect(help).toHaveTextContent('고르기 전에 팀원에게 무엇을 고쳤는지 물어보면 좋아.');
+  });
+
+  it('다시 연결: 초록색 버튼이 보이면 누르고, 창이 바로 닫히면 연결이 끝난 것임을 알린다', async () => {
+    await connectedWithProject('v1');
+    github.revoke('token-ada');
+    await store().commit('v2', { message: '둘째 저장' });
+    render(<GitHubProjectDialog mode="commit" getCode={() => 'v2'} onClose={() => {}} />);
+    expect(screen.getByTestId('github-reconnect')).toBeInTheDocument();
+    expect(await screen.findByText(/초록색 "Authorize vpylab" 버튼이 보이면 누릅니다. 버튼 없이 창이 바로 닫히면 연결이 끝난 것입니다/)).toBeInTheDocument();
+  });
+});
+

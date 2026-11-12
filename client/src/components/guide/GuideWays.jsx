@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUiText } from '../../i18n/ui-text';
 import { DRIVE_SAVE, OPEN_EDITION, TEAM_PROJECTS } from '../../lib/api-base';
+import HelpSlot from '../help/HelpSlot';
 import './guide-ways.css';
 
 /**
@@ -12,6 +13,9 @@ import './guide-ways.css';
  * 문장 원문과 설계서: docs/reference/solar/guide-ways-261112-solar.md
  * 영어 번역: client/src/i18n/catalogs/en-ui-text.json
  * 그림 출처: client/public/mong/README.md
+ *
+ * 단계 카드 아래의 "자세한 순서"는 저장 창·팀 프로젝트 창과 같은 그 자리 안내(components/help)를 펼쳐 보여 줍니다.
+ * 안내는 따로 불러오며, 불러오지 못해도 이 구역의 글은 그대로 보입니다. 문장: docs/reference/solar/step-guides-261112-solar.md
  */
 
 /** 캐릭터 그림은 검은 외곽선이라 두 테마 모두 밝은 원 위에 올립니다. tone은 그 원의 색입니다. */
@@ -107,6 +111,7 @@ export default function GuideWays() {
             <li>{ui("\"HTML 내려받기\"로 받은 파일은 VPyLab 없이 혼자 실행됩니다. 인터넷 연결이 필요합니다. 도구 메뉴의 \"파일 열기 (.py, .html)\"로 VPyLab에 다시 불러올 수 있습니다. \"파이썬 파일(.py) 내려받기\"도 있습니다.")}</li>
           </ul>
           <WhereToPress groups={[[ui("도구")], [ui("공유"), ui("HTML 내려받기"), ui("파일 열기 (.py, .html)")]]} />
+          <div className="guide-way-help"><HelpSlot topic="guide-solo" /></div>
           <div className="guide-way-tips">
             <MongSays id="mongsil" size={56}>{ui("조금 해 보고 골라도 돼. 로그인 없이 먼저 만들고, 저장 방법은 나중에 정해도 돼.")}</MongSays>
             <MongSays id="sallang" size={56}>{ui("이것도 한번 살펴볼까? \"공유\"로 만든 링크를 친구에게 보내면 친구도 바로 실행해 볼 수 있어.")}</MongSays>
@@ -129,6 +134,7 @@ export default function GuideWays() {
             <li>{ui("구글 연결은 약 1시간마다 다시 승인받습니다. 그때 \"저장\"을 누르면 승인 창이 잠깐 열렸다 닫힙니다. 탭을 닫으면 연결이 끊깁니다.")}</li>
           </ul>
           <WhereToPress groups={[[ui("저장"), ui("내 드라이브")]]} />
+          {DRIVE_SAVE && <div className="guide-way-help"><HelpSlot topic="guide-drive" /></div>}
         </Way>
 
         <Way
@@ -147,6 +153,8 @@ export default function GuideWays() {
             <li>{ui("팀원이 먼저 저장했으면 최신 코드를 가져온 뒤 저장합니다.")}</li>
           </ul>
           <WhereToPress groups={[[teamButton]]} />
+          {/* GitHub 아이디로 초대하는 배포(오픈소스 판의 GitHub 애드온)에서만 그 창의 순서를 보여 줍니다. */}
+          {OPEN_EDITION && TEAM_PROJECTS && <div className="guide-way-help"><HelpSlot topic="guide-team" /></div>}
           <div className="guide-way-tips">
             <MongSays id="doran" size={56}>{ui("너는 어떻게 생각해? 같은 부분을 고치기 전에 누가 먼저 저장할지 팀원과 정하자.")}</MongSays>
             <MongSays id="ttukttak" size={56}>{ui`직접 만들어 볼까? "${teamButton}"에서 새 프로젝트를 하나 만들면 그것이 팀의 저장소가 돼.`}</MongSays>
@@ -158,6 +166,9 @@ export default function GuideWays() {
           </p>
         </Way>
       </ol>
+      {/* 공용 컴퓨터 사용을 마칠 때의 정리 순서. 구글 드라이브 저장이 있는 오픈소스 판의 버튼 이름으로 적혀 있어 그 배포에서만 보입니다.
+          구역 id를 따로 두지 않아 목차는 그대로입니다. */}
+      {OPEN_EDITION && DRIVE_SAVE && <HelpSlot topic="guide-leaving" />}
     </section>
   );
 }

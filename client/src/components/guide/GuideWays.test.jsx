@@ -133,6 +133,77 @@ describe('사용 안내: 세 가지 방법으로 만들기', () => {
   });
 });
 
+describe('사용 안내: 단계 카드의 자세한 순서(그 자리 안내와 같은 내용)', () => {
+  /** 닫혀 있는 펼치기를 모두 엽니다. */
+  const openAll = (root) => {
+    for (let round = 0; round < 6; round += 1) {
+      const closed = [...root.querySelectorAll('button[aria-expanded="false"]')];
+      if (!closed.length) return;
+      closed.forEach(button => fireEvent.click(button));
+    }
+  };
+
+  it('단계마다 창에서 할 일을 접어서 두고, 펼치면 그림과 순서를 보여 준다', async () => {
+    const { container } = await renderWays();
+    const steps = container.querySelectorAll('ol.guide-ways-steps > li');
+    const names = step => [...step.querySelectorAll('.guide-way-help .vh-more-toggle')].map(toggle => toggle.textContent);
+    await screen.findByRole('button', { name: '처음 로그인할 때 구글 창에서 할 일' });
+    await screen.findByRole('button', { name: 'GitHub 창에서 할 일' });
+    await screen.findByRole('button', { name: '파일로 보관하는 순서' });
+    expect(names(steps[0])).toEqual(['파일로 보관하는 순서']);
+    expect(names(steps[1])).toEqual(['처음 로그인할 때 구글 창에서 할 일', '창이 열리지 않을 때', '1시간쯤 지나 다시 승인할 때', '같은 파일을 두 곳에서 저장했을 때']);
+    expect(names(steps[2])).toEqual(['GitHub 창에서 할 일', '프로젝트를 만들면 생기는 것', '팀원을 초대하고 수락하는 순서', '팀원이 먼저 저장했을 때']);
+    for (const toggle of container.querySelectorAll('.guide-way-help .vh-more-toggle')) expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    // 접혀 있는 동안에는 그림을 그리지 않는다
+    expect(container.querySelector('.guide-way-help .vh-sketch')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '처음 로그인할 때 구글 창에서 할 일' }));
+    expect(within(steps[1].querySelector('[data-sketch="google-consent"]')).getByRole('img')).toHaveTextContent('Google Drive 파일');
+    fireEvent.click(screen.getByRole('button', { name: 'GitHub 창에서 할 일' }));
+    expect(within(steps[2].querySelector('[data-sketch="github-authorize"]')).getByRole('img')).toHaveTextContent('Authorize vpylab');
+    fireEvent.click(screen.getByRole('button', { name: '파일로 보관하는 순서' }));
+    expect(steps[0].querySelector('[data-sketch="tools-file"]')).not.toBeNull();
+
+    // 펼쳐도 기존 항목 목록·버튼 줄·캐릭터 그림은 그대로다
+    expect([...steps[1].querySelectorAll('span.guide-way-key')].map(key => key.textContent)).toEqual(['저장', '내 드라이브']);
+    expect(container.querySelectorAll('img')).toHaveLength(MONG_IDS.length);
+  });
+
+  it('공용 컴퓨터 사용을 마칠 때의 정리 순서를 한곳에 펼쳐 둔다', async () => {
+    const { container } = await renderWays();
+    const heading = await screen.findByRole('heading', { level: 3, name: '공용 컴퓨터 사용을 마칠 때' });
+    const card = heading.closest('[data-help="guide-leaving"]');
+    expect(container.querySelector('section#ways')).toContainElement(card);
+    expect(container.querySelector('ol.guide-ways-steps')).not.toContainElement(card);
+    const steps = [...card.querySelectorAll('ol.vh-steps > li .vh-step-text')].map(step => step.textContent);
+    expect(steps).toHaveLength(6);
+    expect(steps[0]).toBe('"저장"을 눌러 작품이 저장되었는지 확인합니다.');
+    expect(steps[5]).toBe('브라우저 창을 닫습니다.');
+  });
+
+  it('꺼진 기능의 창 안내는 보이지 않고, 수업용 판에서는 GitHub 아이디 초대 순서를 보이지 않는다', async () => {
+    const off = await renderWays({ drive: false, team: false });
+    await screen.findByRole('button', { name: '파일로 보관하는 순서' });
+    expect(off.container.querySelector('[data-help="guide-drive"], [data-help="guide-team"], [data-help="guide-leaving"]')).toBeNull();
+    cleanup();
+    const classroom = await renderWays({ open: false, drive: true, team: true });
+    await screen.findByRole('button', { name: '처음 로그인할 때 구글 창에서 할 일' });
+    // 수업용 판의 팀 프로젝트와 로그아웃은 버튼이 달라, GitHub 창 안내와 공용 컴퓨터 정리 순서는 오픈소스 판에서만 보인다
+    expect(classroom.container.querySelector('[data-help="guide-team"], [data-help="guide-leaving"]')).toBeNull();
+  });
+
+  it('영어 화면에서는 펼친 안내의 글과 대체 설명도 모두 번역된다', async () => {
+    const { container } = await renderWays({ locale: 'en' });
+    await screen.findByRole('button', { name: 'What to do in the Google window the first time you sign in' });
+    await screen.findByRole('heading', { level: 3, name: 'When you finish on a shared computer' });
+    openAll(container);
+    // 한국어 화면의 표기를 일부러 함께 알려 주는 줄과, 드라이브가 붙이는 파일 이름 "(사본)"만 한글로 남는다
+    container.querySelectorAll('.vh-alt-labels').forEach(node => node.remove());
+    expect(container.textContent.replaceAll('"(사본)"', '')).not.toMatch(/[가-힣]/);
+    for (const node of container.querySelectorAll('[aria-label]')) expect(node.getAttribute('aria-label')).not.toMatch(/[가-힣]/);
+  });
+});
+
 describe('그림 파일', () => {
 
   it('캐릭터 그림과 출처 안내가 public/mong에 있고 파일마다 40KB를 넘지 않는다', () => {

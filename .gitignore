@@ -33,3 +33,6 @@ scripts/compat/out/*.partial.json
 
 # Cloudflare Pages 로컬 비밀값(wrangler pages dev)
 .dev.vars
+
+# 에이전트용 임시 작업 사본
+.claude/worktrees/
