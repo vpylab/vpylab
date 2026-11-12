@@ -1,7 +1,6 @@
 /**
- * 짧은 공유 주소(/s/<이름>)의 이름 규칙. 한 곳에서만 고칩니다(코드 하나, 배포 둘).
- *   - 오픈소스 판: cloudflare/share-core.js(Cloudflare Pages 함수 + D1)
- *   - 수업용 판: server/routes/share.js(Railway Express + Supabase)
+ * 짧은 공유 주소(/s/<이름>)의 이름 규칙. 한 곳에서만 고칩니다.
+ *   - 저장: cloudflare/share-core.js(Cloudflare Pages 함수 + D1)
  *   - 화면: client/src/utils/share.js(보내기 전 검사)
  *
  * 규칙: 영어 소문자·숫자·하이픈(-) 3~30자, 하이픈으로 시작·끝 금지, 하이픈 두 개 연속 금지. 먼저 정한 사람이 씁니다.

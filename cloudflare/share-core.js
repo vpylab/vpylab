@@ -1,5 +1,5 @@
 /**
- * 오픈소스 판 짧은 공유 주소(/s/<이름>)의 핵심 로직. Cloudflare Pages 함수(functions/api/share/)가 사용합니다.
+ * 짧은 공유 주소(/s/<이름>)의 핵심 로직. Cloudflare Pages 함수(functions/api/share/)가 사용합니다.
  *
  * 요청과 응답
  *   POST /api/share            { code, title?, name? } → 201 { id, url, editKey, named }

@@ -20,13 +20,9 @@ function requirePython(t) {
   t.skip('Python 실행 환경 없음');
   return false;
 }
-test('서버에 패키징한 학생 코드 변환기는 편집기와 같은 원본이다', () => {
-  assert.equal(readFileSync(new URL('./student-code-transform.py', import.meta.url), 'utf8'), editorTransform);
-});
-
-test('서버와 브라우저의 공유 HTML은 같은 템플릿과 변환기를 사용한다', () => {
+test('Node와 브라우저의 공유 HTML은 같은 템플릿과 변환기를 사용한다', () => {
   const code = course.lessons[0].code;
-  const options = { repoUrl: 'https://github.com/example/test', openInVpylabUrl: 'https://vpylab.vercel.app/sandbox' };
+  const options = { repoUrl: 'https://github.com/example/test', openInVpylabUrl: 'https://vpylab.pages.dev/sandbox' };
   assert.equal(generateStandaloneHTML(code, '소리 검증', options), generateShared(code, '소리 검증', options, editorTransform));
 });
 

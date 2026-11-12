@@ -3,7 +3,6 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
-import dotenv from '../../server/node_modules/dotenv/lib/main.js';
 import { apiReferenceDocs as docs } from '../../client/src/data/docs.js';
 import { projectDir } from '../project-paths.mjs';
 import { proposeShape } from '../../shared/shape-proposal.js';
@@ -13,7 +12,9 @@ const value=name=>{const i=args.indexOf(name);return i>=0?args[i+1]:null};
 const root=fileURLToPath(new URL('../..',import.meta.url));
 let apiKey=process.env.UPSTAGE_API_KEY;
 const keyProject=value('--key-project');
-if(!apiKey&&keyProject)apiKey=dotenv.parse(await fs.readFile(path.join(projectDir(keyProject),'server/.env'))).UPSTAGE_API_KEY;
+// .env에서 UPSTAGE_API_KEY 한 줄만 읽습니다(값을 출력하지 않습니다).
+const readEnvKey=(text,name)=>{const line=String(text).split(/\r?\n/).find(l=>l.trim().startsWith(name+'='));return line?line.trim().slice(name.length+1).replace(/^['"]|['"]$/g,''):undefined};
+if(!apiKey&&keyProject)apiKey=readEnvKey(await fs.readFile(path.join(projectDir(keyProject),'server/.env'),'utf8'),'UPSTAGE_API_KEY');
 const out=value('--out')||path.join(os.tmpdir(),'vpylab-solar-shapes');await fs.mkdir(out,{recursive:true});
 const documentation=await fs.readFile(path.join(root,'docs/VPYTHON_API.md'),'utf8')+'\n\n# 전체 앱 내 API 레퍼런스\n'+JSON.stringify(docs,null,2);
 const cases=[
