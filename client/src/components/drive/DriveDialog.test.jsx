@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createFakeGoogle, memoryStorage } from '../../drive-lab/fake-google.js';
+import { createFakeGoogle, memoryStorage } from '../../drive/fake-google.js';
 import { configureDrive, useDriveStore } from '../../drive/driveSession.js';
 import DriveDialog from './DriveDialog.jsx';
 

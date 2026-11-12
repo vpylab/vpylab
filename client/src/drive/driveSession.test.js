@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createFakeGoogle, memoryStorage } from '../drive-lab/fake-google.js';
+import { createFakeGoogle, memoryStorage } from './fake-google.js';
 import { DRIVE_TAB_KEY, configureDrive, expiredDriveTabFile, hasStoredDriveSession, storedDriveFileId, useDriveStore } from './driveSession.js';
-import { TOKEN_STORAGE_KEY } from '../drive-lab/google-auth.js';
+import { TOKEN_STORAGE_KEY } from './google-auth.js';
 
 let google;
 let storage;

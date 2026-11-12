@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createFakeGoogle, memoryStorage } from '../../drive-lab/fake-google.js';
+import { createFakeGoogle, memoryStorage } from '../../drive/fake-google.js';
 import { configureDrive } from '../../drive/driveSession.js';
 import { createFakeGitHub } from '../../github/fake-github.js';
 import { configureGitHub } from '../../github/githubSession.js';

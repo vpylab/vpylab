@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { memoryStorage } from '../../drive-lab/fake-google.js';
+import { memoryStorage } from '../../drive/fake-google.js';
 import { createFakeGitHub } from '../../github/fake-github.js';
 import { configureGitHub, useGitHubStore } from '../../github/githubSession.js';
 import { GITHUB_TAB_DRAFT_KEY, readProjectDraft, writeProjectDraft } from '../../github/tab-session.js';

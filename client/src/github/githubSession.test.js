@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { memoryStorage } from '../drive-lab/fake-google.js';
+import { memoryStorage } from '../drive/fake-google.js';
 import { createFakeGitHub } from './fake-github.js';
 import { PROJECT_TOPIC } from './github-api.js';
 import { GitHubOAuthError } from './github-oauth.js';

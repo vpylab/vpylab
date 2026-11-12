@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { memoryStorage } from '../../drive-lab/fake-google.js';
+import { memoryStorage } from '../../drive/fake-google.js';
 import { createFakeGitHub } from '../../github/fake-github.js';
 import { PROJECT_TOPIC } from '../../github/github-api.js';
 import { GitHubOAuthError } from '../../github/github-oauth.js';

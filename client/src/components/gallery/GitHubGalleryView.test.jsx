@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { memoryStorage } from '../../drive-lab/fake-google.js';
+import { memoryStorage } from '../../drive/fake-google.js';
 import { createFakeGitHub } from '../../github/fake-github.js';
 import { configureGitHub, useGitHubStore } from '../../github/githubSession.js';
 import useAppStore from '../../stores/appStore';

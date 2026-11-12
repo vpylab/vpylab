@@ -16,9 +16,9 @@
  *     (renewInGesture). 승인 창을 열지 못하면 예전처럼 "다시 승인" 안내로 넘어갑니다.
  */
 import { create } from 'zustand';
-import { AuthRequiredError, createGoogleAuth, fetchUserInfo, loadGis, missingScopes, readStoredToken } from '../drive-lab/google-auth.js';
-import { DriveError, createDriveStorage, uniqueFileName } from '../drive-lab/drive-storage.js';
-import { clearDraft, clearDrafts, deviceId as getDeviceId, fileDrafts, listDrafts, purgeOldDrafts, saveDraft } from '../drive-lab/lab-state.js';
+import { AuthRequiredError, createGoogleAuth, fetchUserInfo, loadGis, missingScopes, readStoredToken } from './google-auth.js';
+import { DriveError, createDriveStorage, uniqueFileName } from './drive-storage.js';
+import { clearDraft, clearDrafts, deviceId as getDeviceId, fileDrafts, listDrafts, purgeOldDrafts, saveDraft } from './lab-state.js';
 
 export const DRIVE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim();
 /** 드라이브 폴더 주소(사용자가 드라이브에서 직접 볼 때) */
