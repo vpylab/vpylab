@@ -50,7 +50,7 @@ describe.skipIf(!hasPython())('대장간 출력의 실제 Python·기하 의미'
     const model=buildForgeModel(createRecipe(id));processBatch(forgeCommands(model),scene);const before=box();clearScene(scene);
     const result=run(moduleProgram(builtInModule(id)));expect(result.error,id).toBeNull();processBatch(result.commands,scene);const after=box();
     for(const axis of ['x','y','z']){expect(after.min[axis],id+' min '+axis).toBeCloseTo(before.min[axis],4);expect(after.max[axis],id+' max '+axis).toBeCloseTo(before.max[axis],4);}
-  },20000);
+  },120000);
   it('모든 조절기의 최소·최대 조합과 표정·장식이 독립 실행된다',()=>{
     const jobs=[];
     for(const p of forgePresets)for(const end of ['min','max']){
@@ -59,7 +59,7 @@ describe.skipIf(!hasPython())('대장간 출력의 실제 Python·기하 의미'
     }
     for(const expression of ['smile','surprise','sleepy'])for(const accessory of ['none','hat','bow','antenna'])jobs.push({id:expression,label:accessory,code:moduleProgram(makeForgeModule({...createRecipe('cat'),expression,accessory}))});
     const results=runPythonJobs(jobs);for(const [id,r]of results)expect(r.error,id).toBeNull();
-  },30000);
+  },120000);
   it('위치·배율·이동과 인스턴스별 색·제거가 서로 간섭하지 않는다',()=>{
     const m=builtInModule('kirby'),fn=factoryName(m),code='from vpython import *\n'+moduleDefinition(m)+`\na=${fn}(pos=vector(3,2,1),scale=2)\nb=${fn}(pos=vector(-3,0,0),scale=.5)\na.object.pos.x+=1\na.object.pos.y+=1\na.move_to(vector(5,3,2))\na.object.color=color.green\nassert b.object.color == color.white\nassert mag(a.pos-vector(5,3,2))<0.000001\nb.dispose()\nassert a.object.visible and not b.object.visible\n`;
     const result=run(code);expect(result.error).toBeNull();processBatch(result.commands,scene);

@@ -40,8 +40,16 @@ export default function Embed() {
   const [soundOn, setSoundOn] = useState(() => isAudioUnlocked());
   const audio = useSyncExternalStore(subscribeAudioState, getAudioState, getAudioState);
 
+  // 3D 화면이 준비되기 전에 도착한 그리기 명령은 모아 두었다가 준비되면 처리합니다(버리면 첫 장면이 비어 보입니다).
+  const pendingBatches = useRef([]);
   const handleBatch = useCallback((commands) => {
     if (sceneRef.current) processBatch(commands, sceneRef.current);
+    else pendingBatches.current.push(commands);
+  }, []);
+  const handleSceneReady = useCallback((scene) => {
+    const waiting = pendingBatches.current;
+    pendingBatches.current = [];
+    for (const commands of waiting) processBatch(commands, scene);
   }, []);
 
   const {
@@ -164,7 +172,7 @@ export default function Embed() {
       </div>
 
       <div className="flex-1 min-h-0 relative">
-        <Viewport3D sceneRef={sceneRef} onSceneReady={() => {}} controls={{ onRun: run, onStop: stop, isRunning:isRunning||audio.playing, isReady: isReady && !!work }} />
+        <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: run, onStop: stop, isRunning:isRunning||audio.playing, isReady: isReady && !!work }} />
         {statusText && (
           <div
             className="absolute left-2 bottom-2 text-xs px-2 py-1 rounded max-w-[90%] whitespace-pre-wrap"

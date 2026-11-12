@@ -93,7 +93,7 @@ Pages 프로젝트의 Settings → Variables and Secrets에 넣는 비밀값은 
 | `POST /api/share` `{ code, title?, name? }` | 만들기. 이름이 없으면 무작위 6자를 붙입니다. 응답의 `editKey`는 만든 브라우저(localStorage)에만 남깁니다 |
 | `GET /api/share/:id` | 읽기 |
 | `PUT /api/share/:id` + `Authorization: Bearer <editKey>` | 만든 브라우저에서 내용 바꾸기 |
-| `DELETE /api/share/:id` + `Authorization: Bearer <editKey>` | 무작위 주소 지우기. 공유 창에서 이름을 정하면 창을 열 때 만든 무작위 주소를 지웁니다. 정한 이름은 지우지 않습니다 |
+| `DELETE /api/share/:id` + `Authorization: Bearer <editKey>` | 무작위 주소 지우기. 앱은 이 요청을 보내지 않습니다. 공유 창에서 이름을 정해도 앞서 만든 무작위 주소는 그대로 둡니다(이미 전해졌을 수 있고, 공유 링크는 계속 보관합니다). 정한 이름은 이 요청으로 지울 수 없습니다 |
 
 - 이름은 영어 소문자, 숫자, 하이픈(-) 3~30자이며 먼저 정한 사람이 사용합니다.
 - 코드는 50,000자까지 받습니다. 만들기와 고치기는 같은 IP에서 1분에 120건까지 받습니다.
@@ -269,7 +269,7 @@ npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-
 
 - 로컬 비밀값(`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SHARE_SALT`)은 저장소 루트의 `.dev.vars`에 둡니다. 이 파일은 `.gitignore`에 있어 커밋되지 않습니다.
 - 빌드 변수(`VITE_…`)는 빌드할 때 읽습니다. `client/.env.local`에 넣거나 `npm run build` 앞에 적습니다.
-- 로컬 D1은 `--persist-to` 폴더에 만들어집니다. 테이블을 로컬 D1에 만드는 명령은 이 문서를 작성하면서 확인하지 않았습니다.
+- 로컬 D1은 `--persist-to` 폴더에 만들어집니다. 처음 한 번 `npx wrangler d1 migrations apply vpylab-shares --local --persist-to /private/tmp/vpylab-pages-dev-state`로 테이블을 만듭니다(2026-11-12 확인). 테이블이 없으면 `/api/share`가 500을 돌려주고 앱은 코드를 주소에 담은 긴 링크로 대신합니다.
 
 손으로 바로 올릴 때는 다음과 같이 합니다. Cloudflare 계정에 로그인한 컴퓨터에서 실행합니다.
 

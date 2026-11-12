@@ -43,12 +43,6 @@ function rememberEditKey(id, editKey) {
   writeEditKeys(keys);
 }
 
-function forgetEditKey(id) {
-  memoryKeys.delete(id);
-  const keys = readEditKeys();
-  delete keys[id];
-  writeEditKeys(keys);
-}
 
 /** 이 브라우저에서 만든 이름인지(고칠 수 있는지) */
 export function hasEditKey(id) {
@@ -131,30 +125,6 @@ export async function claimShareName(code, title, rawName) {
     return { url: `${window.location.origin}${data.url}`, id: data.id, updated: false, errorCode: null };
   } catch {
     return { url: null, id: null, updated: false, errorCode: 'network' };
-  }
-}
-
-/**
- * 이 브라우저에서 만든 무작위 주소를 지웁니다.
- * 공유 창을 열 때 무작위 주소가 먼저 생기는데, 이어서 이름을 정하면 그 주소는 쓰이지 않으므로 저장소에 남기지 않습니다.
- * 수정 열쇠가 없으면(다른 브라우저에서 만든 주소) 아무것도 하지 않습니다. 실패해도 이름 정하기에는 영향이 없습니다.
- * @returns {Promise<boolean>} 지웠으면 true
- */
-export async function discardShareLink(id) {
-  if (!id) return false;
-  const keys = readEditKeys();
-  const editKey = keys[id];
-  if (!editKey) return false;
-  try {
-    const res = await fetch(`/api/share/${encodeURIComponent(id)}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${editKey}` },
-    });
-    // 지웠거나 이미 없으면 열쇠도 버립니다.
-    if (res.ok || res.status === 404) forgetEditKey(id);
-    return res.ok;
-  } catch {
-    return false;
   }
 }
 

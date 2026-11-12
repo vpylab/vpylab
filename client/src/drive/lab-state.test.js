@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  deviceId, saveDraft, loadDraft, clearDraft, clearDrafts, listDrafts, purgeOldDrafts, contactedOrigins, summarizeTimings, buildReport, CHECKLIST,
+  deviceId, saveDraft, loadDraft, clearDraft, clearDrafts, listDrafts, purgeOldDrafts,
 } from './lab-state.js';
 
 function memory() {
@@ -74,42 +74,5 @@ describe('lab-state', () => {
     expect(saveDraft(broken, 'a', 'f', { code: '' })).toBe(false);
     expect(loadDraft(broken, 'a', 'f')).toBeNull();
     expect(clearDrafts(broken, 'a')).toBe(0);
-  });
-
-  it('연결된 출처를 구글·페이지·기타로 나눈다', () => {
-    const origins = contactedOrigins([
-      { name: 'https://www.googleapis.com/drive/v3/files' },
-      { name: 'https://www.googleapis.com/upload/drive/v3/files' },
-      { name: 'https://accounts.google.com/gsi/client' },
-      { name: 'http://localhost:4086/src/main.jsx' },
-      { name: 'https://vpylab-server-production.up.railway.app/api/health' },
-      { name: 'not a url' },
-    ], 'http://localhost:4086');
-    expect(origins).toEqual([
-      { origin: 'http://localhost:4086', count: 1, kind: 'page' },
-      { origin: 'https://accounts.google.com', count: 1, kind: 'google' },
-      { origin: 'https://vpylab-server-production.up.railway.app', count: 1, kind: 'other' },
-      { origin: 'https://www.googleapis.com', count: 2, kind: 'google' },
-    ]);
-  });
-
-  it('요청 시간을 요약한다', () => {
-    const t = summarizeTimings([
-      { status: 200, ms: 100 }, { status: 200, ms: 300 }, { status: 200, ms: 200 }, { status: 429, ms: 50 },
-    ]);
-    expect(t).toEqual({ count: 3, errors: 1, avg: 200, p50: 200, p95: 300, max: 300 });
-    expect(summarizeTimings([])).toBeNull();
-  });
-
-  it('보고서에는 이메일 대신 도메인만 적는다', () => {
-    const report = buildReport({
-      results: { A1: { result: 'pass', note: '승인 화면 정상' } },
-      account: { email: 'student@school.example', hd: 'school.example' },
-      device: '기기-ab12', origins: [], timings: null, burst: null, userAgent: 'UA', now: new Date('2026-11-07T00:00:00Z'),
-    });
-    expect(report).toContain('계정 도메인: school.example');
-    expect(report).not.toContain('student@');
-    expect(report).toContain('A1 학생 계정 승인: 통과 · 승인 화면 정상');
-    expect(report.split('\n').filter((l) => /^- [A-E]\d /.test(l))).toHaveLength(CHECKLIST.length);
   });
 });

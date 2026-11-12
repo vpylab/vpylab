@@ -118,10 +118,7 @@ node scripts/compat/docs-browser.cjs
 구현·Claude 회의·검증·지원 한계는 [문서와 도형 가이드 보고서](../../docs/DOCUMENTATION_AND_SHAPE_GUIDES_2026-11-07.md)에 기록했습니다.
 
 
-## 대장간 모듈과 포크 (2026-11-07)
+## 대장간 모듈과 포크
 
-개발 서버 실행 중 `node scripts/compat/forge-browser.cjs`로 실제 작업대를 검사합니다. `VPYLAB_TEST_URL`과 `VPYLAB_TEST_OUT`을 지정할 수 있습니다. 캐릭터·종·기본 모양 14종, 코드 복사 후 실제 실행, `object.pos.x`와 개별 색, 종의 모양/소리/음파, 튜토리얼의 아이템 획득, 공개 목록과 포크 출처를 확인합니다. 자동 프로젝트 삽입은 사용하지 않습니다.
+대장간의 공개 등록과 포크는 2026-11-12에 GitHub 방식으로 바뀌었습니다. 예전 방식(Supabase)을 검사하던 `forge-browser.cjs`와 `forge-live-browser.cjs`는 지웠습니다. 지금의 동작은 `client/src/forge/github-registry.test.js`와 `client/src/components/forge/ForgeGitHub.test.jsx`가 검사합니다.
 
-OAuth 상태와 포크·재공개 쓰기는 합성 클라이언트/가로챈 응답으로 확인하며 실제 게시하지 않습니다. `VPYLAB_FORGE_NETWORK_ONLY=1`은 이 부분만 재현하는 진단 옵션이며 전체 검증은 기본 실행을 사용합니다. 결과에는 이 옵션 사용 여부와 소스 fingerprint가 남습니다. 실제 계정 DB 쓰기나 학생 기기 전체 검증으로 해석하지 않습니다.
-
-설계와 검증 상세: [대장간 보고서](../../docs/FORGE_MODULES_2026-11-07.md).

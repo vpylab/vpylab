@@ -46,7 +46,7 @@ const setCode=vm.runInNewContext(fs.readFileSync(path.join(root,'scripts/compat/
   // 실제 계정·원격 저장 대신 합성 계정 상태로 늦은 인증 복원과 분리를 확인합니다.
   const network=await page.createCDPSession();await network.send('Network.enable');
   const api=await page.evaluate(async()=>{try{const url=performance.getEntriesByType('resource').map(e=>e.name).find(n=>new URL(n).pathname.endsWith('/src/lib/api-base.js'));return url?(await import(url)).API_BASE:''}catch{return ''}});
-  await network.send('Network.setBlockedURLs',{urls:['*://*.supabase.co/*','http://localhost:4034/*','http://127.0.0.1:4034/*',...(api?[api+'/*']:[])]});
+  await network.send('Network.setBlockedURLs',{urls:[...(api?[api+'/*']:[])]});
   const authDoc=docs.find(d=>d.id==='shape-start');
   await page.goto(base+'/sandbox?doc=shape-start',{waitUntil:'domcontentloaded'});await ready();
   async function setSyntheticUser(id){await page.evaluate(async id=>{const url=performance.getEntriesByType('resource').map(e=>e.name).find(n=>new URL(n).pathname.endsWith('/src/stores/authStore.js'));(await import(url)).default.setState({user:id?{id,user_metadata:{}}:null,profile:null})},id);await pause(100)}

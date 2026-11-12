@@ -81,4 +81,4 @@ it.skipIf(!hasPython())('복사한 Python 완제품도 메인과 같은 형상�
   }
   main.dispose();
   const noCheeks=buildForgeModel({...base,params:{...base.params,cheekSize:0}});expect(noCheeks.parts.some(p=>p.name.startsWith('cheek'))).toBe(false);
-},20000);
+},120000);

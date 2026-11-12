@@ -134,3 +134,7 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 5 "$base/assets/__missing__.js")
           echo "$base/assets/__missing__.js → $code"
           [ "$code" = "404" ] || { echo "::error::없는 정적 파일의 응답이 $code 입니다(404여야 합니다)"; exit 1; }
+          # 없는 API 주소도 화면이 아니라 404여야 합니다(functions/api/[[path]].js).
+          code=$(curl -s -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 5 "$base/api/__missing__")
+          echo "$base/api/__missing__ → $code"
+          [ "$code" = "404" ] || { echo "::error::없는 API 주소의 응답이 $code 입니다(404여야 합니다)"; exit 1; }

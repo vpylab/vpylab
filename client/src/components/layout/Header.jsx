@@ -44,7 +44,7 @@ export default function Header() {
     setOpenMenu(null); // eslint-disable-line react-hooks/set-state-in-effect
   }, [location.pathname]);
   const active = path => location.pathname === path || location.pathname.startsWith(path + '/')
-    || (path === '/missions' && (location.pathname.startsWith('/courses/') || location.pathname.startsWith('/mission/')));
+    || (path === '/missions' && (location.pathname === '/courses' || location.pathname.startsWith('/courses/') || location.pathname.startsWith('/mission/')));
   const linkStyle = path => ({ color: active(path) ? 'var(--color-accent)' : 'var(--color-text-secondary)' });
   const menuStyle = { backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-md)' };
   return (

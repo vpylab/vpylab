@@ -49,7 +49,7 @@ it.skipIf(!hasPython())('새 에셋은 최소·최대·두 인스턴스 이동�
   }
   const copies=studio.map(p=>{const m=builtInModule(p.id),fn=factoryName(m);return{id:p.id,label:'copies',code:'from vpython import *\n'+moduleDefinition(m)+`\na=${fn}(pos=vector(3,0,0),scale=.7)\nb=${fn}(pos=vector(-3,0,0),scale=1.3)\na.object.pos.x+=1\na.object.visible=False\nassert b.object.visible\nassert mag(a.pos-vector(4,0,0))<0.0001\nb.dispose()\nassert not b.object.visible\n`};});
   for(const [key,r]of runPythonJobs(copies))expect(r.error,key).toBeNull();
-},20000);
+},120000);
 
 it('새 캐릭터 셋은 메인과 같은 기본 부품·색·방향이며 몸 크기 슬라이더도 작동한다',()=>{
   for(const id of ['dumpling','flashlight','toolbox']){

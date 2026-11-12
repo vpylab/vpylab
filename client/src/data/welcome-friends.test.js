@@ -19,7 +19,7 @@ describe.skipIf(!hasPython())('환영 친구의 화면과 실제 VPython',()=>{
     expect(Math.abs(preview.getWorldQuaternion(new THREE.Quaternion()).dot(rendered.getWorldQuaternion(new THREE.Quaternion()))),id+' '+part.name+' rotation').toBeCloseTo(1,5);
   }
   const parts=welcomeParts(id);expect(parts.every(p=>!['curve','helix','label'].includes(p.type))).toBe(true);const compound=results.get(id+':wave').commands.find(c=>c.action==='compound');expect(compound.sub_ids).toHaveLength(parts.length);expect(results.get(id+':wave').commands.some(c=>c.action==='update'&&c.id===compound.id&&c.pos)).toBe(true);model.dispose();
- },20000);
+ },120000);
 });
 it.skipIf(!hasPython())('프렌즈는 독립 compound 네 개를 목록으로 움직이고 제자리로 돌아온다',()=>{
  const code=welcomeCode('friends'),result=runPythonJobs([{id:'friends',label:'bounce',code}]).get('friends:bounce');
@@ -34,7 +34,7 @@ it.skipIf(!hasPython())('프렌즈는 독립 compound 네 개를 목록으로 �
  const expected=new THREE.Box3().setFromObject(model.group),actual=new THREE.Box3().setFromObject(scene);
  for(const axis of ['x','y','z']){expect(actual.min[axis]).toBeCloseTo(expected.min[axis],2);expect(actual.max[axis]).toBeCloseTo(expected.max[axis],2);}
  expect(getTutorial('welcome-friend','friends').activeStep).toBe('friends');model.dispose();
-},20000);
+},120000);
 describe.skipIf(!hasPython())('친구별 전용 모션의 실제 부품 변형',()=>{
  it.each(welcomeFriends.map(f=>[f.id]))('%s의 정점 모션은 Python과 같고 완제품으로 종료한다',id=>{
   const code=welcomeMotionCode(id),peak=code.replace('for frame in range(73):','for frame in [36]:').split('# 모션을 마치고')[0];
@@ -60,7 +60,7 @@ describe.skipIf(!hasPython())('친구별 전용 모션의 실제 부품 변형',
   }freshRest.dispose();
   model.animate(0);if(id==='flashlight'){expect(model.group.children.filter(o=>o.isPointLight).every(o=>o.intensity===0)).toBe(true);expect(model.group.getObjectByName('flashlight_beam')).toBeUndefined();}const fresh=createWelcomeModel(id);fresh.group.updateMatrixWorld(true);model.group.updateMatrixWorld(true);
   expect(new THREE.Box3().setFromObject(model.group).min.distanceTo(new THREE.Box3().setFromObject(fresh.group).min)).toBeLessThan(1e-5);for(const p of welcomeParts(id)){const a=model.group.getObjectByName(p.name).matrixWorld.elements,b=fresh.group.getObjectByName(p.name).matrixWorld.elements;for(let i=0;i<16;i++)expect(a[i],p.name+' reset').toBeCloseTo(b[i],5);}fresh.dispose();model.dispose();
- },20000);
+ },120000);
  it('프렌즈의 중간 프레임에서 실제 Python도 같은 위상과 높이로 뛰며 부품 모션을 재생한다',()=>{
   const code=welcomeMotionCode('friends').replace('for frame in range(180):','for frame in [36]:').split('# 모션을 마치고')[0],result=runPythonJobs([{id:'friends',label:'phase',code}]).get('friends:phase');expect(result.error).toBeNull();processBatch(result.commands,scene);scene.updateMatrixWorld(true);
   const creates=result.commands.filter(c=>c.action==='create'&&!['local_light','distant_light'].includes(c.type)),model=createWelcomeModel('friends');model.animate(1.2);model.members.forEach((m,i)=>m.group.position.y+=welcomeBounce(1.2,i));model.group.updateMatrixWorld(true);

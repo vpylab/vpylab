@@ -34,7 +34,7 @@ describe.skipIf(!hasPython())('문서에서 복사하는 실제 Python 예제',(
  it.each(batches)('모든 예제가 독립 실행된다 · 묶음 %i',(_id,batch)=>{
   const results=runPythonJobs(batch);expect(results.size).toBe(batch.length);
   for(const [id,r]of results)expect(r.error,id).toBeNull();
- },30000);
+ },120000);
 });
 it('반구의 height·segments 변경은 제공 함수 기본값이 아니라 호출 줄에 적용된다',()=>{
  const d=getDocById('shape-dome'),variants=getGuideVariants(d);

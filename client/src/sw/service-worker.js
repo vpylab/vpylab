@@ -66,7 +66,9 @@ function isStandaloneDocument(url) {
 async function networkFirstShell(request, shellKey = APP_SHELL) {
   try {
     const response = await fetch(request);
-    if (cacheable(response)) {
+    // 앱 셸로 보관하는 것은 HTML 응답뿐입니다. 주소창으로 정적 파일(예: /assets/….js)을 직접 열어도 그 응답이 앱 셸 자리를 덮지 않게 합니다.
+    const isHtml = (response.headers.get('content-type') || '').includes('text/html');
+    if (cacheable(response) && isHtml) {
       const cache = await caches.open(APP_CACHE);
       await cache.put(shellKey, response.clone());
     }

@@ -118,7 +118,7 @@ Routes are declared in `client/src/App.jsx`.
 |---|---|
 | `/` | Home |
 | `/tutorials`, `/tutorials/:tutorialId` | Tutorials |
-| `/courses`, `/courses/:courseId`, `/courses/:courseId/:lessonId` | Courses |
+| `/courses/:courseId`, `/courses/:courseId/:lessonId` | Courses (`/courses` alone redirects to `/missions`) |
 | `/sandbox` | Create (`pages/Sandbox.jsx`) |
 | `/examples`, `/missions`, `/mission/:missionId` | Examples, missions |
 | `/docs`, `/forge`, `/guide`, `/about`, `/privacy` | Reference, Forge, in-app guide, about, privacy |

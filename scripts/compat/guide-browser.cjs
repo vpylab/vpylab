@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),{execFileSync}=require('node:child_process');
 let puppeteer;try{puppeteer=require('puppeteer')}catch{puppeteer=require(path.join(execFileSync('npm',['root','-g'],{encoding:'utf8'}).trim(),'puppeteer'))}
-const base=process.env.VPYLAB_TEST_URL||'https://vpylab.vercel.app',out=process.env.VPYLAB_TEST_OUT||'/private/tmp/vpylab-production-guide';
+const base=process.env.VPYLAB_TEST_URL||'https://vpylab.pages.dev',out=process.env.VPYLAB_TEST_OUT||'/private/tmp/vpylab-production-guide';
 (async()=>{fs.mkdirSync(out,{recursive:true});const browser=await puppeteer.launch({headless:'shell'}),page=await browser.newPage(),errors=[],results=[];page.on('pageerror',e=>errors.push(e.message));try{
  await page.setViewport({width:1440,height:1100});await page.goto(base+'/guide',{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('main h1')?.textContent.trim()==='사용 안내');
  for(const id of ['start','forge','fork','character','projects'])assert(await page.$('#'+id),id);results.push('five-guide-sections');

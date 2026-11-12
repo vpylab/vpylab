@@ -150,7 +150,7 @@ function hubHtml(courses) {
   </div>
 </main>
 <footer>
-  <p>제작: 석리송 · 실습 환경 <a href="https://vpylab.vercel.app/">VPyLab</a></p>
+  <p>제작: 석리송 · 실습 환경 <a href="https://vpylab.pages.dev/">VPyLab</a></p>
 </footer>
 </body>
 </html>`;

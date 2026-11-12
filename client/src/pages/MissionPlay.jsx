@@ -51,6 +51,8 @@ function MissionSession({ missionId }) {
   }, [mission, navigate]);
 
   useEffect(() => { initAudioOnUserGesture(); }, []);
+  // 미션 화면을 떠나면 재생 중이거나 예약된 소리를 멈춥니다.
+  useEffect(() => () => { stopBgm(); stopAllSounds(); }, []);
 
   const changeCode = value => {
     const next = value || '';

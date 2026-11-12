@@ -753,7 +753,13 @@ export default function Sandbox() {
       addOutput(ui(CODE_FILE_REASON_TEXT[error instanceof CodeFileError ? error.reason : 'read']), 'error');
       return;
     }
-    const unsaved = codeRef.current !== initialCodeRef.current || (DRIVE_EDITOR && useDriveStore.getState().isDirty(codeRef.current)) || Boolean(githubControl.current?.isDirty(codeRef.current));
+    // 열어 둔 팀 프로젝트나 드라이브 파일이 있으면 그곳에 저장한 코드와 비교합니다. 드라이브에 방금 저장한 코드를 저장 전 기준과 비교하면
+    // 저장을 마치고도 "저장하지 않은 변경"으로 잘못 묻게 됩니다.
+    const current = codeRef.current;
+    const driveFileOpen = DRIVE_EDITOR && Boolean(useDriveStore.getState().file);
+    const unsaved = githubControl.current?.hasProject() ? Boolean(githubControl.current.isDirty(current))
+      : driveFileOpen ? useDriveStore.getState().isDirty(current)
+      : current !== initialCodeRef.current;
     if (unsaved && !window.confirm(ui("편집기에 저장하지 않은 변경이 있고, 파일을 열면 이 변경은 사라집니다. 계속할까요?"))) return;
     stopAllSounds();
     stopExecution();
@@ -797,8 +803,9 @@ export default function Sandbox() {
     if (GITHUB_ADDON && githubControl.current?.hasProject()) { githubControl.current.open('commit'); return; }
     if (DRIVE_EDITOR) { await handleDriveSave(); return; }
     // 구글 드라이브 저장이 설정되지 않은 배포: 출력 창에 알리고 링크로 보관하는 방법을 안내합니다.
-    // 좁은 화면에서는 출력 탭으로 옮겨 안내가 보이게 합니다(넓은 화면은 출력 창이 항상 보입니다).
-    setActiveTab('console');
+    // 좁은 화면의 코드 탭에서는 출력 탭으로 옮겨 안내가 보이게 합니다. 화면 탭은 아래쪽에 출력 창이 함께 보이므로 그대로 둡니다
+    // (넓은 화면은 출력 창이 항상 보입니다).
+    setActiveTab((tab) => (tab === 'editor' ? 'console' : tab));
     addOutput(ui("이 사이트에는 구글 드라이브 저장이 설정되어 있지 않습니다."), 'warning');
     addOutput(ui("도구 메뉴의 \"공유\"를 누르면 작품 링크가 만들어집니다. 링크를 보관하거나 다른 사람에게 보낼 수 있습니다. 링크를 저장 용도로 사용해도 됩니다."), 'log');
   };
@@ -1151,6 +1158,9 @@ export default function Sandbox() {
                       stopExecution();
                       if (sceneRef.current) clearScene(sceneRef.current);
                       clearRegistry();
+                      setOutputs([]);
+                      // 학습 자료에서 연습하던 중이면 그 연결을 끊습니다. 끊지 않으면 예제 코드가 그 차시의 연습 초안으로 기록됩니다.
+                      practiceContextRef.current = null;
                       updateCode(ex.code);
                       homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = ex.code;
                       setShowExamples(false);
