@@ -34,6 +34,7 @@ export const GITHUB_REASON_TEXT = {
   readOnly: '이 저장소에 저장할 권한이 없습니다. 저장소 소유자가 내 GitHub 아이디를 초대하고, 내가 초대를 수락하면 저장할 수 있습니다.',
   adminRequired: '팀원 초대는 저장소 소유자만 할 수 있습니다.',
   galleryOwnerOnly: '갤러리에 올리거나 내리는 것은 저장소 소유자만 할 수 있습니다.',
+  forgeRepo: '내 GitHub의 vpylab-forge 저장소가 비공개이거나 보관(archive) 상태여서 모듈을 올릴 수 없습니다. GitHub에서 그 저장소의 설정을 확인해야 합니다.',
   twoFactor: 'GitHub 계정에 2단계 인증이 필요합니다. GitHub 보안 설정에서 2단계 인증을 켠 뒤 다시 시도할 수 있습니다.',
   notFound: '저장소를 찾을 수 없습니다. 삭제되었거나 이름이 바뀌었을 수 있습니다.',
   userNotFound: '그 GitHub 아이디를 찾을 수 없습니다. 아이디를 다시 확인해야 합니다.',
@@ -80,6 +81,7 @@ export function reasonOf(error) {
     if (reason === 'forbidden' && detail === 'adminRequired') return 'adminRequired';
     if (reason === 'forbidden' && detail === 'galleryOwnerOnly') return 'galleryOwnerOnly';
     if (reason === 'rejected' && detail === 'invite') return 'inviteRejected';
+    if (reason === 'rejected' && detail === 'forgeRepo') return 'forgeRepo';
     if (reason === 'notFound' && detail === 'user') return 'userNotFound';
     if (reason === 'notFound' && detail === 'invitation') return 'invitationGone';
     if (reason === 'tooLarge' && detail === 'html') return 'htmlTooLarge';
@@ -331,6 +333,22 @@ export const useGitHubStore = create((set, get) => {
         attemptedCodes = [...attemptedCodes, code].slice(-5);
       }
       return fail(error, epoch);
+    }
+  }
+
+  /** 대장간의 GitHub 요청 한 번. 연결이 없으면 disconnected, 그사이 계정이 바뀌었으면 stale입니다. */
+  async function forgeCall(work) {
+    const login = get().account?.login;
+    if (!login || !token) return { status: 'disconnected' };
+    const session = sessionEpoch;
+    const epoch = authEpoch;
+    try {
+      const result = await work(client(), login);
+      return session === sessionEpoch ? { status: 'ok', login, ...result } : { status: 'stale' };
+    } catch (error) {
+      if (session !== sessionEpoch) return { status: 'stale' };
+      if (isAuthError(error)) { loseAuth(epoch); return { status: 'disconnected' }; }
+      return { status: 'error', reason: reasonOf(error) };
     }
   }
 
@@ -796,6 +814,24 @@ export const useGitHubStore = create((set, get) => {
         if (isAuthError(error)) { loseAuth(epoch); return { status: 'disconnected' }; }
         return { status: 'error', reason: reasonOf(error) };
       }
+    },
+
+    // ── 대장간(선택 기능, client/src/forge/github-registry.js) ──
+    // 이 창의 진행 표시(busy)와 오류는 건드리지 않습니다. 결과는 부르는 쪽이 대장간 화면에 보입니다.
+
+    /** 내 대장간 저장소에 올린 모듈 파일: { status: 'ok', login, items: [{ id, sha, code }] } | disconnected | error | stale */
+    forgeMine() {
+      return forgeCall((api, login) => api.listForgeModules(login));
+    },
+
+    /** 모듈 하나를 내 대장간 저장소에 올립니다: { status: 'ok', login, owner, id, fileUrl, changed, fresh } | disconnected | error | stale */
+    forgePublish({ id, code, title }) {
+      return forgeCall((api, login) => api.putForgeModule({ owner: login, id, code, title }));
+    },
+
+    /** 내 대장간 저장소에서 모듈 파일을 지웁니다: { status: 'ok', login, removed } | disconnected | error | stale */
+    forgeUnpublish(id) {
+      return forgeCall((api, login) => api.deleteForgeModule({ owner: login, id }));
     },
   };
 });

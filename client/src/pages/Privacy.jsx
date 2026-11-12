@@ -1,6 +1,6 @@
 import { useUiText } from "../i18n/ui-text";
 import Header from '../components/layout/Header';
-import { DRIVE_SAVE, GITHUB_ADDON, GITHUB_GALLERY, OPEN_EDITION } from '../lib/api-base.js';
+import { DRIVE_SAVE, GITHUB_ADDON, GITHUB_FORGE, GITHUB_GALLERY, OPEN_EDITION } from '../lib/api-base.js';
 
 const Section = ({ title, children }) => (
   <section
@@ -43,6 +43,9 @@ const OPEN_GITHUB_SECTION = ["GitHub 팀 프로젝트 (선택 기능)", "팀 프
 // GitHub 연동 갤러리를 켠 공개판 배포에만 보입니다. 문구: docs/reference/solar/github-gallery-261112-solar.md(블록 14)
 const OPEN_GALLERY_SECTION = ["갤러리 (선택 기능)", "갤러리에 올리기는 선택 기능이며, 만들기 화면의 팀 프로젝트 창에서 \"갤러리에 올리기\"를 누를 때만 동작합니다. 누르면 그 프로젝트의 GitHub 저장소에 갤러리 표시(topic vpylab-gallery)가 붙고, 그때의 3D 화면이 미리보기 그림 thumbnail.jpg로 저장소에 저장됩니다. 교사가 승인한 작품만 갤러리 화면에 표시됩니다. 갤러리에서 누구나 볼 수 있는 것은 코드, 실행 화면, 미리보기 그림, 제목, GitHub 아이디, 고친 날짜, 스타 수입니다. 이 정보는 모두 GitHub의 공개 저장소에 있는 정보이며, VPyLab은 따로 서버나 DB에 저장하지 않습니다. 작품 목록 파일과 승인 대기 목록은 VPyLab의 공개 GitHub 저장소에 있으며, 승인 전에도 저장소 이름, 제목, GitHub 아이디가 승인 대기 목록에 공개됩니다. 갤러리 화면은 목록 파일과 미리보기 그림을 raw.githubusercontent.com에서 불러오며, 이때의 접속 기록은 GitHub의 정책에 따라 처리됩니다. \"갤러리에서 내리기\"를 누르면 다음 목록 갱신 때 갤러리에서 빠지며, 저장소를 비공개로 바꾸거나 지워도 빠집니다. 갤러리에서 스타를 누르면 GitHub 계정의 스타 목록에 남고 다른 사람이 볼 수 있습니다. 코드, 제목, 미리보기 그림에 이름, 연락처, 얼굴 같은 개인정보를 넣지 않아야 합니다."];
 
+// 대장간의 공개 등록(GitHub 방식)을 켠 공개판 배포에만 보입니다. 문구: docs/reference/solar/forge-github-261112-solar.md(블록 16)
+const OPEN_FORGE_SECTION = ["대장간 공개 등록 (선택 기능)", "대장간의 공개 등록은 선택 기능이며 \"모두의 모듈에 공개 등록\"을 누를 때만 동작합니다. 누르면 학생 본인의 GitHub 계정에 있는 공개 저장소 vpylab-forge에 모듈 파일이 올라갑니다. 파일에 담기는 것은 모듈의 이름, 설명, 모양을 정한 값, 생성 코드, 참고한 프로젝트의 이름과 링크입니다. 이 저장소는 공개 저장소여서 누구나 볼 수 있습니다. 교사가 승인한 저장소의 모듈은 모두의 모듈에 GitHub 아이디와 함께 표시됩니다. \"내 모듈 공개 내리기\"를 누르면 그 파일이 저장소에서 지워지고 다음 목록 갱신 때 모두의 모듈에서 빠집니다. 지운 뒤에도 저장소의 이전 기록에는 파일이 남으며 완전히 없애려면 GitHub에서 저장소를 삭제해야 합니다. VPyLab 운영 서버에는 모듈이 저장되지 않습니다."];
+
 function OpenPrivacy({ ui }) {
   return (
     <>
@@ -51,7 +54,7 @@ function OpenPrivacy({ ui }) {
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{ui("최종 수정일: 2026-11-12")}</p>
       </header>
       {OPEN_SECTIONS.flatMap((section) => (section[0].startsWith('6.')
-        ? [...(GITHUB_ADDON ? [OPEN_GITHUB_SECTION] : []), ...(GITHUB_GALLERY ? [OPEN_GALLERY_SECTION] : []), section]
+        ? [...(GITHUB_ADDON ? [OPEN_GITHUB_SECTION] : []), ...(GITHUB_GALLERY ? [OPEN_GALLERY_SECTION] : []), ...(GITHUB_FORGE && GITHUB_ADDON ? [OPEN_FORGE_SECTION] : []), section]
         : [section])).map(([title, body]) => (
         <Section key={title} title={ui(title)}><p>{ui(body)}</p></Section>
       ))}

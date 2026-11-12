@@ -5,6 +5,7 @@
 #   - approvals.txt  교사가 GitHub 웹에서 고치는 승인 파일(이 워크플로는 없을 때만 빈 양식을 넣습니다)
 #   - gallery.json   승인된 작품(앱이 읽는 파일)
 #   - pending.json, PENDING.md  승인 대기 작품(교사가 확인하는 파일)
+#   - forge.json, forge-pending.json  대장간의 모두의 모듈과 승인 대기 저장소(topic `vpylab-forge`, 앱은 VITE_FORGE_INDEX_URL로 forge.json을 읽습니다)
 # 구조와 켜는 순서: docs/DEPLOY_TWO_EDITIONS.md, 승인 방법: docs/GALLERY_GITHUB.md
 #
 # 켜는 설정(저장소 Settings → Secrets and variables → Actions → Variables)
@@ -62,7 +63,7 @@ jobs:
           git ls-remote --exit-code --heads origin "$DATA_BRANCH" >/dev/null || status=$?
           if [ "$status" = "0" ]; then
             git fetch --quiet --depth=1 origin "$DATA_BRANCH"
-            for file in approvals.txt gallery.json pending.json; do
+            for file in approvals.txt gallery.json pending.json forge.json forge-pending.json; do
               if git cat-file -e "FETCH_HEAD:$file" 2>/dev/null; then
                 git show "FETCH_HEAD:$file" > "previous/$file"
               fi
@@ -126,7 +127,7 @@ jobs:
             cp scripts/gallery/approvals.template.txt data/approvals.txt
           fi
           cp scripts/gallery/data-branch-README.md data/README.md
-          for file in gallery.json pending.json PENDING.md; do
+          for file in gallery.json pending.json PENDING.md forge.json forge-pending.json; do
             if [ ! -f "out/$file" ]; then
               echo "::error::만든 목록에 $file 이 없습니다."
               exit 1
@@ -134,7 +135,7 @@ jobs:
             cp "out/$file" "data/$file"
           done
           cd data
-          git add approvals.txt README.md gallery.json pending.json PENDING.md
+          git add approvals.txt README.md gallery.json pending.json PENDING.md forge.json forge-pending.json
           if git diff --cached --quiet; then
             echo "목록이 바뀌지 않아 커밋하지 않습니다."
             exit 0

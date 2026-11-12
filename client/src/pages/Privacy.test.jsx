@@ -13,6 +13,8 @@ async function renderPrivacy(edition, locale = 'ko', env = {}) {
   vi.resetModules();
   vi.stubEnv('VITE_EDITION', edition);
   vi.stubEnv('VITE_GALLERY_INDEX_URL', '');
+  vi.stubEnv('VITE_FORGE_INDEX_URL', '');
+  vi.stubEnv('VITE_GITHUB_CLIENT_ID', '');
   for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
   // 모듈을 다시 불러오므로 화면이 읽는 것과 같은 저장소에 언어를 넣습니다.
   const { default: useAppStore } = await import('../stores/appStore');
@@ -65,5 +67,34 @@ it('갤러리를 켜지 않은 공개판과 수업용 판에는 갤러리 구역
 it('갤러리 구역도 영어 화면에서 번역된다', async () => {
   const { container } = await renderPrivacy('open', 'en', GALLERY_ON);
   expect(screen.getByRole('heading', { name: 'Gallery (optional)' })).toBeInTheDocument();
+  expect(container.querySelector('main').textContent).not.toMatch(/[가-힣]{3,}(?![^(]*\))/);
+});
+
+const FORGE_ON = { VITE_FORGE_INDEX_URL: 'https://raw.githubusercontent.com/vpylab/vpylab/gallery-data/forge.json', VITE_GITHUB_CLIENT_ID: 'client-1' };
+
+it('대장간 공개 등록을 켠 공개판은 무엇이 공개되고 어떻게 내리는지 밝힌다', async () => {
+  await renderPrivacy('open', 'ko', FORGE_ON);
+  expect(screen.getByRole('heading', { name: '대장간 공개 등록 (선택 기능)' })).toBeInTheDocument();
+  const body = screen.getByText(/대장간의 공개 등록은 선택 기능이며/);
+  expect(body.textContent).toContain('공개 저장소 vpylab-forge');
+  expect(body.textContent).toContain('누구나 볼 수 있습니다');
+  expect(body.textContent).toContain('내 모듈 공개 내리기');
+  expect(body.textContent).toContain('VPyLab 운영 서버에는 모듈이 저장되지 않습니다');
+});
+
+it('공개 등록을 할 수 없는 배포(목록 주소나 GitHub 연결이 없음)와 수업용 판에는 대장간 구역이 없다', async () => {
+  await renderPrivacy('open');
+  expect(screen.queryByText('대장간 공개 등록 (선택 기능)')).toBeNull();
+  cleanup();
+  await renderPrivacy('open', 'ko', { VITE_FORGE_INDEX_URL: FORGE_ON.VITE_FORGE_INDEX_URL });
+  expect(screen.queryByText('대장간 공개 등록 (선택 기능)')).toBeNull();
+  cleanup();
+  await renderPrivacy('', 'ko', FORGE_ON);
+  expect(screen.queryByText('대장간 공개 등록 (선택 기능)')).toBeNull();
+});
+
+it('대장간 구역도 영어 화면에서 번역된다', async () => {
+  const { container } = await renderPrivacy('open', 'en', FORGE_ON);
+  expect(screen.getByRole('heading', { name: 'Publishing Forge modules (optional)' })).toBeInTheDocument();
   expect(container.querySelector('main').textContent).not.toMatch(/[가-힣]{3,}(?![^(]*\))/);
 });

@@ -94,7 +94,7 @@ function headersOf(token) {
 }
 
 /** 오류 문구에는 상태 코드와 GitHub의 안내만 넣습니다. 토큰은 넣지 않습니다. */
-async function getJson(fetchImpl, url, token) {
+export async function getJson(fetchImpl, url, token) {
   let response;
   try {
     response = await fetchImpl(url, { headers: headersOf(token) });
@@ -118,10 +118,10 @@ export function searchQuery(topic = GALLERY_TOPIC) {
  * topic이 붙은 공개 저장소를 모두 읽습니다. 검색이 실패하거나 결과가 불완전하면 오류를 던져 목록을 바꾸지 않게 합니다
  * (일시적인 검색 오류로 실려 있던 작품이 한꺼번에 빠지지 않게).
  */
-export async function searchGalleryRepos({ fetchImpl = globalThis.fetch, token = '', topic = GALLERY_TOPIC, maxPages = MAX_SEARCH_PAGES } = {}) {
+export async function searchGalleryRepos({ fetchImpl = globalThis.fetch, token = '', topic = GALLERY_TOPIC, maxPages = MAX_SEARCH_PAGES, query = searchQuery(topic) } = {}) {
   const repos = [];
   for (let page = 1; page <= maxPages; page += 1) {
-    const url = `${API}/search/repositories?q=${encodeURIComponent(searchQuery(topic))}&sort=updated&order=desc&per_page=${SEARCH_PAGE_SIZE}&page=${page}`;
+    const url = `${API}/search/repositories?q=${encodeURIComponent(query)}&sort=updated&order=desc&per_page=${SEARCH_PAGE_SIZE}&page=${page}`;
     const data = await getJson(fetchImpl, url, token);
     if (!data || !Array.isArray(data.items)) throw new GalleryIndexError('GitHub 검색 응답의 형식이 다릅니다.');
     if (data.incomplete_results) throw new GalleryIndexError('GitHub 검색 결과가 불완전합니다. 다음 실행에서 다시 시도합니다.');
@@ -176,7 +176,7 @@ export async function findThumbnail({ fetchImpl = globalThis.fetch, token = '', 
   }
 }
 
-async function mapLimited(list, limit, worker) {
+export async function mapLimited(list, limit, worker) {
   const results = new Array(list.length);
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(limit, list.length) }, async () => {

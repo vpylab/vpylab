@@ -8,5 +8,7 @@
 | `PENDING.md` | 승인 대기 작품의 목록입니다. | 자동 |
 | `gallery.json` | 승인된 작품의 목록입니다. 갤러리 화면이 이 파일을 읽습니다. | 자동 |
 | `pending.json` | 승인 대기 작품의 목록(자료 형식)입니다. | 자동 |
+| `forge.json` | 승인된 저장소의 대장간 모듈 목록입니다. 대장간의 모두의 모듈이 이 파일을 읽습니다. | 자동 |
+| `forge-pending.json` | 승인 대기 대장간 저장소의 목록(자료 형식)입니다. | 자동 |
 
 승인 방법은 [docs/GALLERY_GITHUB.md](https://github.com/vpylab/vpylab/blob/main/docs/GALLERY_GITHUB.md)에 있습니다.

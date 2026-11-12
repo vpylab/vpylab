@@ -32,6 +32,7 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
     userInvitations: [], // { id, repoKey, invitee, inviter, expired }
     log: [], // { method, path, login }
     starred: new Set(), // '아이디 소유자/저장소'(소문자)
+    redirects: new Map(), // 이름을 바꾼 저장소의 옛 키 → 지금 키
     failures: [], // { method, test, status, body, times, network, hang }
     seq: 0,
     /** 빈 저장소에서 tree 만들기를 409로 거절할지(실제 GitHub의 동작) */
@@ -55,7 +56,8 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
       name: repo.name,
       full_name: `${repo.owner}/${repo.name}`,
       owner: { login: repo.owner },
-      private: false,
+      private: Boolean(repo.private),
+      archived: Boolean(repo.archived),
       html_url: `https://github.com/${repo.owner}/${repo.name}`,
       description: repo.description,
       topics: [...repo.topics],
@@ -85,6 +87,7 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
       commits: new Map(), trees: new Map(), head: null, pages: null, pushedAt: '2026-11-12T00:00:00Z',
     };
     state.repos.set(keyOf(owner, name), repo);
+    state.redirects.delete(keyOf(owner, name)); // 옛 이름으로 새 저장소를 만들면 넘겨 주기가 사라집니다.
     if (files) repo.head = addCommit(repo, { files: Object.entries(files), parents: [], message: 'init', login: owner });
     return repo;
   }
@@ -120,7 +123,10 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
       if (!/^[A-Za-z0-9._-]{1,100}$/.test(body.name) || state.repos.has(keyOf(login, body.name))) {
         return respond(422, { message: 'Repository creation failed.', errors: [{ message: 'name already exists on this account' }] });
       }
-      return respond(201, publicRepo(createRepo(login, body.name, { description: body.description }), login));
+      // auto_init이면 실제 GitHub처럼 README 한 개로 첫 커밋을 만듭니다.
+      return respond(201, publicRepo(createRepo(login, body.name, {
+        description: body.description, files: body.auto_init ? { 'README.md': `# ${body.name}\n` } : null,
+      }), login));
     }
 
     let star;
@@ -152,8 +158,10 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
 
     m = path.match(/^\/repos\/([^/]+)\/([^/]+)(\/.*)?$/);
     if (!m) return notFound();
-    const repo = state.repos.get(keyOf(m[1], m[2]));
-    if (!repo) return notFound();
+    // 실제 GitHub는 이름을 바꾼 저장소의 옛 주소를 새 저장소로 넘겨 줍니다(fetch가 따라갑니다).
+    const repo = state.repos.get(keyOf(m[1], m[2])) || state.repos.get(state.redirects.get(keyOf(m[1], m[2])));
+    // 이 흉내의 토큰은 앱이 받는 권한(public_repo)과 같습니다. 비공개 저장소는 없는 것처럼 보입니다.
+    if (!repo || repo.private) return notFound();
     const rest = m[3] || '';
     const perms = permissionsOf(repo, login);
 
@@ -202,9 +210,22 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
         const ref = !asked || asked === 'main' ? repo.head : asked; // 브랜치 이름으로도 읽습니다.
         if (!ref || !repo.commits.has(ref)) return repo.head ? notFound() : respond(404, { message: 'This repository is empty.' });
         const files = filesAt(repo, ref);
-        return files.has(filePath)
-          ? respond(200, { sha: nextId('b'), encoding: 'base64', content: encode(files.get(filePath)) })
+        if (files.has(filePath)) return respond(200, { type: 'file', sha: nextId('b'), encoding: 'base64', content: encode(files.get(filePath)) });
+        // 폴더: 바로 아래 파일의 목록을 돌려줍니다.
+        const children = [...files].filter(([name]) => name.startsWith(`${filePath}/`) && !name.slice(filePath.length + 1).includes('/'));
+        return children.length
+          ? respond(200, children.map(([name, text]) => ({ type: 'file', name: name.slice(filePath.length + 1), path: name, sha: nextId('b'), size: new TextEncoder().encode(text).length })))
           : notFound();
+      }
+      if (method === 'DELETE') {
+        if (!perms.push) return respond(403, { message: 'Resource not accessible' });
+        const files = new Map(repo.head ? filesAt(repo, repo.head) : []);
+        if (!files.has(filePath)) return notFound();
+        if (!body.sha) return respond(422, { message: 'Invalid request. "sha" wasn\'t supplied.' });
+        files.delete(filePath);
+        const parent = repo.head;
+        repo.head = addCommit(repo, { files: [...files], parents: [parent], message: body.message, login });
+        return respond(200, { commit: { sha: repo.head, parents: [{ sha: parent }] } });
       }
       if (method === 'PUT') {
         if (!perms.push) return respond(403, { message: 'Resource not accessible' });
@@ -310,6 +331,15 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
     createRepo,
     remoteCommit,
     failNext,
+    /** 저장소의 이름을 바꿉니다. 옛 주소는 새 저장소로 넘어갑니다. */
+    rename: (fullName, name) => {
+      const repo = state.repos.get(fullName.toLowerCase());
+      state.repos.delete(fullName.toLowerCase());
+      repo.name = name;
+      state.repos.set(keyOf(repo.owner, name), repo);
+      state.redirects.set(fullName.toLowerCase(), keyOf(repo.owner, name));
+      return repo;
+    },
     repo: (fullName) => state.repos.get(fullName.toLowerCase()),
     /** 저장소의 최신 파일 내용 */
     file: (fullName, path) => {

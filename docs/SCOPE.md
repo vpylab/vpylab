@@ -68,6 +68,10 @@ Existing add-ons were not all written to this rule. Bringing them in line is wel
   - Permissions: none added. Adding a project to the gallery (repository topics and a `thumbnail.jpg` commit) and starring use the `public_repo` permission that the GitHub add-on already requests. GitHub's "Scopes for OAuth apps" page says `public_repo` is "also required for starring public repositories".
   - Stored data: nothing on a server. The branch `gallery-data` of this repository holds public repository metadata written by a scheduled workflow: the approved list, the list waiting for approval (repository name, title, GitHub username, date), and the approval file that teachers edit. The student's own repository gains the topic `vpylab-gallery` and a preview image.
   - Work appears in the gallery only after a teacher adds it to the approval file. The workflow's token has `contents: write` only in the job that commits to `gallery-data`.
+- **2026-11-12, the Forge's public registry moves to GitHub for the open edition** (`client/src/forge/github-registry.js`, `scripts/gallery/forge-index.mjs`). This is a step of the move away from the server and database, not a new feature: the classroom edition already had public registration of Forge modules in Supabase. It is an add-on on top of the GitHub add-on and the gallery list workflow. Without `VITE_FORGE_INDEX_URL` the Forge works as before, without the shared-modules tab.
+  - Network origins and permissions: none added. The app reads one static file from `https://raw.githubusercontent.com`. Publishing creates the public repository `<username>/vpylab-forge` and writes files to it with the `public_repo` permission the GitHub add-on already requests.
+  - Stored data: nothing on a server. The `gallery-data` branch gains `forge.json` (module recipes from approved repositories, with GitHub usernames) and `forge-pending.json`.
+  - The list carries recipes, not code. The app rebuilds the Python code from a recipe that passed the Forge's validator, so a hand-edited file in a student's repository does not run in another student's browser.
 
 ## How to propose a feature anyway
 
@@ -145,6 +149,10 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
   - 권한: 새로 요청하는 권한이 없습니다. 갤러리에 올리기(저장소 topic 변경과 `thumbnail.jpg` 커밋)와 스타는 GitHub 애드온이 이미 요청하는 `public_repo`로 동작합니다. GitHub 문서 "Scopes for OAuth apps"에 `public_repo`가 공개 저장소의 스타에도 필요한 권한이라고 적혀 있습니다.
   - 보관 데이터: 서버에 보관하는 것이 없습니다. 이 저장소의 `gallery-data` 브랜치에 예약 워크플로가 공개 저장소의 정보를 적습니다. 승인된 목록, 승인 대기 목록(저장소 이름, 제목, GitHub 아이디, 날짜), 교사가 고치는 승인 파일입니다. 학생의 저장소에는 topic `vpylab-gallery`와 미리보기 그림이 더해집니다.
   - 교사가 승인 파일에 추가한 작품만 갤러리에 표시됩니다. 워크플로의 토큰은 `gallery-data`에 커밋하는 작업에서만 `contents: write`를 갖습니다.
+- **2026-11-12, 오픈소스 판의 대장간 공개 등록을 GitHub 연동으로 옮김** (`client/src/forge/github-registry.js`, `scripts/gallery/forge-index.mjs`). 새 기능이 아니라 서버와 DB를 없애는 전환의 한 단계입니다. 수업용 판에는 대장간 모듈의 공개 등록이 Supabase 방식으로 이미 있었습니다. GitHub 애드온과 갤러리 목록 워크플로 위에 얹은 애드온이며, `VITE_FORGE_INDEX_URL`이 없으면 대장간은 모두의 모듈 탭 없이 지금처럼 동작합니다.
+  - 외부 주소와 권한: 더한 것이 없습니다. 앱은 `https://raw.githubusercontent.com`의 정적 파일 하나를 읽습니다. 공개 등록은 공개 저장소 `<아이디>/vpylab-forge`를 만들고 파일을 올리며, GitHub 애드온이 이미 요청하는 `public_repo`로 동작합니다.
+  - 보관 데이터: 서버에 보관하는 것이 없습니다. `gallery-data` 브랜치에 `forge.json`(승인된 저장소의 모듈 레시피와 GitHub 아이디)과 `forge-pending.json`이 더해집니다.
+  - 목록에는 코드가 아니라 레시피를 싣습니다. 앱이 대장간의 검사기를 통과한 레시피에서 파이썬 코드를 다시 만들므로, 학생이 저장소의 파일을 손으로 고쳐도 다른 학생의 브라우저에서 실행되지 않습니다.
 
 ### 그래도 기능을 제안하려면
 
