@@ -1,0 +1,61 @@
+# Cloudflare Pages의 응답 헤더. Vite가 이 파일을 dist/_headers로 그대로 복사합니다.
+# 보안 헤더와 CSP는 이 파일 한 곳에서만 고칩니다(검사: client/scripts/pages-config.test.mjs).
+#
+# - '/*'가 본 앱의 기본 규칙입니다. Cloudflare는 겹치는 규칙의 헤더를 합치므로,
+#   아래의 구체적인 규칙은 기본 규칙의 헤더를 '! 이름'으로 떼어 낸 뒤 자기 값을 적습니다.
+# - 본 앱의 CSP가 허용하는 외부 주소
+#     구글 로그인과 드라이브(저장): accounts.google.com/gsi, www.googleapis.com, oauth2.googleapis.com
+#     GitHub API(팀 프로젝트, 갤러리, 대장간): api.github.com
+#     갤러리·대장간의 목록 파일과 미리보기 그림, ?repo= 코드 읽기: raw.githubusercontent.com
+#     Pyodide 선택 패키지와 글꼴: cdn.jsdelivr.net, unpkg.com, pypi.org, files.pythonhosted.org, 글꼴 CDN
+# - /embed/*는 다른 사이트의 iframe에 넣을 수 있게 frame-ancestors를 열어 둡니다. 로그인 관련 주소는 넣지 않습니다.
+# - /assets/*와 /pyodide/*는 이름에 버전이 들어 있어 1년 동안 캐시합니다.
+/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com blob: https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://api.fontshare.com https://accounts.google.com/gsi/style; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.fontshare.com; connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://pypi.org https://files.pythonhosted.org https://raw.githubusercontent.com blob: https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/ https://api.github.com; img-src 'self' blob: data: https: http:; worker-src 'self' blob:; frame-src https://accounts.google.com/gsi/; frame-ancestors 'self'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(self), geolocation=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+/assets/*
+  ! Cache-Control
+  ! Content-Security-Policy
+  ! X-Content-Type-Options
+  ! X-Frame-Options
+  ! X-XSS-Protection
+  ! Referrer-Policy
+  ! Permissions-Policy
+  ! Strict-Transport-Security
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://api.fontshare.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.fontshare.com; connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://pypi.org https://files.pythonhosted.org https://raw.githubusercontent.com blob:; img-src 'self' blob: data: https: http:; worker-src 'self' blob:; frame-src 'none'
+  X-Content-Type-Options: nosniff
+/pyodide/*
+  ! Cache-Control
+  ! Content-Security-Policy
+  ! X-Content-Type-Options
+  ! X-Frame-Options
+  ! X-XSS-Protection
+  ! Referrer-Policy
+  ! Permissions-Policy
+  ! Strict-Transport-Security
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://api.fontshare.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.fontshare.com; connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://pypi.org https://files.pythonhosted.org https://raw.githubusercontent.com blob:; img-src 'self' blob: data: https: http:; worker-src 'self' blob:; frame-src 'none'
+  X-Content-Type-Options: nosniff
+/embed/*
+  ! Cache-Control
+  ! Content-Security-Policy
+  ! X-Content-Type-Options
+  ! X-Frame-Options
+  ! X-XSS-Protection
+  ! Referrer-Policy
+  ! Permissions-Policy
+  ! Strict-Transport-Security
+  Cache-Control: no-cache, no-store, must-revalidate
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://api.fontshare.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.fontshare.com; connect-src 'self' https://cdn.jsdelivr.net https://unpkg.com https://pypi.org https://files.pythonhosted.org https://raw.githubusercontent.com blob:; img-src 'self' blob: data: https: http:; worker-src 'self' blob:; frame-src 'none'; frame-ancestors *
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(self), geolocation=()
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload

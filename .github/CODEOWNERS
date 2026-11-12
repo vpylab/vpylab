@@ -14,11 +14,7 @@ client/src/i18n/ @greatsong
 client/src/engine/ @greatsong
 
 # 보안 관련 파일
-server/middleware/ @greatsong
 client/src/engine/*Worker* @greatsong
 
 # CI/CD
 .github/ @greatsong
-
-# Supabase 설정
-supabase/ @greatsong

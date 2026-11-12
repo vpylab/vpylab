@@ -1,6 +1,6 @@
 /**
  * PWA 설치 파일 검증: index.html의 매니페스트 링크·메타, 매니페스트 내용, 아이콘 파일,
- * Vercel 재작성 예외, Service Worker 사전 캐시 목록.
+ * Service Worker 사전 캐시 목록.
  */
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
@@ -20,7 +20,7 @@ describe('PWA 설치 파일', () => {
     expect(html).toMatch(/<meta name="theme-color" content="#FFFFFF" \/>/);
     expect(html).toContain('<meta name="apple-mobile-web-app-capable" content="yes" />');
     expect(html).toContain('<meta name="apple-mobile-web-app-title" content="VPyLab" />');
-    expect(html).toContain('<meta property="og:image" content="https://vpylab.vercel.app/brand/og-default.png" />');
+    expect(html).toContain('<meta property="og:image" content="https://vpylab.pages.dev/brand/og-default.png" />');
   });
 
   it('매니페스트는 독립 창으로 열리고 DESIGN.md의 밝은 테마 색을 쓴다', () => {
@@ -40,17 +40,6 @@ describe('PWA 설치 파일', () => {
       expect(existsSync(resolve(clientRoot, 'public', icon.src.replace(/^\//, '')))).toBe(true);
     }
     expect(existsSync(resolve(clientRoot, 'public/brand/og-default.png'))).toBe(true);
-  });
-
-  it('Vercel 재작성 규칙이 매니페스트를 index.html로 보내지 않는다', () => {
-    for (const path of ['vercel.json', '../vercel.json']) {
-      const config = JSON.parse(read(path));
-      const spa = config.rewrites.find((rule) => rule.destination === '/index.html');
-      const pattern = new RegExp(`^${spa.source.replace(/\\\\/g, '\\')}$`);
-      expect(pattern.test('/manifest.webmanifest')).toBe(false);
-      expect(pattern.test('/sw.js')).toBe(false);
-      expect(pattern.test('/gallery')).toBe(true);
-    }
   });
 
   it('Service Worker 사전 캐시 목록에 public/의 매니페스트가 들어간다', () => {

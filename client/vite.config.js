@@ -1,42 +1,18 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import process from 'node:process'
 import { pyodideAssets } from './scripts/pyodide-assets.mjs'
 import { serviceWorker } from './scripts/service-worker-plugin.mjs'
-
-/**
- * 교실 LAN 모드(VITE_LAN_MODE=1): 외부 글꼴 @import를 제거해 인터넷이 없는 교실에서
- * 스타일시트가 외부 요청 응답을 기다리지 않게 합니다. 글꼴은 시스템 글꼴로 대체됩니다.
- */
-export function stripRemoteFonts() {
-  return {
-    name: 'vpylab-strip-remote-fonts',
-    enforce: 'pre',
-    transform(code, id) {
-      if (!id.endsWith('/src/index.css')) return null;
-      return { code: code.replace(/@import url\('https:\/\/[^']+'\);\n?/g, ''), map: null };
-    },
-  };
-}
-
-// 교실 LAN 모드는 scripts/classroom/lan.mjs가 VITE_LAN_MODE=1로 빌드합니다.
-// (mergeConfig로 확장하는 교실·연수 설정이 있어 콜백 형태 설정은 쓸 수 없습니다.)
-const lanMode = process.env.VITE_LAN_MODE === '1';
+import { pagesStatic } from './scripts/pages-static.mjs'
 
 export default defineConfig({
   plugins: [
-    // Tailwind가 index.css를 컴파일하기 전에 외부 글꼴 @import를 지워야 합니다.
-    ...(lanMode ? [stripRemoteFonts()] : []),
     react(),
     tailwindcss(),
     pyodideAssets(),
     serviceWorker(),
+    pagesStatic(),
   ],
-  // 일반 앱에서 연수 전용 HTML의 별도 별칭까지 미리 탐색하지 않습니다.
-  optimizeDeps: {
-    entries: ['index.html'],
-  },
   build: {
     rollupOptions: {
       output: {
@@ -54,9 +30,6 @@ export default defineConfig({
           ) {
             return 'vendor';
           }
-          if (id.includes('@supabase/')) {
-            return 'supabase';
-          }
         },
       },
     },
@@ -64,12 +37,8 @@ export default defineConfig({
   server: {
     port: 4033,
     strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:4034',
-        changeOrigin: true,
-      },
-    },
+    // 짧은 공유 주소(/api/share)와 GitHub 연결(/api/github/token)은 Cloudflare Pages 함수입니다.
+    // vite 개발 서버에는 없으므로, 그 기능까지 확인할 때는 빌드한 뒤 `npx wrangler pages dev client/dist`로 실행합니다.
   },
   test: {
     environment: 'jsdom',

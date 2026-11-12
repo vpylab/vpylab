@@ -7,28 +7,21 @@ on:
     branches: [main]
 
 jobs:
-  classroom-v2:
-    name: "새 교실 저장·권한·GitHub 회귀 검증"
+  # ──────────────────────────────────────────────
+  # 공용 모듈(shared/)과 Cloudflare Pages 함수(cloudflare/, 짧은 공유 주소와 GitHub 연결)의 검증. 의존성 없음.
+  # ──────────────────────────────────────────────
+  shared-and-functions:
+    name: "공용 모듈·Pages 함수 검증"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: |
-            client/package-lock.json
-            server/package-lock.json
-      - run: npm --prefix client ci
-      - run: npm --prefix server ci
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - run: node --test server/classroom/*.test.js server/middleware/*.test.js server/lan/*.test.js server/routes/*.test.js server/utils/*.test.js scripts/classroom/backup.test.mjs cloudflare/*.test.js
-      - run: npm --prefix client run build:classroom
-      - run: node scripts/classroom/check-curriculum.mjs
+      - run: node --test shared/*.test.js cloudflare/*.test.js
 
   # ──────────────────────────────────────────────
   # 연구 도구(앱 밖의 애드온) 검증: 앱 검사와 분리된 작업입니다.

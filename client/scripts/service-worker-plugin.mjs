@@ -49,7 +49,7 @@ export function renderServiceWorker({ manifest, appShell, template = readFileSyn
 let preferredAppShell = 'index.html';
 
 /**
- * SPA 진입 HTML 이름을 지정합니다. 기본 index.html, 교실 앱은 classroom.html.
+ * SPA 진입 HTML 이름을 지정합니다. 기본은 index.html입니다.
  * 기본 설정을 mergeConfig로 확장하는 설정 파일에서 호출합니다(플러그인을 두 번 넣지 않기 위해).
  */
 export function setServiceWorkerAppShell(name) { preferredAppShell = name; }

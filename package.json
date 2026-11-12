@@ -2,32 +2,16 @@
   "name": "vpylab",
   "version": "0.1.0",
   "private": true,
-  "description": "VPy Lab — 3D 프로그래밍 교육 플랫폼",
+  "description": "VPyLab: 브라우저에서 파이썬으로 3D와 빛과 소리를 만드는 교육 플랫폼",
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "cd client && npm run dev",
-    "dev:server": "cd server && PORT=4034 node --watch index.js",
-    "build": "cd client && npm run build",
-    "start": "cd server && node index.js",
-    "dev:classroom": "node scripts/classroom/dev.mjs",
-    "dev:teacher-training": "node scripts/classroom/serve-training.mjs",
-    "build:teacher-training": "npm --prefix client run build:teacher-training",
-    "dev:classroom:github:live": "node scripts/classroom/live-github.mjs --serve",
-    "test:classroom:github:live": "node scripts/classroom/live-github.mjs --run",
-    "build:classroom": "npm --prefix client run build:classroom",
-    "test:classroom": "node --test server/classroom/*.test.js scripts/classroom/*.test.mjs && npm --prefix client run test:run && node scripts/classroom/check-curriculum.mjs",
-    "classroom:lan": "node scripts/classroom/lan.mjs",
+    "dev": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "test": "node --test shared/*.test.js cloudflare/*.test.js scripts/gallery/*.test.mjs && npm --prefix client run test:run",
     "compat:corpus": "node scripts/compat/build-corpus.mjs && node scripts/compat/preprocess.mjs",
     "compat:static": "${PYTHON:-python3.12} -I scripts/compat/static-harness.py",
     "compat:browser": "node scripts/compat/browser-harness.mjs",
     "compat:summary": "node scripts/compat/summarize.mjs",
     "compat:check": "npm run compat:corpus && npm run compat:static && npm run compat:summary",
     "compat:check:all": "npm run compat:corpus && npm run compat:static && npm run compat:browser && npm run compat:summary"
-  },
-  "devDependencies": {
-    "concurrently": "^9.1.0"
-  },
-  "dependencies": {
-    "nanoid": "^5.1.7"
   }
 }
