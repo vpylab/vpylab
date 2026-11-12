@@ -101,8 +101,8 @@
       "gradingDesc": "Solve missions, review grading results, and revise your code.",
       "sound": "Sound coding",
       "soundDesc": "Create sound effects and melodies in code and connect them to motion.",
-      "team": "Team projects and history",
-      "teamDesc": "Join with an invite code, review saved versions, and restore earlier code.",
+      "team": "GitHub team projects",
+      "teamDesc": "Invite teammates by GitHub username, work together, and keep a record with every save.",
       "gallery": "Gallery and remix",
       "galleryDesc": "Share your work and use others’ code as a starting point for new creations."
     }

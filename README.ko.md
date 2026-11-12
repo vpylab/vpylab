@@ -46,7 +46,7 @@ VPyLab은 Cloudflare Pages의 정적 사이트 하나(https://vpylab.pages.dev)�
 ## 지금 상태
 
 - 만들기 화면의 저장과 Ctrl/Cmd+S는 학생 본인 구글 드라이브의 VPyLab 폴더에 저장합니다. 처음 한 번 구글 계정으로 로그인하고 드라이브 권한을 승인합니다. 도구 줄의 내 드라이브에서 저장한 파일을 다시 엽니다. 다른 기기에서 먼저 저장했으면 충돌을 알립니다.
-- **도구 → 공유**로 짧은 주소를 만들 수 있습니다. 이름을 정하면 vpylab.pages.dev/s/정한이름이 되고, 정하지 않으면 무작위 6자가 붙습니다. 주소나 QR 코드로 열면 실행 화면이 먼저 표시되며, 임베드 코드도 제공합니다. 코드와 제목만 Cloudflare D1에 저장하며 로그인은 필요 없고 주소에는 만료가 없습니다. 이름을 정하면 공유 창을 열 때 먼저 만든 무작위 주소는 지워집니다. 그러므로 이름을 정한 뒤에 나온 주소를 공유해야 합니다.
+- **도구 → 공유**로 짧은 주소를 만들 수 있습니다. 이름을 정하면 vpylab.pages.dev/s/정한이름이 되고, 정하지 않으면 무작위 6자가 붙습니다. 주소나 QR 코드로 열면 실행 화면이 먼저 표시되며, 임베드 코드도 제공합니다. 코드와 제목만 Cloudflare D1에 저장하며 로그인은 필요 없고 주소에는 만료가 없습니다. 이름을 정해도 공유 창을 열 때 먼저 만든 무작위 주소는 계속 열립니다.
 - **도구 → 영상으로 저장**은 3D 화면과 소리를 최대 30초 녹화합니다. 녹화는 브라우저 안에서 진행되며 서버로 영상이 전송되지 않습니다. 구글 드라이브를 연결했으면 내려받기와 드라이브 저장 가운데 선택하고, 연결하지 않았으면 바로 내려받습니다.
 - GitHub 팀 프로젝트는 GitHub OAuth 앱을 설정한 배포에서 동작합니다.
 - 학생 작품 갤러리와 대장간의 모두의 모듈(둘 다 GitHub 연동, 교사 승인)은 만들어 두었지만 운영 사이트에서는 아직 켜지 않았습니다. 실제 GitHub 계정으로 올리는 과정도 처음부터 끝까지 확인하지 못했습니다. 갤러리 목록을 켜기 전에는 **갤러리** 메뉴가 GlowScript 원본 프로젝트를 보여 줍니다.
@@ -65,7 +65,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 | **문서** | 항목 97개, 분류 12개의 VPython·VPyLab 참고 문서 |
 | **사용 안내** | 앱 안의 사용 안내 |
 
-만들기 화면의 **도구 → 예제**에는 예제 57개와 분야 8개가 있습니다. 자동 완성과 단어 도움은 AI 없이 동작하며, 학생 코드를 AI 서비스로 보내지 않습니다. 언어(한국어·English)와 테마는 **더 보기** 메뉴에서 변경할 수 있습니다.
+만들기 화면의 **도구 → 예제**에는 예제 58개와 분야 8개가 있습니다. 자동 완성과 단어 도움은 AI 없이 동작하며, 학생 코드를 AI 서비스로 보내지 않습니다. 언어(한국어·English)와 테마는 **더 보기** 메뉴에서 변경할 수 있습니다.
 
 안내서:
 
@@ -78,7 +78,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 
 ## 개인정보
 
-VPyLab에는 계정이 없고, 운영자가 개인정보를 저장하는 서버나 데이터베이스도 없습니다. 운영자가 보관하는 것은 공유 주소용 Cloudflare D1 하나뿐이며, 공유를 누를 때 코드와 제목만 저장됩니다. 요청 제한에는 해시한 IP 주소를 사용하고 2분 안에 지웁니다. IP 주소 자체는 저장하지 않습니다. 코드는 학생 브라우저 안에서 실행됩니다. 진행 기록, 테마, 언어, 메인 화면 설정은 이 브라우저(localStorage)에, 연습 초안은 브라우저 탭(sessionStorage)에 보관됩니다. 브라우저 데이터를 지우면 사라지며 다른 기기로 옮겨지지 않습니다. 외부 요청은 웹 글꼴(Google Fonts, Fontshare)을 받을 때 이루어집니다. 파이썬 엔진은 vpylab.pages.dev에서 받으며, 실패할 때만 jsDelivr나 unpkg를 사용합니다. 내려받은 HTML 파일은 열 때 jsDelivr나 unpkg에서 Pyodide와 Three.js를 받습니다.
+VPyLab에는 계정이 없고, 운영자가 개인정보를 저장하는 서버나 데이터베이스도 없습니다. 운영자가 보관하는 것은 공유 주소용 Cloudflare D1 하나뿐이며, 공유를 누를 때 코드와 제목만 저장됩니다. 요청 제한에는 해시한 IP 주소를 사용하고, 2분이 지난 값은 다음 요청이 올 때 지웁니다. IP 주소 자체는 저장하지 않습니다. 코드는 학생 브라우저 안에서 실행됩니다. 진행 기록, 테마, 언어, 메인 화면 설정은 이 브라우저(localStorage)에, 연습 초안은 브라우저 탭(sessionStorage)에 보관됩니다. 브라우저 데이터를 지우면 사라지며 다른 기기로 옮겨지지 않습니다. 외부 요청은 웹 글꼴(Google Fonts, Fontshare)을 받을 때 이루어집니다. 파이썬 엔진은 vpylab.pages.dev에서 받으며, 실패할 때만 jsDelivr나 unpkg를 사용합니다. 내려받은 HTML 파일은 열 때 jsDelivr나 unpkg에서 Pyodide와 Three.js를 받습니다.
 
 ### 구글 드라이브 저장
 
@@ -110,7 +110,7 @@ GitHub 연결을 고른 학생에게 `public_repo`와 `repo:invite` 권한을 �
 |---|---|
 | 앱 | `vpylab.pages.dev` |
 | 웹 글꼴(막혀도 시스템 글꼴로 표시) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
-| 파이썬 엔진 대체 경로, 내려받은 HTML 파일 | `cdn.jsdelivr.net`, `unpkg.com` |
+| 선택 파이썬 패키지, 파이썬 엔진 대체 경로, 내려받은 HTML 파일 | `cdn.jsdelivr.net`, `unpkg.com` |
 | 구글 드라이브 저장 | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
 | 팀 프로젝트, 갤러리, 모두의 모듈(GitHub, 선택) | `github.com`, `api.github.com`, `raw.githubusercontent.com`, `*.github.io` |
 
@@ -124,7 +124,7 @@ GitHub 연결을 고른 학생에게 `public_repo`와 `repo:invite` 권한을 �
 
 **기술 스택:** React 19, Vite 8, Tailwind CSS 4, Monaco Editor, Three.js, Pyodide 0.27(Web Worker), Web Audio. 호스팅은 Cloudflare Pages이며, 공유 주소에 Pages 함수와 D1 데이터베이스를 사용합니다.
 
-**필요한 것:** Node.js 20 이상(CI는 Node 24에서 실행). 학습 자료의 코드를 실행하는 테스트에는 Python 3.12가 필요합니다.
+**필요한 것:** Node.js 20.19 이상, 22.13 이상 또는 24 이상(CI는 Node 24에서 실행). 학습 자료의 코드를 실행하는 테스트에는 Python 3.12가 필요합니다.
 
 ```bash
 git clone https://github.com/vpylab/vpylab.git
@@ -143,7 +143,7 @@ npm run dev                          # http://localhost:4033
 | `npm --prefix client run lint` | ESLint 검사 |
 | `npm --prefix client run build` | 빌드(`client/dist`) |
 | `npm test` | `shared/`, `cloudflare/`, `scripts/gallery/` 테스트와 클라이언트 테스트 |
-| `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state` | 빌드한 사이트를 Pages 함수(`/api/*`)와 함께 실행. 로컬 비밀값은 커밋되지 않는 `.dev.vars`에 둡니다 |
+| `npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state` | 빌드한 사이트를 Pages 함수(`/api/*`)와 함께 실행. 로컬 비밀값은 커밋되지 않는 `.dev.vars`에 둡니다 |
 | `npm run compat:check` | GlowScript 호환성 검사([보고서](docs/GLOWSCRIPT_COMPAT_REPORT.md)) |
 
 **포트**

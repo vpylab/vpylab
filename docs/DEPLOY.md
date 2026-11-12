@@ -15,7 +15,7 @@ VPyLab은 저장소 `vpylab/vpylab` 하나에서 사이트 하나를 빌드해 C
 | 저장소(DB) | 짧은 공유 주소용 D1 데이터베이스 `vpylab-shares` 하나 (`wrangler.toml`) |
 | 응답 헤더와 CSP | `client/public/_headers` |
 
-Pages 함수는 세 가지 요청만 받습니다.
+Pages 함수는 아래 세 가지 요청을 처리하고, 그 밖의 `/api/` 주소에는 404를 돌려줍니다(`functions/api/[[path]].js`).
 
 | 경로 | 하는 일 | 필요한 설정 |
 |---|---|---|
@@ -46,7 +46,7 @@ Pages 함수는 세 가지 요청만 받습니다.
 2. `main`에 더 새 커밋이 있으면 그 커밋의 실행에 배포를 맡기고 건너뜁니다.
 3. `client/`에서 `npm ci`와 `npm run build`를 실행합니다. 위 표의 빌드 변수 네 개를 Actions 변수에서 읽습니다.
 4. `wrangler pages deploy client/dist --project-name=vpylab --branch=main`으로 올립니다.
-5. 배포된 주소에서 `/`, `/privacy`, `/sandbox`, `/gallery`가 200으로 열리는지, 정적 폴더의 없는 파일(`/assets/__missing__.js`)이 404인지 확인합니다.
+5. 배포된 주소에서 `/`, `/privacy`, `/sandbox`, `/gallery`가 200으로 열리는지, 정적 폴더의 없는 파일(`/assets/__missing__.js`)과 없는 API 주소(`/api/__missing__`)가 404인지 확인합니다.
 
 Actions 탭에서 "Deploy"를 직접 실행할 수도 있습니다. 이 워크플로는 저장소가 `vpylab/vpylab`일 때만 동작합니다.
 
@@ -97,7 +97,7 @@ Pages 프로젝트의 Settings → Variables and Secrets에 넣는 비밀값은 
 
 - 이름은 영어 소문자, 숫자, 하이픈(-) 3~30자이며 먼저 정한 사람이 사용합니다.
 - 코드는 50,000자까지 받습니다. 만들기와 고치기는 같은 IP에서 1분에 120건까지 받습니다.
-- 요청 제한에 사용하는 값은 비밀값, IP 주소, 분을 함께 해시한 값입니다. 2분이 지난 줄은 지웁니다. IP 주소 자체는 저장하지 않습니다.
+- 요청 제한에 사용하는 값은 비밀값, IP 주소, 분을 함께 해시한 값입니다. 2분이 지난 줄은 다음 요청을 처리할 때 지웁니다(요청이 없으면 그때까지 남습니다). IP 주소 자체는 저장하지 않습니다.
 - 공유 주소에는 만료가 없습니다(2026-11-12 결정, [SCOPE.md](SCOPE.md)).
 
 테이블 구조는 `cloudflare/migrations/`에 있습니다. 구조를 바꾼 뒤에는 원격 데이터베이스에 반영합니다. 부적절한 공유 주소나 삭제 요청이 들어온 주소는 지우는 명령으로 처리합니다. 두 명령은 Cloudflare 계정에 로그인한 컴퓨터에서 실행합니다.
@@ -140,7 +140,7 @@ npx wrangler d1 execute vpylab-shares --remote --command "DELETE FROM shares WHE
 
 ### 끄기
 
-`VITE_GOOGLE_CLIENT_ID` 변수를 지우고 다시 배포하면 "저장"과 "내 드라이브"가 꺼집니다. 실행, 공유 링크, 파일 내려받기와 열기는 그대로 동작합니다.
+`VITE_GOOGLE_CLIENT_ID` 변수를 지우고 다시 배포하면 "내 드라이브" 버튼이 사라지고, "저장"을 누르면 드라이브 저장이 설정되지 않았다는 안내와 공유 링크로 보관하는 방법이 출력 창에 표시됩니다. 실행, 공유 링크, 파일 내려받기와 열기는 그대로 동작합니다.
 
 ## 6. GitHub 기능 켜기
 
@@ -238,7 +238,7 @@ GitHub 기능은 세 가지입니다. 팀 프로젝트가 바탕이고, 학생 �
 - 예약 실행은 GitHub 사정으로 늦어질 수 있습니다. 공개 저장소의 예약 워크플로는 저장소에 60일 동안 활동이 없으면 멈추며 Actions 탭에서 다시 켭니다.
 - `raw.githubusercontent.com`은 파일을 몇 분 동안 캐시합니다. 승인한 작품과 바꾼 미리보기 그림은 그만큼 늦게 표시될 수 있습니다.
 - 승인은 저장소 단위입니다. 승인한 뒤에 바뀐 코드와 그림, 나중에 올라오는 모듈은 다시 확인하지 않습니다. 문제가 생기면 차단 줄로 내립니다.
-- 갤러리의 "코드 보기"는 만들기 화면의 `?repo=owner/repo`로 열며, 저장소 `main` 브랜치의 `main.py`를 읽습니다. 기본 브랜치 이름이 다른 저장소는 코드가 열리지 않습니다.
+- 갤러리의 "코드 보기"는 만들기 화면의 `?repo=owner/repo`로 열며, 저장소 기본 브랜치의 `main.py`를 읽습니다(`raw.githubusercontent.com/<owner>/<repo>/HEAD/main.py`).
 - GitHub 계정이 없는 학생은 올릴 수 없습니다.
 
 목록 스크립트는 의존성 없이 동작하며 로컬에서 읽기 전용으로 확인할 수 있습니다.
@@ -264,12 +264,12 @@ Pages 함수까지 확인할 때는 빌드한 뒤 wrangler로 실행합니다.
 
 ```bash
 cd client && npm run build && cd ..
-npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state
+npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state
 ```
 
 - 로컬 비밀값(`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `SHARE_SALT`)은 저장소 루트의 `.dev.vars`에 둡니다. 이 파일은 `.gitignore`에 있어 커밋되지 않습니다.
 - 빌드 변수(`VITE_…`)는 빌드할 때 읽습니다. `client/.env.local`에 넣거나 `npm run build` 앞에 적습니다.
-- 로컬 D1은 `--persist-to` 폴더에 만들어집니다. 처음 한 번 `npx wrangler d1 migrations apply vpylab-shares --local --persist-to /private/tmp/vpylab-pages-dev-state`로 테이블을 만듭니다(2026-11-12 확인). 테이블이 없으면 `/api/share`가 500을 돌려주고 앱은 코드를 주소에 담은 긴 링크로 대신합니다.
+- 로컬 D1은 `--persist-to` 폴더에 만들어집니다. 처음 한 번 `npx wrangler d1 migrations apply vpylab-shares --local --persist-to /tmp/vpylab-pages-dev-state`로 테이블을 만듭니다(2026-11-12 확인). 테이블이 없으면 `/api/share`가 500을 돌려주고 앱은 코드를 주소에 담은 긴 링크로 대신합니다.
 
 손으로 바로 올릴 때는 다음과 같이 합니다. Cloudflare 계정에 로그인한 컴퓨터에서 실행합니다.
 

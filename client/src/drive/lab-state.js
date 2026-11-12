@@ -67,10 +67,6 @@ export function fileDrafts(storage, scope, fileId) {
   return listDrafts(storage, scope).filter((d) => d.fileId === fileId || d.fileId.startsWith(`${fileId}@`));
 }
 
-/** 한 파일의 초안을 모두 지웁니다(파일을 휴지통으로 옮길 때). */
-export function clearFileDrafts(storage, scope, fileId) {
-  for (const { fileId: key } of fileDrafts(storage, scope, fileId)) clearDraft(storage, scope, key);
-}
 
 export const DRAFT_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 

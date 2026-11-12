@@ -31,7 +31,7 @@
 - `cd client && npm run dev`: Vite 개발 서버(포트 4033). `/api/*`는 없습니다.
 - `cd client && npm run build`, `npm run lint`, `npm run test:run`
 - 저장소 루트의 `npm test`: `shared/`, `cloudflare/`, `scripts/gallery/` 테스트와 클라이언트 테스트
-- Pages 함수까지 로컬에서 확인: 빌드한 뒤 `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state`. 로컬 비밀값은 커밋되지 않는 `.dev.vars`에 둡니다.
+- Pages 함수까지 로컬에서 확인: 빌드한 뒤 `npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state`. 로컬 비밀값은 커밋되지 않는 `.dev.vars`에 둡니다.
 
 ## 코딩 컨벤션
 

@@ -21,7 +21,7 @@ If you are not sure where to start, open an issue and ask. Issues labeled `good 
 
 ## Set up
 
-Requirements: Node.js 20 or later. Python 3.12 is needed for the tests that run lesson code (`python3.12` on your PATH; without Python those tests are skipped).
+Requirements: Node.js 20.19+, 22.13+ or 24+. Python 3.12 is needed for the tests that run lesson code (`python3.12` on your PATH; without Python those tests are skipped).
 
 ```bash
 git clone https://github.com/<your-username>/vpylab.git
@@ -33,7 +33,7 @@ npm run dev                          # http://localhost:4033
 This needs no accounts, keys or database. VPyLab has no server of its own: the app is a static site, and the only server-side code is a few Cloudflare Pages Functions in `functions/` (logic in `cloudflare/`).
 
 - The Vite dev server does not serve `/api/*`. Sharing then falls back to a long link that carries the code, and GitHub sign-in does not work.
-- To run the functions too, build and use wrangler: `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state`. Local secrets go in a git-ignored `.dev.vars`.
+- To run the functions too, build and use wrangler: `npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state`. Local secrets go in a git-ignored `.dev.vars`.
 - Saving to Google Drive and the GitHub features need public client IDs at build time. Copy `client/.env.example` to `client/.env.local` and fill in your own. See [docs/DEPLOY.md](docs/DEPLOY.md) (Korean).
 
 ## Before you open a pull request

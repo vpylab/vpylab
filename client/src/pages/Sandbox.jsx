@@ -99,6 +99,8 @@ export default function Sandbox() {
   const [showExamples, setShowExamples] = useState(false);
   const [exampleCategory, setExampleCategory] = useState('all');
   const [theaterMode, setTheaterMode] = useState(false);
+  const theaterModeRef = useRef(false);
+  useEffect(() => { theaterModeRef.current = theaterMode; }, [theaterMode]);
   const [recordingSeconds, setRecordingSeconds] = useState(null); // 녹화 중이면 지난 시간(초), 아니면 null
   const recordingRef = useRef(null);
   const [recordedVideo, setRecordedVideo] = useState(null); // 드라이브를 연결한 경우 저장 위치를 고를 영상 { blob, name, seconds }
@@ -414,6 +416,8 @@ export default function Sandbox() {
     const onKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
+        // 실행 화면만 보이는 동안에는 저장 창을 띄울 곳이 없으므로 단축키를 받지 않습니다.
+        if (theaterModeRef.current) return;
         handleSave();
       }
     };
@@ -1153,6 +1157,10 @@ export default function Sandbox() {
                   <button
                     key={ex.id}
                     onClick={() => {
+                      // 팀 프로젝트에 올리지 않은 편집은 예제를 열면 되살릴 방법이 없으므로 먼저 묻습니다.
+                      // (드라이브 파일은 파일별 초안이, 자유 코딩은 이 브라우저의 초안이 남습니다.)
+                      if (githubControl.current?.hasProject() && githubControl.current.isDirty(codeRef.current)
+                        && !window.confirm(ui("팀 프로젝트에 저장하지 않은 변경이 있고, 예제를 열면 이 변경은 사라집니다. 계속할까요?"))) return;
                       // 다른 예제로 전환 시 이전 잔존음/실행/씬 정리
                       stopAllSounds();
                       stopExecution();

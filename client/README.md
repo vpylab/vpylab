@@ -20,7 +20,7 @@ Run these in `client/`.
 The dev server does not serve `/api/*` (short share links and the GitHub token exchange are Cloudflare Pages Functions in `../functions/`). To run them locally, build and then run this from the repository root:
 
 ```bash
-npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state
+npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state
 ```
 
 ## Build-time settings

@@ -29,7 +29,7 @@ An unsupported `?lang=` value is ignored and does not overwrite the saved value.
 
 Files: `client/src/i18n/ko.json`, `client/src/i18n/en.json`, `client/src/i18n/context.js`, `client/src/i18n/useI18n.js`.
 
-- Both JSON files have the same nested keys (292 leaf keys each at the time of writing), for example `nav.gallery` or `editor.run`.
+- Both JSON files have the same nested keys (about 140 leaf keys each), for example `nav.gallery` or `editor.run`.
 - `context.js` imports both files into `messages = { ko, en }` and exports `translate(locale, key, params)`.
 - Lookup order: `messages[locale]`, then `messages.en`, then the key itself.
 - Interpolation uses double braces: `"missionCount": "{{count}} missions"` with `t('home.missionCount', { count: 8 })`.
@@ -50,7 +50,7 @@ Here the Korean sentence in the source code is the key. The catalog maps it to E
 }
 ```
 
-The catalog has about 1,800 entries; about 100 contain placeholders. Around 30 source files use it.
+The catalog has about 2,100 entries; about 100 contain placeholders. Around 30 source files use it.
 
 How to call it:
 
@@ -181,7 +181,7 @@ The result is a mixed-language interface. A usable third language needs the refa
 3. **Generalize the phrase catalog.** In `client/src/i18n/ui-text.js`, load a catalog per locale (`catalogs/<locale>-ui-text.json`) instead of the single English import, build `systemPatterns` per locale, and decide the fallback for a missing entry (English is more useful to most readers than Korean). Do the same for the `locale !== 'en'` checks in `owned-content.js`; the lesson-code rewriting there should stay English-only or become a per-locale choice.
 4. **Remove the two-way branches.** Replace each `ko ? '한국어' : 'English'` with `ui("한국어")` plus a catalog entry (or a `t()` key). This is the largest part: about 30 files. It needs someone who can confirm that the existing English text is moved into the catalog unchanged. No Korean reading is needed for this step, because both strings are already in the code.
 5. **Decide the data shape.** Either extend `text(ko, en)` and the `{ ko, en }` objects with a third field and give every reader a common fallback helper (`value[locale] ?? value.en ?? value.ko`), or move that text into the catalog as the workbook courses already do. `grading-engine.js` already has `pickText`; the pages do not share one helper.
-6. **Translate.** Copy `en.json` to `ja.json` (292 keys). Copy `catalogs/en-ui-text.json` to `catalogs/ja-ui-text.json` and translate the values (about 1,800 entries). The keys are Korean, but each entry already has its English value beside it, so a translator can work from English. Keep every `{0}`, `{1}` placeholder. Then the data files: missions, docs, tutorials, courses, examples.
+6. **Translate.** Copy `en.json` to `ja.json` (about 140 keys). Copy `catalogs/en-ui-text.json` to `catalogs/ja-ui-text.json` and translate the values (about 2,100 entries). The keys are Korean, but each entry already has its English value beside it, so a translator can work from English. Keep every `{0}`, `{1}` placeholder. Then the data files: missions, docs, tutorials, courses, examples.
 7. **Fix the rest.** Date formats, `python-error-explainer.js`, `default-code.js`, and `manifest.webmanifest` if the installed app name should change.
 8. **Add tests** next to the existing ones (see below) for the new locale, and extend the browser check if you can run it.
 

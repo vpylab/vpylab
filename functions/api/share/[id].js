@@ -16,7 +16,8 @@ export const onRequestPut = ({ request, params, env }) => handle(async () => {
   return json(200, updated);
 });
 
-// 이름을 정한 뒤 쓰이지 않게 된 무작위 주소를 지웁니다. 정한 이름은 지우지 않습니다.
+// 무작위 주소를 지웁니다. 정한 이름은 지우지 않습니다. 앱은 지금 이 요청을 보내지 않습니다
+// (이름을 정해도 앞선 무작위 주소를 그대로 둡니다). 만든 사람이 직접 지울 수 있게 남겨 둔 기능입니다.
 // 수정 열쇠가 있어야 하고 한 주소를 한 번만 지울 수 있어서, 학급 전체의 이름 정하기가 요청 제한에 걸리지 않게 제한에서 뺍니다.
 export const onRequestDelete = ({ request, params, env }) => handle(async () => {
   assertSameOrigin(request);

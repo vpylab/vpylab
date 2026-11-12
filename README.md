@@ -49,7 +49,7 @@ VPyLab is in active development.
 
 - **Save goes to the student's own Google Drive.** In Create, **Save** (or Ctrl/Cmd+S) signs in with Google once, asks for a file name, and saves to a `VPyLab` folder in the student's Drive. Later saves go to the same file. **My Drive** in the toolbar lists and reopens files. If another tab or device saved first, you choose: save a copy, load the Drive version, or overwrite.
 - **Save as video**: **Tools → Save as video** records the 3D view and sound for up to 30 seconds, in the browser. Nothing is sent to a VPyLab server. With Google Drive connected you choose between downloading the file and saving it to a `영상` folder inside the `VPyLab` folder in your Drive; otherwise the file downloads. Files are mp4, or webm where the browser cannot record mp4.
-- **Short share links**: **Tools → Share** creates a short link such as `vpylab.pages.dev/s/k7x2p9`, or `vpylab.pages.dev/s/your-name` if you choose a name (3–30 lowercase letters, numbers or hyphens; first come, first served). The link or its QR code opens straight to the running view (tap to start; the top-left button shows the source), and an embed code is available. Only the code and its title are stored, in Cloudflare D1. No sign-in is needed, and links do not expire. If you pick a name, the random link created when the Share window opened is deleted, so share the link shown after naming.
+- **Short share links**: **Tools → Share** creates a short link such as `vpylab.pages.dev/s/k7x2p9`, or `vpylab.pages.dev/s/your-name` if you choose a name (3–30 lowercase letters, numbers or hyphens; first come, first served). The link or its QR code opens straight to the running view (tap to start; the top-left button shows the source), and an embed code is available. Only the code and its title are stored, in Cloudflare D1. No sign-in is needed, and links do not expire. If you pick a name, the random link created when the Share window opened keeps working too.
 - **GitHub team projects** work in deployments that configure a GitHub OAuth app.
 - **Student gallery and Community modules** (both on GitHub, with teacher approval) are built but not turned on in production yet, and publishing with real GitHub accounts has not been verified end to end. Until the gallery list is turned on, **Gallery** shows the GlowScript original projects.
 
@@ -67,7 +67,7 @@ Start at https://vpylab.pages.dev. The top menu follows a suggested order:
 | **Docs** | 97 reference entries in 12 categories: shapes, vectors, scene, events, widgets, graphs, colors, materials, sound and more. |
 | **Guide** | In-app instructions. |
 
-More: 57 examples in 8 categories under **Create → Tools → Examples**. Editor completion and word help work without AI, and your code is not sent to an AI service. Switch language and theme under **More**.
+More: 58 examples in 8 categories under **Create → Tools → Examples**. Editor completion and word help work without AI, and your code is not sent to an AI service. Switch language and theme under **More**.
 
 Guides in this repository:
 
@@ -81,9 +81,9 @@ These three guides were written before 2026-11-12 and are being revised. Where t
 ## Privacy
 
 - There are no VPyLab accounts, and the operator keeps no personal information. The site is static files on Cloudflare Pages.
-- Your code runs in your browser. The only thing the operator stores is what you share: pressing **Share** saves the code and its title in Cloudflare D1. A hashed IP address is used for rate limiting and deleted within two minutes; the IP address itself is never stored.
+- Your code runs in your browser. The only thing the operator stores is what you share: pressing **Share** saves the code and its title in Cloudflare D1. A hashed IP address is used for rate limiting and is deleted when the next request arrives after two minutes; the IP address itself is never stored.
 - Progress, theme, language and home settings are kept in your browser (localStorage). Practice drafts are kept in the browser tab (sessionStorage). Clearing browser data removes them, and they do not move to other devices.
-- Third-party requests: web fonts from Google Fonts and Fontshare. The Python runtime is served from vpylab.pages.dev; jsDelivr or unpkg is used only if that fails.
+- Third-party requests: web fonts from Google Fonts and Fontshare. The Python runtime is served from vpylab.pages.dev, with jsDelivr or unpkg as a fallback. Optional Python packages (for example numpy) are always downloaded from jsDelivr, so `import numpy` fails on a network that blocks it.
 - A downloaded HTML file loads Pyodide and Three.js from jsDelivr or unpkg when opened.
 
 **Saving to Google Drive**
@@ -132,7 +132,7 @@ Testing VPyLab at another school: [docs/TESTERS.ko.md](docs/TESTERS.ko.md) (Kore
 |---|---|
 | The app | `vpylab.pages.dev` |
 | Web fonts (optional; the app falls back to system fonts) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
-| Python runtime fallback, and downloaded HTML files | `cdn.jsdelivr.net`, `unpkg.com` |
+| Optional Python packages, the Python runtime fallback, and downloaded HTML files | `cdn.jsdelivr.net`, `unpkg.com` |
 | Saving to Google Drive | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
 | Team projects, gallery, Community modules (GitHub, optional) | `github.com`, `api.github.com`, `raw.githubusercontent.com`, `*.github.io` |
 
@@ -149,7 +149,7 @@ Allow pop-ups from `vpylab.pages.dev`; the Google and GitHub approval windows op
 
 **Stack:** React 19, Vite 8, Tailwind CSS 4, Monaco Editor, Three.js, Pyodide 0.27 (in a Web Worker), Web Audio. Hosting is Cloudflare Pages, with Pages Functions and a D1 database for share links.
 
-**Requirements:** Node.js 20 or later (CI runs Node 24). Python 3.12 for the tests that run lesson code.
+**Requirements:** Node.js 20.19+, 22.13+ or 24+ (CI runs Node 24). Python 3.12 for the tests that run lesson code.
 
 ```bash
 git clone https://github.com/vpylab/vpylab.git
@@ -168,7 +168,7 @@ This needs no accounts, keys or database. The Vite dev server has no `/api/*`, s
 | `npm --prefix client run lint` | ESLint |
 | `npm --prefix client run build` | Build into `client/dist` |
 | `npm test` | Tests for `shared/`, `cloudflare/` and `scripts/gallery/`, then the client tests |
-| `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state` | Run a built site with the Pages Functions (`/api/*`). Local secrets go in a git-ignored `.dev.vars` |
+| `npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state` | Run a built site with the Pages Functions (`/api/*`). Local secrets go in a git-ignored `.dev.vars` |
 | `npm run compat:check` | GlowScript compatibility checks ([report](docs/GLOWSCRIPT_COMPAT_REPORT.md)) |
 
 **Ports**

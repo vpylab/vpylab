@@ -80,7 +80,7 @@ async function postShare(body) {
  */
 export async function createShareLink(code, title = '제목 없음') {
   if (code.length > MAX_CODE_SIZE) {
-    return { url: null, error: '코드가 너무 깁니다 (50KB 초과)' };
+    return { url: null, error: '코드가 너무 깁니다(50KB 초과).' };
   }
 
   try {

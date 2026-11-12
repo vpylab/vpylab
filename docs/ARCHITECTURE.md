@@ -88,7 +88,7 @@ About 6,200 lines. Defines the VPython-compatible classes and functions (`vector
 
 VPyLab is built once and deployed as one static site on Cloudflare Pages (https://vpylab.pages.dev). There is no application server, no database of its own and no account sign-in. The operator stores no student data. Until 2026-11-12 the same codebase was also built as a second "classroom edition" with an Express server and Supabase; that setup was deleted, and `docs/SCOPE.md` records the decision. `vpylab.vercel.app` only redirects to the Pages site (root `vercel.json`).
 
-The only server-side code is three Cloudflare Pages Functions in `functions/`, thin wrappers over modules in `cloudflare/`:
+The only server-side code is the Cloudflare Pages Functions in `functions/`: three thin wrappers over modules in `cloudflare/`, plus a catch-all (`functions/api/[[path]].js`) that answers every other `/api/` address with 404:
 
 | Request | File | Purpose | State |
 |---|---|---|---|
@@ -264,7 +264,7 @@ Commands that exist in the `package.json` files:
 
 Other workflows: `deploy-pages.yml` (named "Deploy"; builds and deploys to Cloudflare Pages after CI passes on `main`), `gallery-index.yml` (builds the gallery and Forge lists on a schedule and commits them to the branch `gallery-data`; runs only when the repository variable `GALLERY_INDEX` is `on`), `i18n-check.yml` (translation coverage comment on pull requests), `mission-review.yml` (runs the mission tests on pull requests that change `client/src/data/missions.js`), `stale.yml`, `welcome.yml`.
 
-To run the whole site locally including the functions, build and then run `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state`, with local secrets in a git-ignored `.dev.vars`. The Vite dev server on port 4033 does not serve `/api/*`.
+To run the whole site locally including the functions, build and then run `npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state`, with local secrets in a git-ignored `.dev.vars`. The Vite dev server on port 4033 does not serve `/api/*`.
 
 ## Known rough edges
 

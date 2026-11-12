@@ -4,8 +4,7 @@
  * - npm `pyodide` 패키지(버전 고정)에서 핵심 파일만 public/ 아래로 복사합니다.
  * - pyodide-lock.json의 패키지 경로는 CDN 절대 주소로 바꿉니다. 그래서 numpy 같은
  *   선택 패키지는 CDN에서 받고, 핵심 파일만 같은 출처에서 받습니다.
- * - 교실 LAN 모드처럼 선택 패키지까지 같이 제공할 때는 `bundledPackages`에 적힌 휠을
- *   로컬 경로로 남겨 둡니다.
+ * - 선택 패키지까지 같은 출처에서 제공하려면 `bundledPackages`에 적힌 휠을 로컬 경로로 남겨 둡니다.
  */
 import { createRequire } from 'node:module';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';

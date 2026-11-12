@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS shares (
   updated_at INTEGER NOT NULL
 );
 
--- 생성 속도 제한. 키는 (비밀 소금 + IP + 분)의 해시라 1분마다 바뀌고, 2분 지난 줄은 지웁니다.
+-- 생성 속도 제한. 키는 (비밀 소금 + IP + 분)의 해시라 1분마다 바뀌고, 2분 지난 줄은 다음 요청을 처리할 때 지웁니다.
 CREATE TABLE IF NOT EXISTS share_rate (
   k TEXT PRIMARY KEY,
   n INTEGER NOT NULL,

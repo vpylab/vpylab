@@ -198,7 +198,7 @@ function Lesson({ course, lesson }) {
 
       <Section title={ui("다음 시도를 위한 기록")}>
         <p>{guide.reflection}</p>
-        <p>{ui("실습 코드 맨 아래에 #으로 시작하는 주석으로 남기거나, 프로젝트의 기록 남기기를 이용할 수 있습니다.")}</p>
+        <p>{ui("실습 코드 맨 아래에 #으로 시작하는 주석으로 남길 수 있습니다.")}</p>
         <p className="font-mono text-xs">{ui("# 소리를 끄면 크기로만 구분했다.")}</p>
       </Section>
     </StepFlow>

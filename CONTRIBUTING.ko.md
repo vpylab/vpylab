@@ -22,7 +22,7 @@
 
 ## 개발 환경
 
-필요한 것은 Node.js 20 이상입니다. 학습 자료의 코드를 실행하는 테스트에는 Python 3.12가 필요합니다(PATH에 `python3.12`. Python이 없으면 그 테스트는 건너뜁니다).
+필요한 것은 Node.js 20.19 이상, 22.13 이상 또는 24 이상입니다. 학습 자료의 코드를 실행하는 테스트에는 Python 3.12가 필요합니다(PATH에 `python3.12`. Python이 없으면 그 테스트는 건너뜁니다).
 
 ```bash
 # vpylab/vpylab을 포크한 저장소를 받습니다
@@ -35,7 +35,7 @@ npm run dev                          # http://localhost:4033
 계정, 키, 데이터베이스 없이 실행됩니다. VPyLab에는 자체 서버가 없습니다. 앱은 정적 사이트이고, 서버 쪽 코드는 `functions/`의 Cloudflare Pages 함수 몇 개뿐입니다(로직은 `cloudflare/`).
 
 - Vite 개발 서버에는 `/api/*`가 없습니다. 이때 공유는 코드를 담은 긴 링크로 대신하고, GitHub 연결은 동작하지 않습니다.
-- 함수까지 실행하려면 빌드한 뒤 wrangler를 사용합니다. `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state`. 로컬 비밀값은 커밋되지 않는 `.dev.vars`에 둡니다.
+- 함수까지 실행하려면 빌드한 뒤 wrangler를 사용합니다. `npx wrangler pages dev client/dist --port 4086 --persist-to /tmp/vpylab-pages-dev-state`. 로컬 비밀값은 커밋되지 않는 `.dev.vars`에 둡니다.
 - 구글 드라이브 저장과 GitHub 기능은 빌드할 때 공개 클라이언트 ID가 필요합니다. `client/.env.example`을 `client/.env.local`로 복사해 자기 값을 넣습니다. 설정 방법은 [docs/DEPLOY.md](docs/DEPLOY.md)에 있습니다.
 
 ## 브랜치와 PR
