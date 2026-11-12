@@ -1808,5 +1808,7 @@
   "영상 올리기가 중간에 만료되었습니다. 다시 저장하십시오.": "The video upload expired partway. Save it again.",
   "연결 끊기": "Disconnect",
   "구글 드라이브를 연결하면 영상을 내 드라이브의 VPyLab 폴더에 저장할 수 있습니다. VPyLab은 이 앱이 만든 파일만 볼 수 있으며 드라이브의 다른 파일은 볼 수 없습니다.": "Connect Google Drive to save the video in the VPyLab folder of your own Drive. VPyLab can see only the files this app creates, not the rest of your Drive.",
-  "구글 드라이브 연결": "Connect Google Drive"
+  "구글 드라이브 연결": "Connect Google Drive",
+  "일식과 월식: 시점 바꾸기": "Eclipses: switching views",
+  "우주, 서울, 달 표면으로 시점을 바꾸며 일식과 월식을 관찰합니다. 크기와 거리는 한 화면에 보이도록 바꾼 모형입니다.": "Switch the view between space, Seoul and the Moon’s surface to watch solar and lunar eclipses. Sizes and distances are changed so that everything fits in one view."
 }

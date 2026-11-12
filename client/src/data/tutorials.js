@@ -2,6 +2,7 @@ import { getLightSoundLab } from './light-sound-labs.js';
 import { getCreativeLab } from './creative-labs.js';
 import { getForgeTutorial } from './forge-tutorial.js';
 import { getWelcomeTutorial } from './welcome-friends.js';
+import { getCameraTutorial } from './camera-views.js';
 
 const text = (ko, en) => ({ ko, en });
 
@@ -35,6 +36,7 @@ sleep(0.5)
     change: text('vector(0.03, 0, 0)의 0.03을 -0.03으로 바꾸세요.', 'Change 0.03 to -0.03 in vector(0.03, 0, 0).'),
     reflect: text('부호를 바꾸니 어느 방향으로 움직이나요?', 'Which way does the sphere move after changing the sign?'),
     code: `from vpython import *
+scene.range = 3
 공 = sphere(radius=0.3, color=색상['분홍'], make_trail=True)
 for i in range(60):
     rate(30)
@@ -55,4 +57,4 @@ button(text="색 바꾸기", bind=바꾸기)
   },
 ];
 
-export const getTutorial = (id, step) => tutorials.find(item => item.id === id) || getWelcomeTutorial(id, step) || getForgeTutorial(id, step) || getCreativeLab(id, step) || getLightSoundLab(id, step);
+export const getTutorial = (id, step) => tutorials.find(item => item.id === id) || getWelcomeTutorial(id, step) || getCameraTutorial(id, step) || getForgeTutorial(id, step) || getCreativeLab(id, step) || getLightSoundLab(id, step);

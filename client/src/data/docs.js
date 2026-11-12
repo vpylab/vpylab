@@ -133,6 +133,8 @@ vel = arrow(pos=ball.pos, axis=vector(2, 1, 0), shaftwidth=0.08, color=color.yel
       { name: 'color', type: 'vector', default: '물체 색', desc: { ko: '화살표 색', en: 'Arrow color' } },
     ],
     code: `from vpython import *
+scene.center = vector(-3, 0, 0)
+scene.range = 4
 ball = sphere(pos=vector(-4, 0, 0), radius=0.4, color=color.cyan)
 ball.velocity = vector(2, 3, 0)
 attach_arrow(ball, 'velocity', scale=0.5, color=color.yellow)
@@ -459,6 +461,7 @@ ball.clear_trail()    # 궤적 초기화`,
       { name: 'visible', type: 'boolean', default: 'True',          desc: { ko: '묶음 전체 표시 여부', en: 'Visibility of the whole group' } },
     ],
     code: `from vpython import *
+scene.range = 8
 g = group()
 body = box(group=g, pos=vector(0, 0, 0), size=vector(4, 1, 2), color=color.red)
 head = sphere(group=g, pos=vector(2.5, 0.5, 0), radius=0.5, color=color.yellow)
@@ -466,6 +469,8 @@ g.pos = vector(-5, 0, 0)
 while True:
     rate(60)
     g.pos.x += 0.05
+    if g.pos.x > 5:
+        g.pos.x = -5
     g.rotate(angle=0.01, axis=vector(0, 1, 0))
     head.color = color.hsv_to_rgb(vector((g.pos.x % 10) / 10, 1, 1))   # 하위 객체는 따로 바꿀 수 있다`,
     tags: ['group', '묶음', 'compound', 'car', 'robot'],
@@ -513,6 +518,7 @@ while True:
       { name: 'interval', type: 'number', default: '1',       desc: { ko: 'n번 움직일 때마다 한 점 (객체 궤적)', en: 'One point every n moves (object trails)' } },
     ],
     code: `from vpython import *
+scene.range = 4
 ball = sphere(radius=0.2, color=color.red)
 h = attach_trail(ball, color=color.green, retain=200)
 shadow = attach_trail(lambda: vector(ball.pos.x, -1, ball.pos.z), type='points', color=color.gray(0.5))
@@ -848,6 +854,7 @@ print(v90)   # <0, 1, 0> (z축 90도 회전)`,
       { name: 'fps', type: 'number', default: '60', desc: { ko: '초당 프레임 수', en: 'Frames per second' } },
     ],
     code: `from vpython import *
+scene.range = 6
 ball = sphere(color=color.red)
 ball.velocity = vector(1, 0, 0)
 for i in range(100):
@@ -968,15 +975,15 @@ for i in range(200):
     category: 'scene',
     title: { ko: '보이는 범위와 시야각 (scene.range, scene.fov)', en: 'scene.range / scene.fov' },
     description: {
-      ko: 'scene.range는 화면의 짧은 변 방향으로 중심에서 보이는 범위의 절반입니다. 가로 화면에서 range=5이면 중심 위아래로 5만큼, 세로 화면이면 좌우로 5만큼이 보입니다. scene.fov는 시야각(라디안)이며 기본값은 60도(pi/3)입니다. scene.center는 카메라가 바라보는 점입니다.',
-      en: 'scene.range is half of the visible extent along the shorter side of the view. scene.fov is the field of view in radians (default 60 degrees, pi/3). scene.center is the point the camera looks at.',
+      ko: 'scene.range는 화면의 짧은 변 방향으로 중심에서 보이는 범위의 절반입니다. 가로 화면에서 range=5이면 중심 위아래로 5만큼, 세로 화면이면 좌우로 5만큼이 보입니다. scene.fov는 시야각(라디안)이며 기본값은 60도(pi/3)입니다. scene.center는 카메라가 바라보는 점입니다. VPyLab은 물체가 만들어진 자리에 맞춰 화면을 정하며 물체가 움직이거나 커져도 카메라는 한 곳에 있습니다. 새 물체가 화면 범위 밖에 만들어지면 그 물체까지 보이도록 범위가 넓어집니다. scene.autoscale = True를 적으면 실행하는 동안 모든 물체가 보이도록 카메라가 계속 조절됩니다.',
+      en: 'scene.range is half of the visible extent along the shorter side of the view. scene.fov is the field of view in radians (default 60 degrees, pi/3). scene.center is the point the camera looks at. VPyLab frames the places where objects were created, and the camera stays in one place when objects move or grow. If a new object is created outside the view, the range widens to include it. Write scene.autoscale = True to keep the camera adjusting so that every object stays visible while the code runs.',
     },
     signature: "scene.range = 5; scene.center = vector(0, 0, 0); scene.fov = pi/3; scene.autoscale = False",
     params: [
       { name: 'scene.range', type: 'number', default: '자동', desc: { ko: '짧은 변 방향 시야의 절반', en: 'Half extent along the shorter side' } },
       { name: 'scene.center', type: 'vector', default: 'vector(0,0,0)', desc: { ko: '카메라가 보는 점', en: 'Point the camera looks at' } },
       { name: 'scene.fov', type: 'number', default: 'pi/3', desc: { ko: '시야각 (라디안)', en: 'Field of view (radians)' } },
-      { name: 'scene.autoscale', type: 'bool', default: 'True', desc: { ko: '모든 물체가 보이도록 자동 조절', en: 'Fit all objects automatically' } },
+      { name: 'scene.autoscale', type: 'bool', default: 'True', desc: { ko: 'True를 적으면 실행하는 동안 모든 물체가 보이도록 계속 조절. False는 지금 카메라를 유지', en: 'Write True to keep fitting every object while the code runs; False keeps the current camera' } },
     ],
     code: `from vpython import *
 from math import pi
@@ -988,7 +995,7 @@ scene.range = 3        # 가운데 세 개만 크게
 sleep(1.5)
 scene.fov = pi / 2     # 기본 pi/3보다 넓은 시야각으로 원근감 비교
 sleep(1.5)
-scene.autoscale = True # 다시 전체 보기`,
+scene.autoscale = True # 전체가 보이도록 계속 맞추기`,
     tags: ['scene', 'range', 'fov', 'center', 'autoscale', 'zoom', '범위', '시야각'],
   },
   {
@@ -1031,6 +1038,8 @@ for i in range(300):
     code: `from vpython import *
 scene.title = '자유 낙하 실험'
 scene.caption = '공이 바닥에 닿을 때까지의 시간을 관찰하세요.'
+scene.center = vector(0, 2.5, 0)
+scene.range = 4
 ball = sphere(pos=vector(0, 5, 0), radius=0.3, color=color.red)
 v = 0
 t = 0
@@ -1309,6 +1318,7 @@ radio(text='파랑', name='shade', bind=choose_blue)
       { name: 'bind',     type: 'function', default: 'None',  desc: { ko: '변경 콜백', en: 'Change callback' } },
     ],
     code: `from vpython import *
+scene.range = 6
 ball = sphere(pos=vector(0,0,0), radius=0.5)
 speeds = {'느림': 0.01, '보통': 0.05, '빠름': 0.1}
 
