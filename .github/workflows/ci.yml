@@ -46,6 +46,20 @@ jobs:
       - run: node --test scripts/research/*.test.mjs
 
   # ──────────────────────────────────────────────
+  # 갤러리 목록 스크립트 검증(scripts/gallery/, 의존성 없음). 승인 전에는 어떤 저장소도 공개 목록에 들어가지 않는다는
+  # 규칙을 이 테스트가 고정하므로, 연구 도구와 달리 실패하면 CI가 실패합니다.
+  # ──────────────────────────────────────────────
+  gallery-index:
+    name: "갤러리 목록 스크립트 검증"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: node --test scripts/gallery/*.test.mjs
+
+  # ──────────────────────────────────────────────
   # 1. 미션 데이터 무결성 검사
   # ──────────────────────────────────────────────
   validate-missions:

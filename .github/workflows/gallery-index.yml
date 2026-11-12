@@ -1,0 +1,144 @@
+# GitHub 연동 갤러리의 목록 만들기 (운영 서버·DB 없음)
+#
+# topic `vpylab-gallery`가 붙은 공개 저장소를 GitHub 검색으로 찾아, 승인 파일에 있는 것만 공개 목록에 넣습니다.
+# 결과는 `gallery-data` 브랜치에 커밋하고, 앱은 그 브랜치의 gallery.json만 읽습니다(VITE_GALLERY_INDEX_URL).
+#   - approvals.txt  교사가 GitHub 웹에서 고치는 승인 파일(이 워크플로는 없을 때만 빈 양식을 넣습니다)
+#   - gallery.json   승인된 작품(앱이 읽는 파일)
+#   - pending.json, PENDING.md  승인 대기 작품(교사가 확인하는 파일)
+# 구조와 켜는 순서: docs/DEPLOY_TWO_EDITIONS.md, 승인 방법: docs/GALLERY_GITHUB.md
+#
+# 켜는 설정(저장소 Settings → Secrets and variables → Actions → Variables)
+#   - 변수 GALLERY_INDEX = on  (없으면 이 워크플로는 아무것도 하지 않습니다. 포크에서도 같습니다.)
+#
+# 안전장치
+#   - 예약 실행과 직접 실행(workflow_dispatch)에서만 돕니다. pull_request에서는 돌지 않으므로 포크의 PR이 이 워크플로를 실행할 수 없습니다.
+#   - 기본 브랜치에서만 돕니다(다른 브랜치의 스크립트로 목록을 만들지 않게).
+#   - 검색 결과를 다루는 작업(build)은 읽기 권한만 갖습니다. 쓰기 권한(contents: write)은 목록 브랜치에 커밋하는 작업(publish)에만 줍니다.
+#   - 검색이 실패하면 build가 실패하고 publish는 돌지 않습니다. 앞서 만든 목록이 그대로 남습니다.
+#   - 브랜치를 강제로 밀지 않습니다. 그사이 교사가 승인 파일을 고쳤으면 이번 커밋은 실패하고 다음 실행이 반영합니다.
+#   - 공개 저장소의 예약 워크플로는 저장소에 60일 동안 활동이 없으면 GitHub가 멈춥니다. Actions 탭에서 다시 켤 수 있습니다.
+name: Gallery index
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: gallery-index
+  cancel-in-progress: false
+
+permissions: {}
+
+env:
+  DATA_BRANCH: gallery-data
+
+jobs:
+  build:
+    name: "갤러리 목록 만들기 (읽기 전용)"
+    # 예약 실행은 언제나 기본 브랜치에서 돕니다. 직접 실행은 기본 브랜치에서 실행했을 때만 받습니다.
+    if: >-
+      vars.GALLERY_INDEX == 'on' && (
+        github.event_name == 'schedule' ||
+        github.ref_name == github.event.repository.default_branch
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # 승인 파일과 앞서 만든 목록을 목록 브랜치에서 읽습니다. 브랜치가 아직 없으면 빈 승인 파일로 시작합니다.
+      # 브랜치가 있는지 확인하지 못하면(연결 오류) 멈춥니다. 빈 승인 파일로 넘어가면 공개 목록이 비워지기 때문입니다.
+      - name: Read approvals and the previous index
+        run: |
+          set -euo pipefail
+          mkdir -p previous out
+          status=0
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH" >/dev/null || status=$?
+          if [ "$status" = "0" ]; then
+            git fetch --quiet --depth=1 origin "$DATA_BRANCH"
+            for file in approvals.txt gallery.json pending.json; do
+              if git cat-file -e "FETCH_HEAD:$file" 2>/dev/null; then
+                git show "FETCH_HEAD:$file" > "previous/$file"
+              fi
+            done
+            if [ ! -f previous/approvals.txt ]; then
+              echo "::warning::$DATA_BRANCH 브랜치에 approvals.txt가 없습니다. 모든 작품을 승인 대기로 두고 빈 양식을 다시 넣습니다."
+            fi
+          elif [ "$status" = "2" ]; then
+            echo "::notice::$DATA_BRANCH 브랜치가 아직 없습니다. 이번 실행에서 만듭니다."
+          else
+            echo "::error::$DATA_BRANCH 브랜치를 확인하지 못했습니다(git ls-remote $status)."
+            exit 1
+          fi
+          if [ ! -f previous/approvals.txt ]; then
+            cp scripts/gallery/approvals.template.txt previous/approvals.txt
+          fi
+
+      - name: Build the index
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/gallery/build-index.mjs --approvals previous/approvals.txt --previous previous --out out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: gallery-index
+          path: out/
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: "목록 브랜치에 커밋"
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: gallery-index
+          path: out
+
+      - name: Commit to the data branch
+        run: |
+          set -euo pipefail
+          status=0
+          git ls-remote --exit-code --heads origin "$DATA_BRANCH" >/dev/null || status=$?
+          if [ "$status" = "0" ]; then
+            git fetch --quiet --depth=1 origin "$DATA_BRANCH"
+            git worktree add --quiet -B "$DATA_BRANCH" data FETCH_HEAD
+          elif [ "$status" = "2" ]; then
+            git worktree add --quiet --detach data
+            git -C data switch --quiet --orphan "$DATA_BRANCH"
+          else
+            echo "::error::$DATA_BRANCH 브랜치를 확인하지 못했습니다(git ls-remote $status)."
+            exit 1
+          fi
+          # 승인 파일은 교사가 고치는 파일입니다. 없을 때만 빈 양식을 넣고, 있으면 건드리지 않습니다.
+          if [ ! -f data/approvals.txt ]; then
+            cp scripts/gallery/approvals.template.txt data/approvals.txt
+          fi
+          cp scripts/gallery/data-branch-README.md data/README.md
+          for file in gallery.json pending.json PENDING.md; do
+            if [ ! -f "out/$file" ]; then
+              echo "::error::만든 목록에 $file 이 없습니다."
+              exit 1
+            fi
+            cp "out/$file" "data/$file"
+          done
+          cd data
+          git add approvals.txt README.md gallery.json pending.json PENDING.md
+          if git diff --cached --quiet; then
+            echo "목록이 바뀌지 않아 커밋하지 않습니다."
+            exit 0
+          fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit --quiet -m "Update gallery index"
+          git push --quiet origin "HEAD:refs/heads/$DATA_BRANCH"
