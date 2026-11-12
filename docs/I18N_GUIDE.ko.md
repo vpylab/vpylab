@@ -84,6 +84,7 @@ const messages = { ko, en, ja };  // 추가
 - `client/src/i18n/locale.js`: 허용 목록 `['ko', 'en']`에 새 코드를 추가합니다.
 - `client/src/components/layout/Header.jsx`: 언어 선택 `<option>`을 추가합니다.
 - `client/src/i18n/ui-text.js`: 영어 사전만 불러오고 `locale === 'en'`일 때만 번역합니다. 언어별 사전(`catalogs/<언어>-ui-text.json`)을 불러오도록 고칩니다.
+- `client/src/components/help/help-text.js`: 그 자리 안내 문구는 별도 영어 사전 `client/src/components/help/en-ui-text.additions.json`(약 90개)을 먼저 찾고 `locale === 'en'`일 때만 번역합니다. 이 사전도 언어별로 불러오도록 고칩니다.
 - `client/src/i18n/owned-content.js`: `locale !== 'en'`이면 한국어 원본을 그대로 돌려줍니다.
 - 화면 코드 약 30개 파일에 `locale === 'ko' ? '한국어' : 'English'` 형태의 분기가 있습니다. `ui()` 또는 `t()`로 바꿔야 합니다. 파일 목록은 영문 문서에 있습니다.
 - `python-error-explainer.js`와 `default-code.js`도 두 언어로 고정되어 있습니다. 날짜는 선택한 언어가 아니라 브라우저의 기본 형식으로 표시됩니다.

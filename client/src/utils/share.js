@@ -130,16 +130,23 @@ export async function claimShareName(code, title, rawName) {
 
 /**
  * 공유 ID로 코드 조회
+ * error는 'not_found'(없는 주소)와 'unavailable'(연결이 끊겼거나 저장소가 답하지 못함)로 나뉩니다.
+ * 연결이 잠시 끊긴 것을 "없는 주소"로 안내하면 학생이 링크가 지워졌다고 오해합니다.
  * @param {string} shareId
- * @returns {Promise<{ code: string|null, title: string|null, error: string|null }>}
+ * @returns {Promise<{ code: string|null, title: string|null, error: null|'not_found'|'unavailable' }>}
  */
 export async function loadSharedCode(shareId) {
+  let res;
   try {
-    const res = await fetch(`/api/share/${encodeURIComponent(shareId)}`);
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && typeof data.code === 'string') return { code: data.code, title: data.title || null, error: null };
-  } catch { /* 아래 안내로 */ }
-  return { code: null, title: null, error: '공유 코드를 찾을 수 없습니다' };
+    res = await fetch(`/api/share/${encodeURIComponent(shareId)}`);
+  } catch {
+    return { code: null, title: null, error: 'unavailable' };
+  }
+  const data = await res.json().catch(() => ({}));
+  if (res.ok && typeof data.code === 'string') return { code: data.code, title: data.title || null, error: null };
+  // 4xx는 주소가 없거나 형식이 맞지 않는 것입니다. 한도(429)와 그 밖의 응답은 잠시 뒤 다시 열면 됩니다.
+  const missing = res.status >= 400 && res.status < 500 && res.status !== 429;
+  return { code: null, title: null, error: missing ? 'not_found' : 'unavailable' };
 }
 
 /**

@@ -13,7 +13,7 @@ const FILE_FIELDS = 'id,name,mimeType,modifiedTime,version,headRevisionId,appPro
 const ROOT_MARK = { key: 'vpylabRoot', value: '1' };
 
 export const DEFAULT_FOLDER_NAME = 'VPyLab';
-export const MAX_CODE_BYTES = 100 * 1024; // 기존 서버 상한(server/routes/projects.js)과 같게 둡니다.
+export const MAX_CODE_BYTES = 100 * 1024; // 팀 프로젝트(github/github-api.js)의 코드 상한과 같게 둡니다.
 export const MAX_LIST_PAGES = 10; // 목록은 최대 1,000개까지 읽습니다.
 export const DEFAULT_TIMEOUT_MS = 20_000;
 // 작품 영상: 30초·2.5Mbps 녹화는 10MB 안쪽입니다. 조각으로 나누어 이어 올립니다(조각 크기는 256KB의 배수여야 함).

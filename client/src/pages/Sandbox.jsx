@@ -294,7 +294,7 @@ export default function Sandbox() {
     loadSharedCode(sharedRouteId).then(({ code: sharedCode, title, error }) => {
       if (cancelled) return;
       if (error || !sharedCode) {
-        setOutputs([{ text: tRef.current('sharedCode.notFound'), type: 'warning', id: Date.now() }]);
+        setOutputs([{ text: tRef.current(error === 'unavailable' ? 'sharedCode.loadFailed' : 'sharedCode.notFound'), type: 'warning', id: Date.now() }]);
         return;
       }
       stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
@@ -748,6 +748,17 @@ export default function Sandbox() {
   };
 
   /** 고른 파일(.py 또는 VPyLab이 내보낸 .html)의 코드를 편집기로 불러옵니다. */
+  /**
+   * 편집기에 저장하지 않은 변경이 있는지. 열어 둔 팀 프로젝트나 드라이브 파일이 있으면 그곳에 저장한 코드와 비교합니다.
+   * 드라이브에 방금 저장한 코드를 저장 전 기준과 비교하면 저장을 마치고도 "저장하지 않은 변경"으로 잘못 묻게 됩니다.
+   */
+  const hasUnsavedWork = () => {
+    const current = codeRef.current;
+    if (githubControl.current?.hasProject()) return Boolean(githubControl.current.isDirty(current));
+    if (DRIVE_EDITOR && useDriveStore.getState().file) return useDriveStore.getState().isDirty(current);
+    return current !== initialCodeRef.current;
+  };
+
   const openCodeFile = async (file) => {
     if (!file) return;
     let loaded;
@@ -757,14 +768,7 @@ export default function Sandbox() {
       addOutput(ui(CODE_FILE_REASON_TEXT[error instanceof CodeFileError ? error.reason : 'read']), 'error');
       return;
     }
-    // 열어 둔 팀 프로젝트나 드라이브 파일이 있으면 그곳에 저장한 코드와 비교합니다. 드라이브에 방금 저장한 코드를 저장 전 기준과 비교하면
-    // 저장을 마치고도 "저장하지 않은 변경"으로 잘못 묻게 됩니다.
-    const current = codeRef.current;
-    const driveFileOpen = DRIVE_EDITOR && Boolean(useDriveStore.getState().file);
-    const unsaved = githubControl.current?.hasProject() ? Boolean(githubControl.current.isDirty(current))
-      : driveFileOpen ? useDriveStore.getState().isDirty(current)
-      : current !== initialCodeRef.current;
-    if (unsaved && !window.confirm(ui("편집기에 저장하지 않은 변경이 있고, 파일을 열면 이 변경은 사라집니다. 계속할까요?"))) return;
+    if (hasUnsavedWork() && !window.confirm(ui("편집기에 저장하지 않은 변경이 있고, 파일을 열면 이 변경은 사라집니다. 계속할까요?"))) return;
     stopAllSounds();
     stopExecution();
     if (sceneRef.current) clearScene(sceneRef.current);
@@ -893,6 +897,7 @@ export default function Sandbox() {
               controlRef={githubControl}
               code={code}
               getCode={() => codeRef.current}
+              isDirty={hasUnsavedWork}
               defaultTitle={shareTitle()}
               // 갤러리에 올릴 때의 미리보기 그림: 지금 3D 화면이 편집기의 코드를 실행한 모습일 때만 넘깁니다(JPEG, 없으면 null).
               getThumbnail={() => (lastStartedCode.current === codeRef.current ? captureThumbnail(sceneRef.current?._renderer?.domElement, 640, 0.8, 'jpeg') : null)}
@@ -1157,10 +1162,8 @@ export default function Sandbox() {
                   <button
                     key={ex.id}
                     onClick={() => {
-                      // 팀 프로젝트에 올리지 않은 편집은 예제를 열면 되살릴 방법이 없으므로 먼저 묻습니다.
-                      // (드라이브 파일은 파일별 초안이, 자유 코딩은 이 브라우저의 초안이 남습니다.)
-                      if (githubControl.current?.hasProject() && githubControl.current.isDirty(codeRef.current)
-                        && !window.confirm(ui("팀 프로젝트에 저장하지 않은 변경이 있고, 예제를 열면 이 변경은 사라집니다. 계속할까요?"))) return;
+                      // 저장하지 않은 편집은 예제를 열면 편집기에서 사라지므로 먼저 묻습니다(파일 열기와 같은 기준).
+                      if (hasUnsavedWork() && !window.confirm(ui("편집기에 저장하지 않은 변경이 있고, 예제를 열면 이 변경은 사라집니다. 계속할까요?"))) return;
                       // 다른 예제로 전환 시 이전 잔존음/실행/씬 정리
                       stopAllSounds();
                       stopExecution();

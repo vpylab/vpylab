@@ -4,7 +4,7 @@
 
 ### 변경 유형 (Type)
 
-- [ ] 미션 추가/수정 (Mission) — [미션 PR 템플릿 사용](.github/PULL_REQUEST_TEMPLATE/mission.md)
+- [ ] 미션 추가/수정 (Mission) — [미션 PR 템플릿 사용](https://github.com/vpylab/vpylab/blob/main/.github/PULL_REQUEST_TEMPLATE/mission.md)
 - [ ] 버그 수정 (Bug fix)
 - [ ] 새 기능 (New feature)
 - [ ] 번역 (Translation / i18n)
@@ -36,5 +36,5 @@
 - [ ] `innerHTML`을 사용하지 않음
 - [ ] `.env` 또는 시크릿 정보를 커밋하지 않음
 - [ ] 기존 테스트를 깨뜨리지 않음
-- [ ] 새 기능이면 [docs/SCOPE.md](../docs/SCOPE.md)의 애드온 규칙을 지킴 (기능 동결 기간에는 버그 수정·테스트·번역·학습 자료·문서를 우선합니다)
-- [ ] [행동 강령](CODE_OF_CONDUCT.md)에 동의함
+- [ ] 새 기능이면 [docs/SCOPE.md](https://github.com/vpylab/vpylab/blob/main/docs/SCOPE.md)의 애드온 규칙을 지킴 (기능 동결 기간에는 버그 수정·테스트·번역·학습 자료·문서를 우선합니다)
+- [ ] [행동 강령](https://github.com/vpylab/vpylab/blob/main/CODE_OF_CONDUCT.md)에 동의함

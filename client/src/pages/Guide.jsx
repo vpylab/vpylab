@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import CodeVocabulary from '../components/learning/CodeVocabulary';
 import GuideWays from '../components/guide/GuideWays';
+import { GITHUB_ADDON, GITHUB_FORGE } from '../lib/api-base';
 
 function GuideSection({ id, title, children }) {
   return (
@@ -29,7 +30,7 @@ export default function Guide() {
         </header>
 
         <nav aria-label={ui("사용 안내 목차")} className="flex flex-wrap gap-3 mb-10 text-sm" style={{ color: 'var(--color-accent)' }}>
-          {[['ways',ui("세 가지 방법으로 만들기")],['start',ui("처음 시작하기")],['forge',ui("대장간")],['fork',ui("포크와 출처")],['character',ui("캐릭터 튜토리얼")],['projects',ui("팀 프로젝트")]].map(([id,label]) => <a key={id} href={'#'+id}>{label}</a>)}
+          {[['ways',ui("세 가지 방법으로 만들기")],['start',ui("처음 시작하기")],['forge',ui("대장간")],...(GITHUB_FORGE ? [['fork',ui("포크와 출처")]] : []),['character',ui("캐릭터 튜토리얼")],['projects',ui("팀 프로젝트")]].map(([id,label]) => <a key={id} href={'#'+id}>{label}</a>)}
         </nav>
 
         <GuideWays />
@@ -73,17 +74,19 @@ obj.opacity = 0.6`}</code></pre>
           <p><strong>{ui("VPyLab 자체 기능:")}</strong>{ui("대장간과 생성 편의 함수, 소리 명령은 VPyLab에서 제공합니다. 일반 도형·compound·위치 속성과 구분해 문서에 표시합니다. 소리 명령을 외부 VPython으로 옮길 때는 해당 환경에 맞게 바꿔야 합니다. 압출 모양은 공유 HTML에서 표현 범위가 더 좁습니다.")}</p>
         </GuideSection>
 
-        <GuideSection id="fork" title={ui("다른 사람의 모듈을 포크하고 출처 남기기")}>
+        {/* 모두의 모듈이 설정된 사이트에서만 보입니다(변수를 비운 빌드에는 그 탭이 없습니다). 공개 등록은 GitHub 연결까지 있어야 합니다. */}
+        {GITHUB_FORGE && <GuideSection id="fork" title={ui("다른 사람의 모듈을 포크하고 출처 남기기")}>
           <ol className="list-decimal pl-5 space-y-2">
             <li>{ui("모듈 보관함의 모두의 모듈에서 모양을 고릅니다. 목록에서는 코드를 기본으로 펼쳐 보여 주지 않습니다.")}</li>
             <li>{ui("\"포크해서 가져오기\" 버튼을 누르면 해당 모듈이 내 작업대에 열립니다. 로그인은 필요하지 않으며, 가져온 사본은 이 브라우저의 보관함에 저장됩니다. 원본을 만든 사람의 GitHub 아이디가 출처로 기록됩니다.")}</li>
             <li>{ui("내 모양으로 고치고, 추가로 참고한 프로젝트가 있으면 이름과 링크를 남깁니다. 참고 링크는 8개까지 넣을 수 있습니다.")}</li>
-            <li>{ui("고친 모듈을 공개하려면 작업대 아래의 \"다른 사람도 쓰게 모두의 모듈에 공개하기\"를 엽니다. GitHub에 연결한 뒤 \"모두의 모듈에 공개 등록\"을 누릅니다. 모듈은 내 GitHub 계정의 공개 저장소 vpylab-forge에 올라가고, 원본 출처와 참고 기록이 함께 올라갑니다. 교사가 저장소를 승인하면 모두의 모듈에 표시됩니다.")}</li>
+            {GITHUB_ADDON && <li>{ui("고친 모듈을 공개하려면 작업대 아래의 \"다른 사람도 쓰게 모두의 모듈에 공개하기\"를 엽니다. GitHub에 연결한 뒤 \"모두의 모듈에 공개 등록\"을 누릅니다. 모듈은 내 GitHub 계정의 공개 저장소 vpylab-forge에 올라가고, 원본 출처와 참고 기록이 함께 올라갑니다. 교사가 저장소를 승인하면 모두의 모듈에 표시됩니다.")}</li>}
           </ol>
-          <p>{ui("내 모듈에서 공개 상태를 확인하고 내 모듈 공개 내리기로 비공개로 바꿀 수 있습니다. 내가 공개한 모듈은 내 모듈 이어 만들기로 수정하세요. 원본이 삭제되어도 저장된 출처 제목과 제작자 기록은 유지됩니다.")}</p>
+          {GITHUB_ADDON && <p>{ui("공개한 모듈은 내 모듈 목록에 \"공개 중\"으로 표시됩니다. \"내 모듈 공개 내리기\"를 누르면 내 GitHub 저장소에서 모듈 파일이 지워지고, 다음 목록 갱신 때 모두의 모듈에서 빠집니다. 이 브라우저의 보관함에는 그대로 남습니다. 내가 공개한 모듈은 \"내 모듈 이어 만들기\"로 수정합니다.")}</p>}
+          <p>{ui("포크한 원본이 삭제되어도 저장된 출처 제목과 제작자 기록은 유지됩니다.")}</p>
           <p>{ui("공개 모듈의 코드는 다른 사람이 열고 가져갈 수 있습니다. 대장간 목록의 기본 접힘은 코드의 비공개 설정을 뜻하지 않습니다. 공개 이름과 설명에는 개인정보를 넣지 마세요.")}</p>
           <p>{ui("작업 초안과 보관함은 이 브라우저에만 저장됩니다. 다른 기기에서 이어서 작업하려면 Python 파일로 내려받아 옮기거나, 공개한 모듈을 모두의 모듈에서 다시 가져옵니다.")}</p>
-        </GuideSection>
+        </GuideSection>}
 
         <GuideSection id="character" title={ui("캐릭터를 만들고 움직이며 배우기")}>
           <p><Link to="/tutorials/forge-character">{ui("대장간 캐릭터 튜토리얼")}</Link>{ui("은 ① 부품을 compound로 묶기 → ② 완제품 움직이기 → ③ 아이템을 먹으면 색 바꾸기의 세 단계입니다.")}</p>

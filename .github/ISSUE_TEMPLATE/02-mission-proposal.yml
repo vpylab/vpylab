@@ -115,5 +115,5 @@ body:
           required: true
         - label: "콘텐츠에 폭력적/차별적/부적절한 내용이 없습니다."
           required: true
-        - label: "[행동 강령](CODE_OF_CONDUCT.md)을 읽고 동의합니다."
+        - label: "[행동 강령](https://github.com/vpylab/vpylab/blob/main/CODE_OF_CONDUCT.md)을 읽고 동의합니다."
           required: true

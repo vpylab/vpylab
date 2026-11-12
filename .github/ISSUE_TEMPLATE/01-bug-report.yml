@@ -85,5 +85,5 @@ body:
       options:
         - label: "기존 Issue에 같은 문제가 없는지 확인했습니다."
           required: true
-        - label: "[행동 강령](CODE_OF_CONDUCT.md)을 읽고 동의합니다."
+        - label: "[행동 강령](https://github.com/vpylab/vpylab/blob/main/CODE_OF_CONDUCT.md)을 읽고 동의합니다."
           required: true

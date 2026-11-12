@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import { useI18n } from '../i18n/useI18n';
+import { TEAM_PROJECTS } from '../lib/api-base';
 
 export default function About() {
   const { t, messages } = useI18n();
@@ -9,7 +10,8 @@ export default function About() {
     { icon: '📚', key: 'courses' },
     { icon: '🎯', key: 'grading' },
     { icon: '🎵', key: 'sound' },
-    { icon: '🤝', key: 'team' },
+    // 팀 프로젝트(GitHub)가 설정되지 않은 사이트에서는 소개하지 않습니다.
+    ...(TEAM_PROJECTS ? [{ icon: '🤝', key: 'team' }] : []),
     { icon: '🎨', key: 'gallery' },
   ];
 

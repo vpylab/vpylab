@@ -34,7 +34,7 @@ vi.mock('../engine/sound-system', () => ({
   setMasterMuted: vi.fn((value) => { data.muted = !!value; data.audioState = { muted: data.muted, volume: 0.6 }; data.listeners.forEach((l) => l(data.audioState)); }),
 }));
 vi.mock('../utils/share', () => ({
-  loadSharedCode: vi.fn(async () => data.share || { code: null, title: null, error: '공유 코드를 찾을 수 없습니다' }),
+  loadSharedCode: vi.fn(async () => data.share || { code: null, title: null, error: 'not_found' }),
 }));
 vi.mock('../stores/appStore', () => ({
   default: (selector) => selector({ theme: data.theme || 'creative-light', locale: 'ko', THEME_META: { 'creative-light': { dark: false }, 'forest-night': { dark: true } } }),
@@ -116,6 +116,13 @@ describe('임베드 페이지', () => {
   it('없는 공유 주소는 안내만 보이고 실행하지 않는다', async () => {
     renderEmbed('2f1c9a4e-5b6d-4c7e-8f90-123456789abc');
     await waitFor(() => expect(screen.getByTestId('embed-status')).toHaveTextContent('작품을 찾을 수 없습니다'));
+    expect(engine.runCode).not.toHaveBeenCalled();
+  });
+
+  it('연결 실패는 없는 주소와 다르게 안내한다', async () => {
+    data.share = { code: null, title: null, error: 'unavailable' };
+    renderEmbed('solar');
+    await waitFor(() => expect(screen.getByTestId('embed-status')).toHaveTextContent('작품을 불러오지 못했습니다'));
     expect(engine.runCode).not.toHaveBeenCalled();
   });
 });

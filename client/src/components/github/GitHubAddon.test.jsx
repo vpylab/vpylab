@@ -1,7 +1,8 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { memoryStorage } from '../../drive/fake-google.js';
 import { createFakeGitHub } from '../../github/fake-github.js';
+import { PROJECT_TOPIC } from '../../github/github-api.js';
 import { configureGitHub, useGitHubStore } from '../../github/githubSession.js';
 import { GITHUB_TAB_DRAFT_KEY, readProjectDraft, writeProjectDraft } from '../../github/tab-session.js';
 import AddonBoundary from '../shared/AddonBoundary.jsx';
@@ -50,6 +51,19 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('GitHubAddon (만들기 화면과 애드온의 연결 지점)', () => {
+  it('프로젝트를 열기 전에 묻는 기준은 만들기 화면이 넘긴 isDirty이다(손대지 않은 코드로는 묻지 않는다)', async () => {
+    github.createRepo('ada', 'solar', { description: '태양계', topics: [PROJECT_TOPIC], files: { 'main.py': 'sun = sphere()' } });
+    await store().connect();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const controlRef = { current: null };
+    const onLoaded = vi.fn();
+    render(<GitHubAddon controlRef={controlRef} code="시작 코드" getCode={() => '시작 코드'} isDirty={() => false} defaultTitle="내 작품" shouldRestore={() => true} onLoaded={onLoaded} />);
+    act(() => controlRef.current.open('projects'));
+    fireEvent.click(await screen.findByRole('button', { name: /태양계/ }));
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledWith('sun = sphere()', '태양계'));
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
   it('준비되면 조작 함수를 내주고, 열라고 하면 대화상자를 보인다', async () => {
     const { controlRef, handlers } = renderAddon();
     expect(handlers.onReady).toHaveBeenCalledTimes(1);

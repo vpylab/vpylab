@@ -15,6 +15,7 @@
 #
 # 안전장치
 #   - main에 push된 커밋의 CI가 성공했을 때만 돕니다. 포크 PR의 CI 결과로는 돌지 않습니다.
+#   - 직접 실행(Run workflow)은 main을 골랐을 때만 받습니다. 다른 브랜치를 고르면 건너뜁니다(CI를 거치지 않은 코드가 운영 사이트에 올라가지 않게).
 #   - 같은 배포가 겹치지 않게 하나씩 차례로 돕니다.
 #   - 배포 뒤 첫 화면·개인정보 화면·만들기 화면·갤러리가 200으로 열리고, 정적 폴더의 없는 파일이 404인지 확인합니다.
 name: Deploy
@@ -38,7 +39,7 @@ jobs:
     name: "배포 (vpylab.pages.dev)"
     if: >-
       github.repository == 'vpylab/vpylab' && (
-        github.event_name == 'workflow_dispatch' || (
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (
           github.event.workflow_run.conclusion == 'success' &&
           github.event.workflow_run.event == 'push' &&
           github.event.workflow_run.head_branch == 'main'

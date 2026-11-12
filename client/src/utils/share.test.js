@@ -94,7 +94,19 @@ describe('이름 정하기', () => {
     expect(fetchSpy).toHaveBeenCalledWith('/api/share/solar');
 
     vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(404, { code: 'not_found' })));
-    expect((await loadSharedCode('nobody')).error).toMatch(/찾을 수 없습니다/);
+    expect((await loadSharedCode('nobody')).error).toBe('not_found');
+  });
+
+  it('연결이 끊겼거나 저장소가 답하지 못하면 없는 주소와 구분해 알린다', async () => {
+    const { loadSharedCode } = await loadShare();
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    expect(await loadSharedCode('solar')).toEqual({ code: null, title: null, error: 'unavailable' });
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(503, {})));
+    expect((await loadSharedCode('solar')).error).toBe('unavailable');
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(429, { code: 'rate_limited' })));
+    expect((await loadSharedCode('solar')).error).toBe('unavailable');
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(400, { code: 'invalid_id' })));
+    expect((await loadSharedCode('!!')).error).toBe('not_found');
   });
 });
 

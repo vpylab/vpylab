@@ -18,6 +18,8 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
+            // 댓글 안의 상대 링크는 Issue·PR 주소를 기준으로 풀려 404가 됩니다. 기본 브랜치의 파일 주소를 적습니다.
+            const docs = `https://github.com/${owner}/${repo}/blob/${context.payload.repository.default_branch}`;
             const isIssue = !!context.payload.issue;
             const isPR = !!context.payload.pull_request;
             const author = isIssue
@@ -46,8 +48,8 @@ jobs:
                   'Thank you for your first issue!',
                   '',
                   '메인테이너가 곧 확인하겠습니다. 그동안 다음 자료를 참고해 주세요:',
-                  '- [기여 가이드 (Contributing Guide)](CONTRIBUTING.md)',
-                  '- [행동 강령 (Code of Conduct)](CODE_OF_CONDUCT.md)',
+                  `- [기여 가이드 (Contributing Guide)](${docs}/CONTRIBUTING.md)`,
+                  `- [행동 강령 (Code of Conduct)](${docs}/CODE_OF_CONDUCT.md)`,
                   '- [Issues](https://github.com/vpylab/vpylab/issues)',
                 ].join('\n')
               : [
@@ -57,7 +59,7 @@ jobs:
                   '',
                   '리뷰어가 곧 확인하겠습니다. CI 검사 결과를 확인해 주세요.',
                   '',
-                  '미션 PR이라면 [미션 스키마](docs/MISSION_SCHEMA.md)를 참고해 주세요.',
+                  `미션 PR이라면 [미션 스키마](${docs}/docs/MISSION_SCHEMA.md)를 참고해 주세요.`,
                 ].join('\n');
 
             await github.rest.issues.createComment({

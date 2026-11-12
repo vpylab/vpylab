@@ -21,7 +21,7 @@ const API = 'https://api.github.com';
 
 export const PROJECT_TOPIC = 'vpylab-project';
 export { GALLERY_TOPIC, MAX_THUMBNAIL_BYTES, THUMBNAIL_PATH };
-export const MAX_CODE_BYTES = 100 * 1024; // 서버 상한(server/routes/projects.js)과 같습니다.
+export const MAX_CODE_BYTES = 100 * 1024; // 드라이브 저장(drive/drive-storage.js)의 코드 상한과 같습니다.
 export const MAX_HISTORY_BYTES = 256 * 1024;
 export const MAX_HTML_BYTES = 1024 * 1024;
 export const DEFAULT_TIMEOUT_MS = 20_000;

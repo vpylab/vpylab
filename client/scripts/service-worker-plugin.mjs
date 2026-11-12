@@ -46,16 +46,8 @@ export function renderServiceWorker({ manifest, appShell, template = readFileSyn
     .replace('self.__PYODIDE_VERSION__', JSON.stringify(PYODIDE_VERSION));
 }
 
-let preferredAppShell = 'index.html';
-
-/**
- * SPA 진입 HTML 이름을 지정합니다. 기본은 index.html입니다.
- * 기본 설정을 mergeConfig로 확장하는 설정 파일에서 호출합니다(플러그인을 두 번 넣지 않기 위해).
- */
-export function setServiceWorkerAppShell(name) { preferredAppShell = name; }
-
 /** 번들에 있는 HTML 가운데 앱 셸을 고릅니다. 지정한 이름이 없으면 첫 HTML을 씁니다. */
-export function pickAppShell(manifest, preferred = preferredAppShell) {
+export function pickAppShell(manifest, preferred = 'index.html') {
   const htmls = manifest.filter(({ url }) => url.endsWith('.html')).map(({ url }) => url);
   if (htmls.includes(preferred)) return preferred;
   return htmls[0] || null;

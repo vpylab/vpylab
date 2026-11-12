@@ -13,11 +13,11 @@ import {
 import { loadSharedCode } from '../utils/share';
 import { workUrl } from '../utils/embed';
 
-/** 짧은 공유 주소(/s/:id)의 코드를 읽습니다. */
+/** 짧은 공유 주소(/s/:id)의 코드를 읽습니다. 읽지 못하면 work는 null이고, failed는 주소가 없는 것이 아니라 연결 실패라는 뜻입니다. */
 async function loadWork(id) {
   const { code, title, error } = await loadSharedCode(id);
-  if (error || !code) return null;
-  return { title: title || '', code };
+  if (error || !code) return { work: null, failed: error === 'unavailable' };
+  return { work: { title: title || '', code }, failed: false };
 }
 
 /**
@@ -36,6 +36,7 @@ export default function Embed() {
   const [loaded, setLoaded] = useState(null);
   const work = loaded?.id === id ? loaded.work : null;
   const notFound = loaded?.id === id && !loaded.work;
+  const missingText = loaded?.failed ? t('embed.loadFailed') : t('embed.notFound');
   const [lastError, setLastError] = useState('');
   const [soundOn, setSoundOn] = useState(() => isAudioUnlocked());
   const audio = useSyncExternalStore(subscribeAudioState, getAudioState, getAudioState);
@@ -67,7 +68,7 @@ export default function Embed() {
     let alive = true;
     autoRanRef.current = false;
     loadWork(id).then((result) => {
-      if (alive) setLoaded({ id, work: result });
+      if (alive) setLoaded({ id, ...result });
     });
     return () => { alive = false; };
   }, [id]);
@@ -110,7 +111,7 @@ export default function Embed() {
 
   const openUrl = work ? workUrl(id, window.location.origin) : `${window.location.origin}/`;
   const statusText = notFound
-    ? t('embed.notFound')
+    ? missingText
     : !work ? t('embed.loading')
       : isLoading ? `${t('embed.preparing')} ${progress ? `${progress}%` : ''} ${progressMessage || ''}`.trim()
         : lastError;
@@ -131,7 +132,7 @@ export default function Embed() {
           <BrandMark size={22} inverse={isDarkTheme} />
         </a>
         <span className="text-sm font-semibold truncate flex-1 min-w-0" title={work?.title || ''} data-testid="embed-title">
-          {work?.title || (notFound ? t('embed.notFound') : 'VPyLab')}
+          {work?.title || (notFound ? missingText : 'VPyLab')}
         </span>
         {(isRunning||audio.playing) ? (
           <button type="button" onClick={stop} className="toolbar-btn --stop" style={smallButton}>

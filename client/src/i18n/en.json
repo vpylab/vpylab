@@ -141,6 +141,7 @@
     "copyEmbed": "Copy embed code",
     "embedCopied": "Embed code copied",
     "notFound": "Work not found",
+    "loadFailed": "Couldn't load this work. Open it again in a moment.",
     "loading": "Loading work",
     "preparing": "Preparing the Python engine",
     "mute": "Mute",
@@ -175,6 +176,7 @@
   "sharedCode": {
     "loading": "Loading code...",
     "notFound": "Code not found",
+    "loadFailed": "Couldn't load the code. Check your connection, then open this link again.",
     "backHome": "Back to home"
   }
 }
