@@ -57,7 +57,7 @@ VPyLab을 전 세계 학교가 사용하는 오픈소스 서비스로 키우려�
 | 개인 코드·버전 | Supabase `vpylab_saved_code`·`vpylab_code_revisions` | 학생 드라이브 `VPyLab` 폴더, 버전은 드라이브 버전 기록 |
 | 미션 진행률 | localStorage + Supabase 동기화(2026-11-10부터 로그인 시 계정 기록을 내려받아 복원, 로그아웃 시 기기에서 삭제) | localStorage + 드라이브의 `progress.json` |
 | 공유 링크 | 짧은 링크(DB) + 코드를 담은 URL | 코드를 담은 URL만 |
-| 갤러리 | Supabase 목록·좋아요·조회수 | GitHub Pages 발행 결과의 정적 목록(좋아요·조회수 없음) |
+| 갤러리 | Supabase 목록·좋아요·조회수 | GitHub 저장소의 정적 목록. 좋아요는 GitHub 스타, 조회수 없음(2026-11-12 오픈소스 판에 구현, [DEPLOY_TWO_EDITIONS.md](DEPLOY_TWO_EDITIONS.md)의 "GitHub 연동 갤러리") |
 | 팀 프로젝트·동료 리뷰·교사 대시보드 | Supabase 일부 + 교실 서버 | 교실 서버(교사 맥북 LAN)로 일원화 |
 | 백엔드 | Railway Express | 없음. GitHub 발행을 유지하면 토큰 교환용 Vercel 함수 하나 |
 | DB | Supabase(pythink2와 같은 프로젝트) | VPyLab 테이블 삭제. pythink2용 프로젝트는 그대로 |

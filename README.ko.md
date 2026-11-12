@@ -57,7 +57,8 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 | 로그인 | 없음. 저장할 때 구글, 팀 프로젝트에서 GitHub를 브라우저에서 직접 연결 | 팀 프로젝트·갤러리·교사 도구에서 GitHub 또는 구글(Supabase Auth) |
 | 저장 | 학생 본인의 구글 드라이브, 파일 내려받기와 열기 | 구글 클라이언트 ID 설정 시 학생 본인의 구글 드라이브, 팀 프로젝트는 GitHub 저장소와 저장 이력 |
 | 팀 프로젝트 | GitHub 애드온(설정한 배포만) | 운영 서버 방식 |
-| 갤러리·팀·교사 도구 | 꺼짐 | 켜짐 |
+| 갤러리 | GitHub 연동 갤러리(서버 없음, 교사 승인, 설정한 배포만) | 켜짐(Supabase) |
+| 팀·교사 도구 | 꺼짐 | 켜짐 |
 | 빌드 설정 | `VITE_EDITION=open` | 기본값(`classroom`) |
 
 빌드와 배포 절차는 [docs/DEPLOY_TWO_EDITIONS.md](docs/DEPLOY_TWO_EDITIONS.md)에 있습니다.
