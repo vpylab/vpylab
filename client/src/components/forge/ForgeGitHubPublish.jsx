@@ -5,7 +5,7 @@ import { publishForgeModule } from '../../forge/github-registry.js';
 import { FORGE_GITHUB_TEXT } from '../../forge/forge-text.js';
 
 /**
- * 대장간 작업대의 공개 등록(GitHub 방식, 오픈소스 판의 애드온).
+ * 대장간 작업대의 공개 등록(GitHub 방식, 애드온).
  * GitHub에 연결한 학생의 저장소 `<아이디>/vpylab-forge`에 지금 모듈을 올립니다. 모두의 모듈에는 교사가 승인한 뒤에 표시됩니다.
  * 이 파일은 지연 로딩되고 AddonBoundary 안에서 그려집니다. 불러오지 못해도 대장간의 나머지는 그대로 동작합니다.
  * @param {object} props

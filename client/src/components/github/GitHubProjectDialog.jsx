@@ -24,7 +24,7 @@ function ExternalLink({ href, children }) {
 const firstLine = (text) => String(text || '').split('\n')[0];
 
 /**
- * GitHub 팀 프로젝트 대화상자(오픈소스 판 만들기 화면의 애드온).
+ * GitHub 팀 프로젝트 대화상자(만들기 화면의 애드온).
  *   mode='projects': 내 프로젝트 열기, 받은 초대 수락, 새 프로젝트 만들기, 연 프로젝트의 팀원·초대·저장 기록.
  *   mode='commit': 저장 메시지와 선택 기록 세 칸을 적어 연 프로젝트에 저장. 충돌·만료·권한 문제도 여기서 안내합니다.
  * GitHub 연결이 없거나 실패해도 이 창 안에서만 안내하고, 실행과 드라이브 저장에는 영향을 주지 않습니다.

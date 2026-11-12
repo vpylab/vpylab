@@ -20,7 +20,7 @@ export default defineConfig({
           if (id.includes('monaco-editor') || id.includes('@monaco-editor/react')) {
             return 'monaco';
           }
-          if (id.includes('/three/') || id.includes('@react-three/')) {
+          if (id.includes('/three/')) {
             return 'three';
           }
           if (

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { activeParameters, buildForgeModel, createRecipe, forgeCommands, forgeParameters, forgePresets, visibleForgePresets } from './recipes';
-import { builtInModule, factoryName, makeForgeModule, moduleDefinition, moduleFromPublishedCode, moduleProgram, parseModuleFile, readForgeShelf, writeForgeShelf, writeForgeDraft, saveForgeShelfModule, initialForgeShelf, stageForgeLogin } from './modules';
+import { builtInModule, factoryName, makeForgeModule, moduleDefinition, moduleFromPublishedCode, moduleProgram, parseModuleFile, readForgeShelf, writeForgeShelf, writeForgeDraft, saveForgeShelfModule } from './modules';
 import { hasPython, runPythonJobs } from '../test/python-runner';
 import { clearScene, getMesh, processBatch } from '../engine/vpython-bridge';
 import { getForgeTutorial } from '../data/forge-tutorial';
@@ -24,11 +24,10 @@ it('파일의 설정만 가져오며 잘못된 값·알 수 없는 형식·큰 �
   expect(parseModuleFile(JSON.stringify({...module,title:''})).title).toBe(module.title);
   expect(()=>parseModuleFile(JSON.stringify({...module,id:'../../wrong'}))).toThrow('ID');
 });
-it('다른 탭의 새 보관 모듈을 초안 저장으로 덮지 않고 로그인 때 게스트 작업을 이어 받는다',()=>{
-  const map=new Map(),storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)},sessions=new Map(),session={getItem:k=>sessions.get(k),setItem:(k,v)=>sessions.set(k,v)};
-  const a=builtInModule('cat'),b=builtInModule('bell');saveForgeShelfModule(null,a,storage);saveForgeShelfModule(null,b,storage);writeForgeDraft(null,a,storage);expect(readForgeShelf(null,storage).modules).toHaveLength(2);
-  writeForgeShelf('account',{modules:[],draft:b},storage);stageForgeLogin(a,[a],session);
-  const restored=initialForgeShelf('account',storage,session);expect(restored.pendingLogin).toBe(true);expect(restored.draft.id).toBe(a.id);expect(restored.modules.some(m=>m.id===b.id)).toBe(true);
+it('다른 탭의 새 보관 모듈을 초안 저장으로 덮지 않는다',()=>{
+  const map=new Map(),storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)};
+  const a=builtInModule('cat'),b=builtInModule('bell');saveForgeShelfModule(a,storage);saveForgeShelfModule(b,storage);writeForgeDraft(a,storage);
+  expect(readForgeShelf(storage).modules).toHaveLength(2);expect(readForgeShelf(storage).draft.id).toBe(a.id);
 });
 it('같은 레시피의 함수 이름은 안정적이고 Python 파일은 실행 진입점을 제공한다',()=>{
   const module=builtInModule('bear');expect(factoryName(module)).toBe(factoryName(builtInModule('bear')));expect(moduleProgram(module,{file:true})).toContain('if __name__ == "__main__":');
@@ -38,11 +37,13 @@ it('허용한 참고 링크 8개를 기록해도 공개 모듈을 다시 읽을 
   const module=makeForgeModule(createRecipe('bear'),{references});
   expect(moduleFromPublishedCode(moduleProgram(module)).references).toEqual(module.references);
 });
-it('계정별·버전별 보관, 손상 항목 복구와 용량 실패를 구별한다',()=>{
+it('이 브라우저의 보관함에 저장하고, 손상 항목 복구와 용량 실패를 구별한다',()=>{
   const map=new Map(),storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)},a=builtInModule('cat');
-  expect(writeForgeShelf('a',{modules:[a],draft:a},storage)).toBe(true);expect(readForgeShelf('a',storage).modules).toHaveLength(1);expect(readForgeShelf('b',storage).modules).toHaveLength(0);
-  expect(writeForgeShelf('a',{modules:[{bad:true},a],draft:{bad:true}},storage)).toBe(true);expect(readForgeShelf('a',storage)).toEqual({modules:[a],draft:null});
-  expect(writeForgeShelf('a',{}, {setItem:()=>{throw Error('quota');}})).toBe(false);
+  expect(readForgeShelf(storage)).toEqual({modules:[],draft:null});
+  expect(writeForgeShelf({modules:[a],draft:a},storage)).toBe(true);expect(readForgeShelf(storage).modules).toHaveLength(1);expect([...map.keys()]).toEqual(['vpylab:forge:v1:guest']);
+  expect(writeForgeShelf({modules:[{bad:true},a],draft:{bad:true}},storage)).toBe(true);expect(readForgeShelf(storage)).toEqual({modules:[a],draft:null});
+  map.set('vpylab:forge:v1:guest',JSON.stringify({version:2,modules:[a]}));expect(readForgeShelf(storage).modules).toHaveLength(0);
+  expect(writeForgeShelf({}, {setItem:()=>{throw Error('quota');}})).toBe(false);
 });
 describe.skipIf(!hasPython())('대장간 출력의 실제 Python·기하 의미',()=>{
   it.each(forgePresets.map(p=>[p.id]))('%s 미리보기와 내보낸 Python이 같은 경계 상자를 만든다',id=>{
@@ -92,11 +93,6 @@ describe.skipIf(!hasPython())('대장간 출력의 실제 Python·기하 의미'
     expect(waves.some(c=>c.action==='update'&&c.radius>2)).toBe(true);
     expect(waves.filter(c=>c.action==='update'&&c.visible===false).length).toBeGreaterThanOrEqual(3);
   });
-});
-it('로그인 창을 닫고 편집한 게스트의 최신 초안으로 이어 간다',()=>{
-  const map=new Map(),storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)},sessions=new Map(),session={getItem:k=>sessions.get(k),setItem:(k,v)=>sessions.set(k,v)};
-  const old=builtInModule('cat'),latest={...old,title:'로그인 전 마지막 편집'};stageForgeLogin(old,[],session);writeForgeDraft(null,latest,storage);
-  expect(initialForgeShelf('account',storage,session).draft.title).toBe(latest.title);
 });
 it('길이 경계의 공백·이모지 제목도 등록 후 그대로 다시 읽는다',()=>{
   for(const title of ['가'.repeat(75)+' · 내 포크','🙂'.repeat(81),'가'.repeat(79)+' 나']){

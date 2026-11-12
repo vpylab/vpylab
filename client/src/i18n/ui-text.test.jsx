@@ -25,9 +25,10 @@ describe('fixed UI and owned educational content in English', () => {
     expect(result.current.ui).toBe(ui);
     expect(result.current.text).toBe('Forge');
   });
-  it('localizes both full workbooks while preserving all executable code and original data', () => {
+  it('localizes the full workbook while preserving all executable code and original data', () => {
+    // 코스 목록의 교재는 "처음 만드는 빛과 소리" 하나입니다(GitHub 교재는 다시 쓸 때까지 목록에서 뺐습니다).
     const workbooks = courses.filter(course => course.workbook);
-    expect(workbooks).toHaveLength(2);
+    expect(workbooks).toHaveLength(1);
     for (const course of workbooks) {
       const snapshot = JSON.stringify(course);
       const localized = localizeCourse(course, 'en');

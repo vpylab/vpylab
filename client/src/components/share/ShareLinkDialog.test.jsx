@@ -9,10 +9,8 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-async function renderDialog(edition, props = {}, { lan = false } = {}) {
+async function renderDialog(props = {}) {
   vi.resetModules();
-  vi.stubEnv('VITE_EDITION', edition);
-  vi.stubEnv('VITE_LAN_MODE', lan ? '1' : '');
   const { I18nProvider } = await import('../../i18n');
   const { default: ShareLinkDialog } = await import('./ShareLinkDialog.jsx');
   return render(
@@ -22,11 +20,11 @@ async function renderDialog(edition, props = {}, { lan = false } = {}) {
   );
 }
 
-it('오픈소스 판은 이름을 정하면 주소와 QR이 그 이름으로 바뀐다', async () => {
+it('이름을 정하면 주소와 QR이 그 이름으로 바뀐다', async () => {
   const fetchSpy = vi.fn(async () => ({ ok: true, status: 201, json: async () => ({ id: 'solar', url: '/s/solar', editKey: 'secret-secret-secret-1', named: true }) }));
   vi.stubGlobal('fetch', fetchSpy);
   vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async () => {}) } });
-  await renderDialog('open');
+  await renderDialog();
 
   expect(screen.getByTestId('share-url')).toHaveValue(`${window.location.origin}/s/k7x2p9`);
   const input = screen.getByTestId('share-name-input');
@@ -42,19 +40,16 @@ it('오픈소스 판은 이름을 정하면 주소와 QR이 그 이름으로 바
 
 it('남이 쓰는 이름이면 안내를 보여 주고 주소는 그대로 둔다', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 409, json: async () => ({ code: 'name_taken' }) })));
-  await renderDialog('open');
+  await renderDialog();
   fireEvent.change(screen.getByTestId('share-name-input'), { target: { value: 'taken' } });
   fireEvent.click(screen.getByTestId('share-name-submit'));
   await waitFor(() => expect(screen.getByTestId('share-name-error')).toHaveTextContent('이미 다른 사람이 사용하는 이름입니다'));
   expect(screen.getByTestId('share-url')).toHaveValue(`${window.location.origin}/s/k7x2p9`);
 });
 
-it('수업용 판에도 이름 칸이 있고, 저장소가 없는 교실 LAN 모드에는 없다', async () => {
-  await renderDialog('');
+it('주소에 코드를 담은 링크(공유 ID 없음)로 열어도 이름 칸이 있다', async () => {
+  await renderDialog({ url: `${window.location.origin}/sandbox?view=run#code=abc`, shareId: null });
   expect(screen.getByTestId('share-name-form')).toBeInTheDocument();
-  cleanup();
-  await renderDialog('', {}, { lan: true });
-  expect(screen.queryByTestId('share-name-form')).toBeNull();
 });
 
 it('이름을 정하면 창을 열 때 만든 무작위 주소를 그 브라우저의 열쇠로 지운다', async () => {
@@ -64,7 +59,7 @@ it('이름을 정하면 창을 열 때 만든 무작위 주소를 그 브라우�
     : { ok: true, status: 201, json: async () => ({ id: 'solar', url: '/s/solar', editKey: 'secret-secret-secret-1', named: true }) }));
   vi.stubGlobal('fetch', fetchSpy);
   vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async () => {}) } });
-  await renderDialog('open');
+  await renderDialog();
 
   fireEvent.change(screen.getByTestId('share-name-input'), { target: { value: 'solar' } });
   fireEvent.click(screen.getByTestId('share-name-submit'));
@@ -82,7 +77,7 @@ it('무작위 주소를 이 창에서 복사했다면 이름을 정해도 지우
   const fetchSpy = vi.fn(async () => ({ ok: true, status: 201, json: async () => ({ id: 'solar', url: '/s/solar', editKey: 'secret-secret-secret-1', named: true }) }));
   vi.stubGlobal('fetch', fetchSpy);
   vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: vi.fn(async () => {}) } });
-  await renderDialog('open');
+  await renderDialog();
 
   fireEvent.click(screen.getByText(/링크 복사|Copy link/));
   fireEvent.change(screen.getByTestId('share-name-input'), { target: { value: 'solar' } });

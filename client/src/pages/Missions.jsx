@@ -46,13 +46,6 @@ export default function Missions() {
           })}</ol>
         </section>
         <p className="text-sm leading-relaxed mb-10"><Link to="/tutorials" style={{ color: 'var(--color-accent)' }}>{ko ? '연습한 것으로 내 작품을 만들고 싶다면 튜토리얼의 만들며 탐구하기로 →' : 'Use your practice in a project: Explore by making in Tutorials →'}</Link></p>
-        <section aria-labelledby="sharing-title" className="border-t pt-6" style={{ borderColor: 'var(--color-border)' }}>
-          <p className="text-xs mb-3" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '작품을 만든 다음 · 선택 4차시' : 'After making a project · 4 optional lessons'}</p>
-          <h2 id="sharing-title" className="font-display text-xl font-bold mb-3">{trainingCourses[1].title[lang]}</h2>
-          <p className="text-sm mb-3 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{trainingCourses[1].description[lang]}</p>
-          <p className="text-xs mb-5" style={{ color: 'var(--color-text-secondary)' }}>{trainingCourses[1].prerequisite[lang]}</p>
-          <Link to={`/courses/${trainingCourses[1].id}`} className="text-sm" style={{ color: 'var(--color-accent)' }}>{ko ? '저장과 공유 코스 열기' : 'Open saving and sharing'} →</Link>
-        </section>
       </main>
     </div>
   );

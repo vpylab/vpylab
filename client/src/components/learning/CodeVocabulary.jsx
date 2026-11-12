@@ -2,7 +2,6 @@ import useAppStore from '../../stores/appStore';
 import { useId, useMemo, useState } from 'react';
 import { vocabularyForCode } from '../../data/code-vocabulary';
 import { readWordHelp, rememberWord } from '../../utils/word-help';
-import useAuthStore from '../../stores/authStore';
 import './code-vocabulary.css';
 
 export function WordPicture({term,ko}){
@@ -13,12 +12,12 @@ export function WordPicture({term,ko}){
  if(term==='opacity')return <div className="vocabulary-opacity" aria-label={ko?'불투명도 0, 0.5, 1 비교':'Opacity 0, 0.5 and 1'}>{[0,.5,1].map(v=><div key={v}><span><i style={{opacity:v}}/></span><small>{v}</small></div>)}</div>;
  return <span className="vocabulary-initial" aria-hidden="true">{term[0]}</span>;
 }
-function WordHelp({code,locale='ko',showWhenEmpty=false,initiallyOpen=false,owner}){
+function WordHelp({code,locale='ko',showWhenEmpty=false,initiallyOpen=false}){
  const ko=locale==='ko',panelId=useId(),terms=useMemo(()=>vocabularyForCode(code),[code]);
- const [open,setOpen]=useState(initiallyOpen),[known,setKnown]=useState(()=>readWordHelp(owner).known),[showKnown,setShowKnown]=useState(false),[selected,setSelected]=useState(null),[expanded,setExpanded]=useState(false);
+ const [open,setOpen]=useState(initiallyOpen),[known,setKnown]=useState(()=>readWordHelp().known),[showKnown,setShowKnown]=useState(false),[selected,setSelected]=useState(null),[expanded,setExpanded]=useState(false);
  const remaining=showKnown?terms:terms.filter(t=>!known.includes(t.id)),active=remaining.find(t=>t.id===selected);
  if(!terms.length&&!showWhenEmpty)return null;
- const remember=()=>{setKnown(rememberWord(owner,active.id).known);setSelected(null);};
+ const remember=()=>{setKnown(rememberWord(active.id).known);setSelected(null);};
  return <aside className={'code-vocabulary'+(open?'':' is-collapsed')} aria-label={ko?'코드 속 작은 영어 사전':'Words in this code'}>
   <div className="vocabulary-heading"><button type="button" className="vocabulary-toggle" aria-expanded={open} aria-controls={panelId} onClick={()=>setOpen(v=>!v)}><span aria-hidden="true">Aa</span> {ko?'단어 뜻':'Word meanings'} <span aria-hidden="true">{open?'⌃':'⌄'}</span></button>{open&&<small>{ko?'궁금한 단어만 눌러보세요':'Choose a word'}</small>}</div>
   <div id={panelId}>{open&&<>
@@ -28,4 +27,4 @@ function WordHelp({code,locale='ko',showWhenEmpty=false,initiallyOpen=false,owne
   </>}</div>
  </aside>;
 }
-export default function CodeVocabulary(props){const locale=useAppStore(s=>s.locale);const owner=useAuthStore(s=>s.user?.id);return <WordHelp key={owner||'guest'} locale={locale} {...props} owner={owner}/>;}
+export default function CodeVocabulary(props){const locale=useAppStore(s=>s.locale);return <WordHelp locale={locale} {...props}/>;}

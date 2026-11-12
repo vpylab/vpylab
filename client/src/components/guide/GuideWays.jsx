@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUiText } from '../../i18n/ui-text';
-import { DRIVE_SAVE, OPEN_EDITION, TEAM_PROJECTS } from '../../lib/api-base';
+import { DRIVE_SAVE, TEAM_PROJECTS } from '../../lib/api-base';
 import HelpSlot from '../help/HelpSlot';
 import './guide-ways.css';
 
@@ -87,8 +87,8 @@ function Way({ number, when, title, tag, lead, notice, children }) {
 
 export default function GuideWays() {
   const ui = useUiText();
-  // 만들기 화면의 버튼 이름과 같게 맞춥니다(구글 드라이브 저장이 없는 배포에서는 "프로젝트").
-  const teamButton = ui(DRIVE_SAVE ? "팀 프로젝트" : "프로젝트");
+  // 만들기 화면의 버튼 이름과 같게 맞춥니다.
+  const teamButton = ui("팀 프로젝트");
   return (
     <section id="ways" className="guide-ways mb-10 scroll-mt-24">
       <h2 className="font-display text-xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>{ui("세 가지 방법으로 만들기")}</h2>
@@ -124,7 +124,7 @@ export default function GuideWays() {
           title={ui("구글 드라이브에 저장하기")}
           tag={ui("구글 계정")}
           lead={ui("다른 컴퓨터에서도 이어서 작업하려면 내 구글 드라이브에 저장합니다. 이는 1번 방법에 저장을 더하는 것이며 만드는 방법은 그대로입니다.")}
-          notice={!DRIVE_SAVE && <>{ui("이 사이트에는 구글 드라이브 저장이 설정되어 있지 않습니다.")}{OPEN_EDITION && <> {ui("1번 방법의 링크와 파일로 보관합니다.")}</>}</>}
+          notice={!DRIVE_SAVE && <>{ui("이 사이트에는 구글 드라이브 저장이 설정되어 있지 않습니다.")} {ui("1번 방법의 링크와 파일로 보관합니다.")}</>}
         >
           <MongSays id="arong">{ui("이 느낌, 어떻게 담아 볼까? 마음에 든 작품을 내 드라이브에 저장해 두면 다음에 이어서 고칠 수 있어.")}</MongSays>
           <ul className="guide-way-list">
@@ -149,12 +149,12 @@ export default function GuideWays() {
           <ul className="guide-way-list">
             <li>{ui`만들기 화면의 "${teamButton}" 버튼에서 GitHub 계정을 연결합니다. 13세 이상이 만들 수 있는 GitHub 계정이 필요합니다. 원하는 사람만 사용하는 선택 기능입니다.`}</li>
             <li>{ui("프로젝트 하나가 GitHub 저장소 하나입니다. 저장하면 커밋이 남습니다.")}</li>
-            <li>{OPEN_EDITION ? ui("팀원을 GitHub 아이디로 초대합니다.") : ui("이 사이트에서는 팀원이 초대 코드로 프로젝트에 합류합니다.")}</li>
+            <li>{ui("팀원을 GitHub 아이디로 초대합니다.")}</li>
             <li>{ui("팀원이 먼저 저장했으면 최신 코드를 가져온 뒤 저장합니다.")}</li>
           </ul>
           <WhereToPress groups={[[teamButton]]} />
-          {/* GitHub 아이디로 초대하는 배포(오픈소스 판의 GitHub 애드온)에서만 그 창의 순서를 보여 줍니다. */}
-          {OPEN_EDITION && TEAM_PROJECTS && <div className="guide-way-help"><HelpSlot topic="guide-team" /></div>}
+          {/* 팀 프로젝트(GitHub 애드온)가 설정된 배포에서만 그 창의 순서를 보여 줍니다. */}
+          {TEAM_PROJECTS && <div className="guide-way-help"><HelpSlot topic="guide-team" /></div>}
           <div className="guide-way-tips">
             <MongSays id="doran" size={56}>{ui("너는 어떻게 생각해? 같은 부분을 고치기 전에 누가 먼저 저장할지 팀원과 정하자.")}</MongSays>
             <MongSays id="ttukttak" size={56}>{ui`직접 만들어 볼까? "${teamButton}"에서 새 프로젝트를 하나 만들면 그것이 팀의 저장소가 돼.`}</MongSays>
@@ -162,13 +162,12 @@ export default function GuideWays() {
           <p className="guide-way-more">
             {ui("팀으로 함께 만들며 배우는 방법은 이 화면 아래쪽의")}{' '}
             <a href="#projects">{ui("팀 프로젝트 안내")}</a>{ui("에 이어집니다.")}
-            {OPEN_EDITION && <> {ui("아래쪽 팀 프로젝트 안내에 나오는 초대 코드는 수업용 사이트에서 사용하는 방식입니다.")}</>}
           </p>
         </Way>
       </ol>
-      {/* 공용 컴퓨터 사용을 마칠 때의 정리 순서. 구글 드라이브 저장이 있는 오픈소스 판의 버튼 이름으로 적혀 있어 그 배포에서만 보입니다.
+      {/* 공용 컴퓨터 사용을 마칠 때의 정리 순서. 구글 드라이브 저장의 버튼 이름으로 적혀 있어 그 배포에서만 보입니다.
           구역 id를 따로 두지 않아 목차는 그대로입니다. */}
-      {OPEN_EDITION && DRIVE_SAVE && <HelpSlot topic="guide-leaving" />}
+      {DRIVE_SAVE && <HelpSlot topic="guide-leaving" />}
     </section>
   );
 }

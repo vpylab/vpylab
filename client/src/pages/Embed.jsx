@@ -11,24 +11,13 @@ import {
   ensureAudioReady, isAudioUnlocked, stopAllSounds, stopBgm, setMasterMuted, getAudioState, subscribeAudioState,
 } from '../engine/sound-system';
 import { loadSharedCode } from '../utils/share';
-import { supabase } from '../lib/supabase';
-import { isGalleryId, workUrl } from '../utils/embed';
+import { workUrl } from '../utils/embed';
 
-/** 갤러리 작품 또는 공유 코드를 읽습니다. 공개 작품만 읽어 소유자가 로그인한 상태에서도 비공개 초안은 임베드되지 않습니다. */
+/** 짧은 공유 주소(/s/:id)의 코드를 읽습니다. */
 async function loadWork(id) {
-  if (isGalleryId(id)) {
-    const { data, error } = await supabase
-      .from('vpylab_gallery')
-      .select('title, code')
-      .eq('id', id)
-      .eq('is_public', true)
-      .single();
-    if (error || !data?.code) return null;
-    return { title: data.title || '', code: data.code, kind: 'gallery' };
-  }
   const { code, title, error } = await loadSharedCode(id);
   if (error || !code) return null;
-  return { title: title || '', code, kind: 'share' };
+  return { title: title || '', code };
 }
 
 /**

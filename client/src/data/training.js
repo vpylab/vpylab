@@ -2,7 +2,6 @@ const text = (ko, en) => ({ ko, en });
 
 export const trainingCourses = [
   { id: 'beg-light-sound', title: text('처음 만드는 빛과 소리', 'Your first light and sound project'), description: text('예상하고, 실행하고, 한 가지씩 바꾸며 나만의 알림 작품을 만듭니다.', 'Predict, run, and change one thing at a time to make your own signal.'), prerequisite: text('코딩이 처음이어도 시작할 수 있어요.', 'No coding experience needed.'), sessions: 8 },
-  { id: 'beg-github-project', title: text('작품 저장과 공유', 'Save and share your project'), description: text('만든 작품을 보관하고, 이전 시도로 돌아가고, 친구와 공유합니다.', 'Keep your work, revisit earlier attempts, and share with friends.'), prerequisite: text('작품을 만든 뒤 선택하세요. GitHub 연결은 나중에 해도 됩니다.', 'Optional after making a project. GitHub can wait.'), sessions: 4 },
 ];
 
 // ID는 기존 제출·학습 기록과 연결됩니다. 배열 순서만 훈련 순서로 정합니다.

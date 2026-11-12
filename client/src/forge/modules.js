@@ -127,25 +127,24 @@ export function moduleProgram(module,{file=false,metadata=!file}={}) {
   return (metadata?header+'\n':'')+'from vpython import *\n\n'+body+'\n'+(file?'if __name__ == "__main__":\n'+demo.map(s=>'    '+s).join('\n'):demo.join('\n'))+'\n';
 }
 export const FORGE_STORAGE_VERSION=1;
-const key=owner=>'vpylab:forge:v1:'+String(owner||'guest');
-export function readForgeShelf(owner, storage) {
+// 보관함과 초안은 이 브라우저에만 둡니다.
+export const FORGE_SHELF_KEY='vpylab:forge:v1:guest';
+export function readForgeShelf(storage) {
   try {
-    storage??=globalThis.localStorage;const value=JSON.parse(storage.getItem(key(owner))||'null');
+    storage??=globalThis.localStorage;const value=JSON.parse(storage.getItem(FORGE_SHELF_KEY)||'null');
     if(value?.version!==FORGE_STORAGE_VERSION)return {modules:[],draft:null};
     const modules=(Array.isArray(value.modules)?value.modules:[]).slice(0,50).flatMap(m=>{try{return [parseModuleFile(JSON.stringify(m))]}catch{return []}});
     let draft=null;try{if(value.draft)draft=parseModuleFile(JSON.stringify(value.draft));}catch{ /* 손상된 초안만 제외 */ }
     return {modules,draft};
   }catch{return {modules:[],draft:null};}
 }
-export function writeForgeShelf(owner,value,storage) {
-  try {storage??=globalThis.localStorage;storage.setItem(key(owner),JSON.stringify({version:FORGE_STORAGE_VERSION,...value}));return true;}catch{return false;}
+export function writeForgeShelf(value,storage) {
+  try {storage??=globalThis.localStorage;storage.setItem(FORGE_SHELF_KEY,JSON.stringify({version:FORGE_STORAGE_VERSION,...value}));return true;}catch{return false;}
 }
 // 초안 변경이 다른 탭의 새 보관 모듈을 오래된 목록으로 덮지 않게 분리합니다.
-export function writeForgeDraft(owner,draft,storage){const saved=readForgeShelf(owner,storage);return writeForgeShelf(owner,{...saved,draft},storage);}
-export function saveForgeShelfModule(owner,module,storage){const saved=readForgeShelf(owner,storage),modules=[module,...saved.modules.filter(m=>m.id!==module.id)].slice(0,50);return {modules,saved:writeForgeShelf(owner,{...saved,modules},storage)};}
-export function removeForgeShelfModule(owner,id,storage){const saved=readForgeShelf(owner,storage),modules=saved.modules.filter(m=>m.id!==id);return {modules,saved:writeForgeShelf(owner,{...saved,modules},storage)};}
-export const FORGE_LOGIN_TRANSFER='vpylab:forge:login-transfer:v1';
-export function stageForgeLogin(draft,modules,session){try{session??=globalThis.sessionStorage;session.setItem(FORGE_LOGIN_TRANSFER,JSON.stringify({draft,modules,at:Date.now()}));return true;}catch{return false;}}
+export function writeForgeDraft(draft,storage){const saved=readForgeShelf(storage);return writeForgeShelf({...saved,draft},storage);}
+export function saveForgeShelfModule(module,storage){const saved=readForgeShelf(storage),modules=[module,...saved.modules.filter(m=>m.id!==module.id)].slice(0,50);return {modules,saved:writeForgeShelf({...saved,modules},storage)};}
+export function removeForgeShelfModule(id,storage){const saved=readForgeShelf(storage),modules=saved.modules.filter(m=>m.id!==id);return {modules,saved:writeForgeShelf({...saved,modules},storage)};}
 // 구형의 손대지 않은 시작 초안만 새 메인 모양으로 바꿉니다. 저장/포크는 보존합니다.
 export function refreshForgeStarterDraft(module,savedModules=[]) {
   if(savedModules.some(saved=>saved.id===module?.id))return module;
@@ -153,16 +152,5 @@ export function refreshForgeStarterDraft(module,savedModules=[]) {
   const old={width:2.1,height:1.95,depth:1.7,eyeSize:.18,eyeGap:.18,cheekSize:.23,earLength:.55,armSize:.55,feetSize:.55,wall:.14,point:.48,tone:880};
   if(module.recipe.expression!=='smile'||module.recipe.accessory!=='none'||module.recipe.colors.join(',')!=='#f8a8cc,#da4772'||Object.entries(old).some(([k,v])=>module.recipe.params[k]!==v))return module;
   return makeForgeModule(createRecipe('kirby'),module);
-}
-export function initialForgeShelf(owner,storage,session){
-  const saved=readForgeShelf(owner,storage),guest=owner?readForgeShelf(null,storage):null;
-  if(owner)try{
-    session??=globalThis.sessionStorage;const transfer=JSON.parse(session.getItem(FORGE_LOGIN_TRANSFER)||'null');
-    if(transfer&&Date.now()-transfer.at>=0&&Date.now()-transfer.at<15*60*1000){
-      const draft=parseModuleFile(JSON.stringify(guest?.draft||transfer.draft)),modules=[...(Array.isArray(transfer.modules)?transfer.modules:[]),...saved.modules,...(saved.draft?[saved.draft]:[])].flatMap(m=>{try{return[parseModuleFile(JSON.stringify(m))]}catch{return[]}});
-      return {draft,modules:[...new Map(modules.map(m=>[m.id,m])).values()].slice(0,50),pendingLogin:true,guestDraft:guest?.draft};
-    }
-  }catch{/* 이관 자료가 손상되면 계정의 원래 작업을 읽습니다. */}
-  return {...saved,guestDraft:guest?.draft,pendingLogin:false};
 }
 export function builtInModule(presetId){return makeForgeModule(createRecipe(presetId),{id:'builtin-'+presetId});}

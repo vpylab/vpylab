@@ -1,3 +1,6 @@
+// 주의: 이 교재는 2026-11-12에 지운 계정 로그인·초대 코드·저장 이력 방식을 설명합니다.
+// 앱의 코스 목록(courses.js)과 트레이닝에서 뺐고, 구글 드라이브 저장과 GitHub 팀 프로젝트 기준으로 다시 쓸 때까지
+// 코드 없는 교재 화면의 테스트 자료(WorkbookCourse.test.jsx)로만 사용합니다.
 const githubProjectCourse = {
   "id": "beg-github-project",
   "track": "beginner",

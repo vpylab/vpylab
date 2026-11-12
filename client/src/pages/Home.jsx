@@ -4,7 +4,6 @@ import Header from '../components/layout/Header';
 import { useI18n } from '../i18n/useI18n';
 import '../components/home/home.css';
 import { writePersonalHome } from '../utils/personal-home';
-import useAuthStore from '../stores/authStore';
 import usePersonalHome from '../hooks/usePersonalHome';
 import HomePreviewBoundary from '../components/home/HomePreviewBoundary';
 import HomeSettingsDialog from '../components/home/HomeSettingsDialog';
@@ -17,9 +16,9 @@ const PersonalHomeProject=lazy(()=>import('../components/home/PersonalHomeProjec
 export default function Home() {
   const { locale } = useI18n();
   const ko = locale === 'ko';
-  const user=useAuthStore(s=>s.user),authLoading=useAuthStore(s=>s.loading),home=usePersonalHome(user?.id),[settings,setSettings]=useState(false);
-  const personal=authLoading||home?.enabled===false?null:home;
-  const saveLights=lights=>{if(useAuthStore.getState().loading||(useAuthStore.getState().user?.id||'guest')!==(user?.id||'guest'))return{ok:false,error:ko?'계정이 바뀌었습니다. 다시 시도해 주세요.':'Your account changed. Try again.'};return writePersonalHome(user?.id,{lights});};
+  const home=usePersonalHome(),[settings,setSettings]=useState(false);
+  const personal=home?.enabled===false?null:home;
+  const saveLights=lights=>writePersonalHome({lights});
   const paths = [
     { number: '01', title: ko ? '트레이닝' : 'Training', description: ko ? '변수부터 반복까지, 작은 작품을 만들며 차근차근 배워요.' : 'Learn step by step, from variables to loops and a small project.', to: '/missions' },
     { number: '02', title: ko ? '튜토리얼' : 'Tutorials', description: ko ? '빛과 소리, 움직임과 클릭. 궁금한 기능부터 짧게 체험해요.' : 'Explore light, sound, motion, and clicks in a short experience.', to: '/tutorials' },
@@ -29,7 +28,7 @@ export default function Home() {
     <div className="min-h-screen w-full min-w-0 flex flex-col" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)', ...(personal?.background?{backgroundImage:'linear-gradient(135deg,'+personal.background+'38,transparent 65%)'}:{}) }}>
       <Header />
       <main className="flex-1 w-full max-w-6xl mx-auto px-6 md:px-10">
-        <div className="home-customize-entry"><button type="button" disabled={authLoading} onClick={()=>setSettings(true)}>{ko?'내 메인 꾸미기':'Customize my home'}</button></div>
+        <div className="home-customize-entry"><button type="button" onClick={()=>setSettings(true)}>{ko?'내 메인 꾸미기':'Customize my home'}</button></div>
         <section className="home-hero">
           <div>
           <p className="text-xs font-semibold tracking-widest mb-6" style={{ color: 'var(--color-accent)' }}>{ko ? '코드가 눈앞의 작품으로, VPyLab' : 'YOUR CODE COMES TO LIFE, VPyLab'}</p>
@@ -41,14 +40,14 @@ export default function Home() {
           </div>
           <p className="mt-4 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '설치나 로그인 없이 시작할 수 있어요.' : 'Start without installing or signing in.'}</p>
           </div>
-          <Suspense fallback={<div className="welcome-friends" aria-hidden="true"><div className="welcome-stage" /></div>}>{authLoading?<div className="welcome-friends" role="status" aria-label={ko?'내 메인 준비 중':'Preparing home'}><div className="welcome-stage"/></div>:personal?.showProject!==false&&personal?.project?<HomePreviewBoundary key={(user?.id||'guest')+personal.project.code} project={personal.project} ko={ko}><PersonalHomeProject project={personal.project} ko={ko}/></HomePreviewBoundary>:<WelcomeFriends ko={ko} lightSettings={home?.lights} onLightChange={saveLights}/>}</Suspense>
+          <Suspense fallback={<div className="welcome-friends" aria-hidden="true"><div className="welcome-stage" /></div>}>{personal?.showProject!==false&&personal?.project?<HomePreviewBoundary key={personal.project.code} project={personal.project} ko={ko}><PersonalHomeProject project={personal.project} ko={ko}/></HomePreviewBoundary>:<WelcomeFriends ko={ko} lightSettings={home?.lights} onLightChange={saveLights}/>}</Suspense>
         </section>
         <section className="pb-14" aria-labelledby="learning-path-title">
           <h2 id="learning-path-title" className="text-sm font-semibold pb-5" style={{ borderBottom: '1px solid var(--color-border)' }}>{ko ? '체험에서 내 작품까지' : 'From trying to creating'}</h2>
           <ol className="home-paths">{paths.map(path => <li key={path.to}><Link to={path.to}><span className="home-path-number" aria-hidden="true">{path.number}</span><h3>{path.title} <span aria-hidden="true">↗</span></h3><p>{path.description}</p></Link></li>)}</ol>
         </section>
       </main>
-      {settings&&<HomeSettingsDialog key={user?.id||'guest'} userId={user?.id} ko={ko} onClose={()=>setSettings(false)}/>}
+      {settings&&<HomeSettingsDialog ko={ko} onClose={()=>setSettings(false)}/>}
       <footer className="w-full max-w-6xl mx-auto px-6 md:px-10 pb-8 text-xs flex justify-between gap-5 flex-wrap" style={{ color: 'var(--color-text-secondary)' }}>
         <Link to="/sandbox" className="no-underline" style={{ color: 'inherit' }}>{ko ? '바로 만들기 →' : 'Create now →'}</Link>
         <div className="flex gap-5"><Link to="/guide" className="no-underline" style={{ color: 'inherit' }}>{ko ? '사용 안내' : 'Guide'}</Link><Link to="/privacy" className="no-underline" style={{ color: 'inherit' }}>{ko ? '개인정보 처리방침' : 'Privacy'}</Link></div>

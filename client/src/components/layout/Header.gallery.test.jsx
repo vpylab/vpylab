@@ -11,7 +11,7 @@ afterEach(() => {
 
 async function renderHeader(env) {
   vi.resetModules();
-  for (const [key, value] of Object.entries({ VITE_LAN_MODE: '', VITE_GALLERY_INDEX_URL: '', ...env })) vi.stubEnv(key, value);
+  for (const [key, value] of Object.entries({ VITE_GALLERY_INDEX_URL: '', ...env })) vi.stubEnv(key, value);
   const { MemoryRouter } = await import('react-router-dom');
   const { I18nProvider } = await import('../../i18n/index.jsx');
   const { default: useAppStore } = await import('../../stores/appStore');
@@ -23,19 +23,20 @@ async function renderHeader(env) {
 const galleryLinks = () => screen.queryAllByRole('link', { name: '갤러리' });
 
 describe('머리글의 갤러리 메뉴', () => {
-  it('오픈소스 판은 갤러리 목록 주소가 설정된 배포에서만 갤러리 메뉴를 보인다', async () => {
-    await renderHeader({ VITE_EDITION: 'open', VITE_GALLERY_INDEX_URL: INDEX_URL });
+  it('갤러리 목록 주소가 설정된 배포에서 갤러리 메뉴를 보인다', async () => {
+    await renderHeader({ VITE_GALLERY_INDEX_URL: INDEX_URL });
     expect(galleryLinks()[0]).toHaveAttribute('href', '/gallery');
   });
 
-  it('목록 주소가 없는 오픈소스 판에는 갤러리 메뉴가 없다', async () => {
-    await renderHeader({ VITE_EDITION: 'open' });
-    expect(galleryLinks()).toHaveLength(0);
+  it('목록 주소가 없는 배포에서도 갤러리 메뉴를 보인다', async () => {
+    await renderHeader({});
+    expect(galleryLinks()[0]).toHaveAttribute('href', '/gallery');
     expect(screen.getAllByRole('link', { name: '만들기' }).length).toBeGreaterThan(0);
   });
 
-  it('수업용 판은 기존대로 갤러리 메뉴를 보인다', async () => {
-    await renderHeader({ VITE_EDITION: '' });
-    expect(galleryLinks()[0]).toHaveAttribute('href', '/gallery');
+  it('로그인 버튼과 계정 메뉴가 없다', async () => {
+    await renderHeader({});
+    expect(screen.queryByRole('button', { name: '로그인' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '내 계정' })).toBeNull();
   });
 });

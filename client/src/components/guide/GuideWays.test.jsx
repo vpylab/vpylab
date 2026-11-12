@@ -14,13 +14,12 @@ afterEach(() => {
 });
 
 /** 배포마다 켜진 기능이 달라 api-base의 값을 바꿔 가며 화면을 그립니다. */
-async function renderWays({ drive = true, team = true, open = true, locale = 'ko' } = {}) {
+async function renderWays({ drive = true, team = true, locale = 'ko' } = {}) {
   vi.resetModules();
   vi.doMock('../../lib/api-base', async (importOriginal) => ({
     ...(await importOriginal()),
     DRIVE_SAVE: drive,
     TEAM_PROJECTS: team,
-    OPEN_EDITION: open,
   }));
   const { default: useAppStore } = await import('../../stores/appStore');
   useAppStore.setState({ locale });
@@ -103,33 +102,22 @@ describe('사용 안내: 세 가지 방법으로 만들기', () => {
     expect(steps[0].querySelector('.guide-way-notice')).toBeNull();
     expect(within(steps[1]).getByRole('note')).toHaveTextContent('이 사이트에는 구글 드라이브 저장이 설정되어 있지 않습니다. 1번 방법의 링크와 파일로 보관합니다.');
     expect(within(steps[2]).getByRole('note')).toHaveTextContent('이 사이트에는 팀 프로젝트가 설정되어 있지 않습니다.');
-    // 구글 드라이브 저장이 없는 배포의 만들기 화면에서는 버튼 이름이 "프로젝트"다
-    expect(within(steps[2]).getByText(/"프로젝트" 버튼에서 GitHub 계정을 연결합니다/)).toBeInTheDocument();
-    expect([...steps[2].querySelectorAll('span.guide-way-key')].map(key => key.textContent)).toEqual(['프로젝트']);
-  });
-
-  it('수업용 판에서는 초대 코드로 합류한다고 안내하고 GitHub 아이디 초대는 말하지 않는다', async () => {
-    const { container } = await renderWays({ open: false, drive: false });
-    const steps = container.querySelectorAll('ol.guide-ways-steps > li');
-    expect(within(steps[2]).getByText('이 사이트에서는 팀원이 초대 코드로 프로젝트에 합류합니다.')).toBeInTheDocument();
-    expect(screen.queryByText('팀원을 GitHub 아이디로 초대합니다.')).toBeNull();
-    expect(screen.queryByText(/수업용 사이트에서 사용하는 방식입니다/)).toBeNull();
-    expect(within(steps[2]).getByRole('link', { name: '팀 프로젝트 안내' })).toHaveAttribute('href', '#projects');
-    // 수업용 판은 계정에 저장하는 예전 방식이 있을 수 있어 "링크와 파일로 보관"까지는 말하지 않는다
-    expect(within(steps[1]).getByRole('note')).toHaveTextContent(/^이 사이트에는 구글 드라이브 저장이 설정되어 있지 않습니다\.$/);
+    // 버튼 이름은 켜진 기능과 관계없이 만들기 화면의 "팀 프로젝트"다
+    expect(within(steps[2]).getByText(/"팀 프로젝트" 버튼에서 GitHub 계정을 연결합니다/)).toBeInTheDocument();
+    expect([...steps[2].querySelectorAll('span.guide-way-key')].map(key => key.textContent)).toEqual(['팀 프로젝트']);
+    expect(within(steps[2]).getByText('팀원을 GitHub 아이디로 초대합니다.')).toBeInTheDocument();
   });
 
   it.each([
-    ['모든 기능이 켜진 공개판', { open: true, drive: true, team: true }],
-    ['기능이 꺼진 공개판', { open: true, drive: false, team: false }],
-    ['수업용 판', { open: false, drive: false, team: true }],
+    ['모든 기능이 켜진 배포', { drive: true, team: true }],
+    ['기능이 꺼진 배포', { drive: false, team: false }],
+    ['팀 프로젝트만 켜진 배포', { drive: false, team: true }],
   ])('영어 화면에서는 글과 대체 글이 모두 번역된다: %s', async (_name, flags) => {
     const { container } = await renderWays({ ...flags, locale: 'en' });
     expect(screen.getByRole('heading', { level: 2, name: 'Three ways to make' })).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/[가-힣]/);
     for (const image of container.querySelectorAll('img')) expect(image.alt).not.toMatch(/[가-힣]/);
-    const teamButton = flags.drive ? 'Team projects' : 'Projects';
-    expect(screen.getByText(new RegExp(`from the "${teamButton}" button on the Create screen`))).toBeInTheDocument();
+    expect(screen.getByText(/from the "Team projects" button on the Create screen/)).toBeInTheDocument();
   });
 });
 
@@ -181,15 +169,16 @@ describe('사용 안내: 단계 카드의 자세한 순서(그 자리 안내와 
     expect(steps[5]).toBe('브라우저 창을 닫습니다.');
   });
 
-  it('꺼진 기능의 창 안내는 보이지 않고, 수업용 판에서는 GitHub 아이디 초대 순서를 보이지 않는다', async () => {
+  it('꺼진 기능의 창 안내는 보이지 않는다', async () => {
     const off = await renderWays({ drive: false, team: false });
     await screen.findByRole('button', { name: '파일로 보관하는 순서' });
     expect(off.container.querySelector('[data-help="guide-drive"], [data-help="guide-team"], [data-help="guide-leaving"]')).toBeNull();
     cleanup();
-    const classroom = await renderWays({ open: false, drive: true, team: true });
+    // 구글 드라이브 저장만 켜진 배포: 드라이브 안내와 공용 컴퓨터 정리 순서는 보이고 GitHub 창 안내는 보이지 않는다
+    const driveOnly = await renderWays({ drive: true, team: false });
     await screen.findByRole('button', { name: '처음 로그인할 때 구글 창에서 할 일' });
-    // 수업용 판의 팀 프로젝트와 로그아웃은 버튼이 달라, GitHub 창 안내와 공용 컴퓨터 정리 순서는 오픈소스 판에서만 보인다
-    expect(classroom.container.querySelector('[data-help="guide-team"], [data-help="guide-leaving"]')).toBeNull();
+    expect(driveOnly.container.querySelector('[data-help="guide-team"]')).toBeNull();
+    expect(driveOnly.container.querySelector('[data-help="guide-drive"]')).not.toBeNull();
   });
 
   it('영어 화면에서는 펼친 안내의 글과 대체 설명도 모두 번역된다', async () => {

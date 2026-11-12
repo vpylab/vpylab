@@ -1,12 +1,11 @@
 /**
- * GitHub 팀 프로젝트 애드온의 GitHub API 모듈 (오픈소스 판).
+ * GitHub 팀 프로젝트 애드온의 GitHub API 모듈.
  *
  * 브라우저가 api.github.com을 직접 호출합니다. VPyLab 운영 서버와 DB는 거치지 않습니다.
- * 수업용 판의 서버(server/routes/projects.js)가 실전에서 다듬은 동작을 옮겨 적었습니다.
+ * 예전 운영 서버가 실전에서 다듬은 동작을 옮겨 적었습니다.
  *   - 새 저장소의 첫 커밋: 준비가 늦는 저장소 재시도, 빈 저장소는 Contents API로 첫 파일을 만든 뒤 맞춤
  *   - 저장: 파일 여러 개를 한 커밋으로 올리고, 브랜치(ref) 갱신이 충돌하면 강제로 밀지 않음
  *   - GitHub Pages 켜기 재시도, 2단계 인증 요구 구분, 저장소·사용자 이름 검증
- * Supabase(로그인, vpylab_* 테이블)와 관련된 부분은 옮기지 않았습니다.
  *
  * 프로젝트 = 공개 저장소 하나. topic `vpylab-project`가 붙은 저장소를 VPyLab 프로젝트로 봅니다.
  * 갤러리에 올린 프로젝트에는 topic `vpylab-gallery`가 더 붙습니다(목록은 scripts/gallery/가 만듭니다).

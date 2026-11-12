@@ -155,7 +155,7 @@ function WorkDialog({ item, github, onClose }) {
 }
 
 /**
- * GitHub 연동 갤러리의 본문(오픈소스 판 애드온, docs/SCOPE.md).
+ * GitHub 연동 갤러리의 본문(애드온, docs/SCOPE.md).
  * 정적 목록 파일을 읽어 카드로 보여 줍니다. 목록을 읽지 못해도 이 안에서만 안내하고 다른 화면에는 영향을 주지 않습니다.
  *
  * @param {object} props

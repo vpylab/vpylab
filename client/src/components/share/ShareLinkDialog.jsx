@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../../i18n/useI18n';
 import { useUiText } from '../../i18n/ui-text';
-import { SHARE_NAMES } from '../../lib/api-base';
 import { copyEmbedCode } from '../../utils/embed';
 import { claimShareName, discardShareLink } from '../../utils/share';
 import QRCodeModal from './QRCodeModal';
@@ -10,7 +9,7 @@ import QRCodeModal from './QRCodeModal';
 /**
  * 공유 링크를 만든 직후 보여 주는 작은 대화상자.
  * 링크 복사·QR 보기·임베드 코드 복사·새 탭 열기를 한곳에 둡니다.
- * 오픈소스 판(SHARE_NAMES)은 무작위 주소 대신 쓸 짧은 이름을 정할 수 있습니다(/s/<이름>).
+ * 무작위 주소 대신 쓸 짧은 이름을 정할 수 있습니다(/s/<이름>).
  */
 // 이름 칸 문구: docs/reference/solar/short-share-261109-solar.md (블록 2~12)
 export default function ShareLinkDialog({ url: initialUrl, shareId: initialShareId, title, code, onClose }) {
@@ -23,7 +22,7 @@ export default function ShareLinkDialog({ url: initialUrl, shareId: initialShare
   const [naming, setNaming] = useState({ busy: false, message: '', error: '' });
   const url = link.url;
   const shareId = link.shareId;
-  const canName = SHARE_NAMES && typeof code === 'string';
+  const canName = typeof code === 'string';
   // 창을 열 때 만든 무작위 주소. 이름을 정하면 쓰이지 않으므로 지웁니다.
   // 다만 이 창에서 그 주소를 복사·QR·임베드·열기로 사용했다면 이미 누군가에게 전했을 수 있어 남겨 둡니다.
   const firstLink = useRef({ id: initialShareId, used: false, discarded: false });

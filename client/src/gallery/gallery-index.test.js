@@ -99,23 +99,15 @@ describe('갤러리를 켜는 설정(VITE_GALLERY_INDEX_URL)', () => {
     return import('../lib/api-base.js');
   }
 
-  it('오픈소스 판에서 목록 주소가 있을 때만 켜진다', async () => {
-    expect((await flags({ VITE_EDITION: 'open', VITE_GALLERY_INDEX_URL: `  ${URL_OK} ` })).GITHUB_GALLERY).toBe(true);
-    expect((await flags({ VITE_EDITION: 'open', VITE_GALLERY_INDEX_URL: URL_OK })).GALLERY_INDEX_URL).toBe(URL_OK);
-    expect((await flags({ VITE_EDITION: 'open', VITE_GALLERY_INDEX_URL: '' })).GITHUB_GALLERY).toBe(false);
-    expect((await flags({ VITE_EDITION: 'open', VITE_GALLERY_INDEX_URL: 'https://example.com/gallery.json' })).GITHUB_GALLERY).toBe(false);
-  });
-
-  it('수업용 판은 목록 주소가 있어도 기존 갤러리를 그대로 사용한다', async () => {
-    const m = await flags({ VITE_EDITION: '', VITE_LAN_MODE: '', VITE_GALLERY_INDEX_URL: URL_OK });
-    expect(m.GITHUB_GALLERY).toBe(false);
-    expect(m.GALLERY_INDEX_URL).toBe('');
-    expect(m.SERVER_FEATURES).toBe(true);
+  it('허용된 목록 주소가 있을 때만 켜진다', async () => {
+    expect((await flags({ VITE_GALLERY_INDEX_URL: `  ${URL_OK} ` })).GITHUB_GALLERY).toBe(true);
+    expect((await flags({ VITE_GALLERY_INDEX_URL: URL_OK })).GALLERY_INDEX_URL).toBe(URL_OK);
+    expect((await flags({ VITE_GALLERY_INDEX_URL: '' })).GITHUB_GALLERY).toBe(false);
+    expect((await flags({ VITE_GALLERY_INDEX_URL: 'https://example.com/gallery.json' })).GITHUB_GALLERY).toBe(false);
   });
 
   it('갤러리가 꺼진 배포에서는 목록을 읽으려 해도 요청하지 않는다(애드온을 사용할 수 없는 경우)', async () => {
     vi.resetModules();
-    vi.stubEnv('VITE_EDITION', 'open');
     vi.stubEnv('VITE_GALLERY_INDEX_URL', '');
     const { loadGalleryIndex: load, GalleryLoadError: LoadError } = await import('./gallery-index.js');
     const fetchImpl = vi.fn();

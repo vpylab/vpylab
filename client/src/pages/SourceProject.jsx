@@ -26,7 +26,7 @@ export default function SourceProject() {
   return <div className="min-h-screen" style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-primary)' }}>
     <Header />
     <main className="max-w-3xl mx-auto px-6 py-10">
-      <Link to="/gallery" className="text-sm" style={{ color: 'var(--color-accent)' }}>← {ko ? '갤러리' : 'Gallery'}</Link>
+      <Link to="/gallery/glowscript" className="text-sm" style={{ color: 'var(--color-accent)' }}>← {ko ? '갤러리' : 'Gallery'}</Link>
       {!project ? <h1 className="text-2xl my-8">{ko ? '프로젝트를 찾을 수 없습니다.' : 'Project not found.'}</h1> : <>
         <p className="text-xs mt-8 mb-3" style={{ color: 'var(--color-text-secondary)' }}>{ko ? project.credit : project.kind==='student' ? 'Student project' : 'Teacher/reference project'} · {project.folder}</p>
         <h1 className="font-display text-3xl font-bold mb-5 break-words">{project.title}</h1>

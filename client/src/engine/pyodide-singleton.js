@@ -297,13 +297,6 @@ export function prewarm() {
   }
 }
 
-/** 계정이 바뀌면 패키지·파일을 포함한 Python VM 전체를 비웁니다. */
-export function resetForSessionChange() {
-  const restart = listeners.size > 0;
-  hardStop();
-  if (restart) void initIfNeeded().catch(() => {});
-}
-
 // 참고 자료를 보는 동안에도 보관합니다. 배경 탭의 타이머 지연은 벽시계로 보완합니다.
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', expireIdleWorker);

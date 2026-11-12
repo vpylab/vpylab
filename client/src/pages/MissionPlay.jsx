@@ -18,19 +18,14 @@ import { getMissionById } from '../data/missions';
 import { getTrainingPosition } from '../data/training';
 
 import useAppStore from '../stores/appStore';
-import useCodeStore from '../stores/codeStore';
-import useAuthStore from '../stores/authStore';
 
 /**
  * 미션 플레이 페이지
  * Sandbox와 유사하지만 미션 설명 + 채점 기능이 추가됨
  */
-const userIdForDraft = () => useAuthStore.getState().user?.id;
-
 export default function MissionPlay() {
   const { missionId } = useParams();
-  const userId = useAuthStore(s => s.user?.id);
-  return <MissionSession key={`${missionId}:${userId || 'guest'}`} missionId={missionId} />;
+  return <MissionSession key={missionId} missionId={missionId} />;
 }
 
 function MissionSession({ missionId }) {
@@ -41,10 +36,7 @@ function MissionSession({ missionId }) {
 
   const mission = getMissionById(missionId);
   const completeMission = useAppStore((s) => s.completeMission);
-  const { user } = useAuthStore();
-  const { autoSave, clearAutoSave, saveStatus, loadMissionCode } = useCodeStore();
-  const [code, setCode] = useState(() => readPracticeDraft(`mission/${missionId}`, userIdForDraft()) ?? mission?.starterCode ?? '');
-  const latestCodeRef = useRef(code);
+  const [code, setCode] = useState(() => readPracticeDraft(`mission/${missionId}`) ?? mission?.starterCode ?? '');
   const [outputs, setOutputs] = useState([]);
   const [gradeResult, setGradeResult] = useState(null);
   const [hintIndex, setHintIndex] = useState(-1);
@@ -60,32 +52,11 @@ function MissionSession({ missionId }) {
 
   useEffect(() => { initAudioOnUserGesture(); }, []);
 
-  // 같은 탭의 수정본을 우선 복원하고 늦게 도착한 이전 차시 응답은 버린다.
-  useEffect(() => {
-    let cancelled = false;
-    const context = `mission/${missionId}`;
-    const local = readPracticeDraft(context, user?.id);
-    if (user && missionId && local === null) {
-      loadMissionCode(missionId).then(saved => {
-        if (!cancelled && saved && readPracticeDraft(context,user.id) === null && latestCodeRef.current === mission?.starterCode) { latestCodeRef.current=saved; setCode(saved); }
-      });
-    }
-    return () => { cancelled = true; clearAutoSave(); };
-  }, [missionId, user, mission, loadMissionCode, clearAutoSave]);
-
   const changeCode = value => {
     const next = value || '';
-    latestCodeRef.current = next;
-    writePracticeDraft(`mission/${missionId}`,next,mission?.starterCode,user?.id);
+    writePracticeDraft(`mission/${missionId}`,next,mission?.starterCode);
     setCode(next);
   };
-
-  // 자동 저장: 코드 변경 시 2초 debounce
-  useEffect(() => {
-    if (user && code && mission) {
-      autoSave(code, { title: ui`미션: ${mission.title[lang]}`, missionId });
-    }
-  }, [code, user, mission, missionId, lang, autoSave, ui]);
 
   // details: 파이썬 오류의 구조화 정보(입문자용 설명 포함). 콘솔이 설명을 먼저 보여 준다.
   const addOutput = useCallback((text, type = 'log', details) => {
@@ -195,13 +166,6 @@ function MissionSession({ missionId }) {
 
     if (result.passed) {
       completeMission(missionId, result.score);
-      useCodeStore.getState().submitMission({
-        missionId,
-        code,
-        score: result.score,
-        passed: true,
-        gradingDetails: result,
-      });
       successSound();
       if (result.score >= 100) {
         addOutput(ui`🎉 ${t('mission.congratulations')} (${result.score}점)`, 'success');
@@ -313,8 +277,6 @@ function MissionSession({ missionId }) {
 
         {/* 상태 */}
         <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--color-text-muted)' }}>
-          {user && saveStatus === 'saving' && <span>{ui("저장 중...")}</span>}
-          {user && saveStatus === 'saved' && <span style={{ color: 'var(--color-success)' }}>{ui("저장됨 ✓")}</span>}
           <span className="flex items-center gap-1.5">
             <span className={`status-dot ${isRunning ? '--running' : isReady ? '--ready' : '--idle'}`} />
             <RuntimeStatus status={engineStatus} progress={progress} message={progressMessage} onRetry={initWorker} locale={lang} />

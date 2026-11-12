@@ -4,7 +4,7 @@ import { clearProjectDraft, readProjectDraft, writeProjectDraft } from '../../gi
 import GitHubProjectDialog from './GitHubProjectDialog.jsx';
 
 /**
- * 만들기 화면과 GitHub 팀 프로젝트 애드온을 잇는 한 지점입니다(오픈소스 판, docs/SCOPE.md 애드온 규칙).
+ * 만들기 화면과 GitHub 팀 프로젝트 애드온을 잇는 한 지점입니다(docs/SCOPE.md 애드온 규칙).
  * 만들기 화면은 이 파일을 지연 불러오기 하고, controlRef로만 애드온에 말을 겁니다.
  *   controlRef.current = { open(mode), hasProject(), detach(), isDirty(code) }
  * 이 파일을 불러오지 못해도 만들기 화면의 실행·드라이브 저장은 그대로 동작합니다.

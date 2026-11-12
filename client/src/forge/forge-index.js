@@ -1,5 +1,5 @@
 /**
- * GitHub 연동 대장간의 목록 읽기(오픈소스 판, 서버·DB 없음).
+ * GitHub 연동 대장간의 목록 읽기(서버·DB 없음).
  *
  * 앱은 정적 목록 파일(forge.json) 하나만 읽습니다. GitHub API를 직접 부르지 않습니다.
  * 목록은 .github/workflows/gallery-index.yml이 주기적으로 만들고(scripts/gallery/forge-index.mjs),

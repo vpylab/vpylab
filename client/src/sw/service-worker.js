@@ -4,7 +4,7 @@
  * 빌드 플러그인(client/scripts/service-worker-plugin.mjs)이 아래 자리 표시자를 채웁니다.
  *   __PRECACHE_MANIFEST__  빌드 산출물 목록 [{ url, revision }]
  *   __BUILD_ID__           산출물 목록의 해시. 바뀌면 앱 캐시를 새로 만듭니다.
- *   __APP_SHELL__          SPA 진입 HTML(index.html 또는 classroom.html)
+ *   __APP_SHELL__          SPA 진입 HTML(index.html)
  *   __PYODIDE_VERSION__    Pyodide 버전. 다른 버전의 핵심 파일 캐시는 지웁니다.
  *
  * 캐시 정책
@@ -14,8 +14,8 @@
  *   - 글꼴(Google Fonts·Fontshare) 요청은 건드리지 않습니다. sw.js의 CSP connect-src에 글꼴 출처가
  *     없어 Service Worker 안에서 fetch하면 막히고, 페이지에 ERR_FAILED로 전달됩니다.
  *   - 페이지 이동(navigate): 네트워크 우선, 끊기면 저장한 앱 셸. /embed/ 경로는 헤더가 달라 별도 키에 저장
- *     앱 셸이 아닌 독립 HTML(/drive-lab.html 등)은 가로채지 않습니다(앱 셸 캐시를 덮어쓰지 않게).
- *   - 그 밖의 요청(API, Supabase 등)은 건드리지 않습니다.
+ *     앱 셸이 아닌 독립 HTML은 가로채지 않습니다(앱 셸 캐시를 덮어쓰지 않게).
+ *   - 그 밖의 요청(API 등)은 건드리지 않습니다.
  *
  * Pyodide Worker 안에서 fetch를 지우는 보안 정책은 Worker 전역에만 적용되며,
  * Service Worker는 별도 스레드에서 브라우저가 띄우므로 서로 영향을 주지 않습니다.
@@ -58,11 +58,8 @@ function shellKeyFor(url) {
   return url.pathname.startsWith('/embed/') ? EMBED_SHELL : APP_SHELL;
 }
 
-// 앱 셸이 아닌 독립 HTML 페이지(예: /drive-lab.html)는 앱 셸 캐시를 덮어쓰지 않도록 가로채지 않습니다.
-// Cloudflare Pages는 '/drive-lab.html'을 확장자 없는 '/drive-lab'으로 넘겨 제공하므로 그 주소도 함께 둡니다.
-const STANDALONE_PAGES = new Set(['/drive-lab']);
+// 앱 셸이 아닌 독립 HTML 페이지는 앱 셸 캐시를 덮어쓰지 않도록 가로채지 않습니다.
 function isStandaloneDocument(url) {
-  if (STANDALONE_PAGES.has(url.pathname)) return true;
   return url.pathname.endsWith('.html') && url.pathname !== `/${APP_SHELL}`;
 }
 

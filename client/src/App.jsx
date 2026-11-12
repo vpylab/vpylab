@@ -1,12 +1,9 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom';
 import { I18nProvider } from './i18n';
 import { useI18n } from './i18n/useI18n';
 import Home from './pages/Home';
-import AuthCallback from './pages/AuthCallback';
-import AuthModal from './components/auth/AuthModal';
-import useAuthStore from './stores/authStore';
-import { resetForSessionChange, prewarm } from './engine/pyodide-singleton';
+import { prewarm } from './engine/pyodide-singleton';
 import { scheduleIdlePrewarm } from './engine/idle-prewarm';
 import { GITHUB_GALLERY } from './lib/api-base.js';
 import './index.css';
@@ -29,9 +26,7 @@ const MissionPlay = lazyWithRetry(() => import('./pages/MissionPlay'));
 const Courses = lazyWithRetry(() => import('./pages/Courses'));
 const Examples = lazyWithRetry(() => import('./pages/Examples'));
 const About = lazyWithRetry(() => import('./pages/About'));
-const Dashboard = lazyWithRetry(() => import('./pages/Dashboard'));
 const Gallery = lazyWithRetry(() => import('./pages/Gallery'));
-const GalleryDetail = lazyWithRetry(() => import('./pages/GalleryDetail'));
 const SourceProject = lazyWithRetry(() => import('./pages/SourceProject'));
 const Docs = lazyWithRetry(() => import('./pages/Docs'));
 const Forge = lazyWithRetry(() => import('./pages/Forge'));
@@ -40,20 +35,11 @@ const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
 const Embed = lazyWithRetry(() => import('./pages/Embed'));
 // GitHub 팀 프로젝트 애드온의 로그인 창(팝업)이 돌아오는 작은 화면입니다.
 const GitHubCallback = lazyWithRetry(() => import('./pages/GitHubCallback'));
-// GitHub 연동 갤러리(오픈소스 판, 목록 주소가 설정된 배포에서만). 수업용 판의 /gallery는 기존 갤러리 그대로입니다.
+// GitHub 연동 갤러리(목록 주소가 설정된 배포에서만). 그 밖의 배포에서 /gallery는 GlowScript 원작 목록입니다.
 const GitHubGallery = GITHUB_GALLERY ? lazyWithRetry(() => import('./pages/GitHubGallery')) : null;
 
 function AppContent() {
-  const initialize = useAuthStore((s) => s.initialize);
   const { t } = useI18n();
-
-  useEffect(() => {
-    const stopForAccountChange = useAuthStore.subscribe((next, previous) => {
-      if (next.user?.id !== previous.user?.id) resetForSessionChange();
-    });
-    const cleanup = initialize();
-    return () => { stopForAccountChange(); if (cleanup) cleanup(); };
-  }, [initialize]);
 
   // 첫 화면을 보는 동안 실습 화면 코드와 Python 엔진을 미리 준비합니다(idle-prewarm.js 참고).
   useEffect(() => scheduleIdlePrewarm({
@@ -64,42 +50,40 @@ function AppContent() {
   }), []);
 
   return (
-    <>
-      <AuthModal />
-      <Suspense fallback={
-        <div className="h-screen flex items-center justify-center"
-          style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-muted)' }}>
-          {t('common.loading')}
-        </div>
-      }>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/tutorials" element={<Tutorials />} />
-          <Route path="/tutorials/:tutorialId" element={<Tutorials />} />
-          <Route path="/courses" element={<Courses />} />
-          <Route path="/courses/:courseId" element={<Courses />} />
-          <Route path="/courses/:courseId/:lessonId" element={<Courses />} />
-          <Route path="/sandbox" element={<Sandbox />} />
-          <Route path="/examples" element={<Examples />} />
-          <Route path="/missions" element={<Missions />} />
-          <Route path="/mission/:missionId" element={<MissionPlay />} />
-          <Route path="/docs" element={<Docs />} />
-          <Route path="/forge" element={<Forge />} />
-          <Route path="/guide" element={<Guide />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/gallery" element={GitHubGallery ? <GitHubGallery /> : <Gallery />} />
-          <Route path="/gallery/glowscript/:projectId" element={<SourceProject />} />
-          <Route path="/gallery/:id" element={<GalleryDetail />} />
-          {/* 공유 주소는 만들기 화면이 직접 읽습니다. 주소창에 /s/이름이 남아 새로 고침·복사해도 작품이 다시 열립니다. */}
-          <Route path="/s/:id" element={<Sandbox />} />
-          <Route path="/embed/:id" element={<Embed />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/github/callback" element={<GitHubCallback />} />
-        </Routes>
-      </Suspense>
-    </>
+    <Suspense fallback={
+      <div className="h-screen flex items-center justify-center"
+        style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-muted)' }}>
+        {t('common.loading')}
+      </div>
+    }>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/tutorials" element={<Tutorials />} />
+        <Route path="/tutorials/:tutorialId" element={<Tutorials />} />
+        <Route path="/courses" element={<Courses />} />
+        <Route path="/courses/:courseId" element={<Courses />} />
+        <Route path="/courses/:courseId/:lessonId" element={<Courses />} />
+        <Route path="/sandbox" element={<Sandbox />} />
+        <Route path="/examples" element={<Examples />} />
+        <Route path="/missions" element={<Missions />} />
+        <Route path="/mission/:missionId" element={<MissionPlay />} />
+        <Route path="/docs" element={<Docs />} />
+        <Route path="/forge" element={<Forge />} />
+        <Route path="/guide" element={<Guide />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/gallery" element={GitHubGallery ? <GitHubGallery /> : <Gallery />} />
+        <Route path="/gallery/glowscript" element={<Gallery />} />
+        <Route path="/gallery/glowscript/:projectId" element={<SourceProject />} />
+        {/* 공유 주소는 만들기 화면이 직접 읽습니다. 주소창에 /s/이름이 남아 새로 고침·복사해도 작품이 다시 열립니다. */}
+        <Route path="/s/:id" element={<Sandbox />} />
+        <Route path="/embed/:id" element={<Embed />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/github/callback" element={<GitHubCallback />} />
+        {/* 없는 주소(예전의 작품 상세·대시보드 주소 포함)는 빈 화면 대신 갤러리나 첫 화면으로 보냅니다. */}
+        <Route path="/gallery/*" element={<Navigate to="/gallery" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

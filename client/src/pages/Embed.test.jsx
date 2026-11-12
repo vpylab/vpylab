@@ -8,7 +8,7 @@ const engine = vi.hoisted(() => ({
   runCode: vi.fn(), stopExecution: vi.fn(), initWorker: vi.fn(), state: { isReady: true, isRunning: false },
   cameraSystem: { onCodeStart: vi.fn() },
 }));
-const data = vi.hoisted(() => ({ gallery: null, share: null, audioUnlocked: false, muted: false, audioState: { muted: false, volume: 0.6 }, listeners: new Set(), eqCalls: [] }));
+const data = vi.hoisted(() => ({ share: null, audioUnlocked: false, muted: false, audioState: { muted: false, volume: 0.6 }, listeners: new Set() }));
 
 vi.mock('../components/viewport/Viewport3D', () => ({
   default: function MockViewport({ sceneRef, controls }) {
@@ -36,18 +36,11 @@ vi.mock('../engine/sound-system', () => ({
 vi.mock('../utils/share', () => ({
   loadSharedCode: vi.fn(async () => data.share || { code: null, title: null, error: '공유 코드를 찾을 수 없습니다' }),
 }));
-vi.mock('../lib/supabase', () => {
-  const single = async () => (data.gallery ? { data: data.gallery, error: null } : { data: null, error: { message: 'not found' } });
-  const chain = { eq: (column, value) => { data.eqCalls.push([column, value]); return chain; }, single };
-  return { supabase: { from: () => ({ select: () => chain }) } };
-});
 vi.mock('../stores/appStore', () => ({
   default: (selector) => selector({ theme: data.theme || 'creative-light', locale: 'ko', THEME_META: { 'creative-light': { dark: false }, 'forest-night': { dark: true } } }),
 }));
 
 import Embed from './Embed';
-
-const GALLERY_ID = '2f1c9a4e-5b6d-4c7e-8f90-123456789abc';
 
 function renderEmbed(id) {
   return render(
@@ -63,25 +56,23 @@ describe('임베드 페이지', () => {
   beforeEach(() => {
     engine.runCode.mockClear(); engine.stopExecution.mockClear(); engine.initWorker.mockClear();
     engine.state = { isReady: true, isRunning: false };
-    data.gallery = null; data.share = null; data.audioUnlocked = false; data.muted = false; data.audioState = { muted: false, volume: 0.6 }; data.eqCalls = []; data.theme = 'creative-light';
+    data.share = null; data.audioUnlocked = false; data.muted = false; data.audioState = { muted: false, volume: 0.6 }; data.theme = 'creative-light';
   });
   afterEach(() => cleanup());
 
-  it('갤러리 작품을 읽어 제목을 보이고 준비되면 자동 실행한다', async () => {
-    data.gallery = { title: '태양계 시뮬레이션', code: 'sphere()' };
-    renderEmbed(GALLERY_ID);
+  it('공유 코드를 읽어 제목을 보이고 준비되면 자동 실행한다', async () => {
+    data.share = { code: 'sphere()', title: '태양계 시뮬레이션', error: null };
+    renderEmbed('solar');
     await waitFor(() => expect(screen.getByTestId('embed-title')).toHaveTextContent('태양계 시뮬레이션'));
     await waitFor(() => expect(engine.runCode).toHaveBeenCalledWith('sphere()'));
     expect(engine.runCode).toHaveBeenCalledTimes(1);
     expect(engine.cameraSystem.onCodeStart).toHaveBeenCalled();
-    expect(screen.getByTestId('embed-open-link')).toHaveAttribute('href', `${window.location.origin}/gallery/${GALLERY_ID}`);
+    expect(screen.getByTestId('embed-open-link')).toHaveAttribute('href', `${window.location.origin}/s/solar`);
     expect(screen.getByTestId('embed-open-link')).toHaveAttribute('target', '_blank');
     // 보기 전용: 로그인·저장·편집기 없음
     expect(screen.queryByText(/로그인/)).toBeNull();
     expect(screen.queryByText(/저장/)).toBeNull();
     expect(screen.getByTestId('viewport')).toHaveAttribute('data-controls', 'yes');
-    // 소유자가 로그인해 있어도 공개 작품만 읽는다
-    expect(data.eqCalls).toEqual([['id', GALLERY_ID], ['is_public', true]]);
   });
 
   it('다른 다크 테마(forest-night)에서도 브랜드 마크를 반전한다', async () => {
@@ -122,8 +113,8 @@ describe('임베드 페이지', () => {
     expect(screen.getByTestId('embed-mute-toggle')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('없거나 비공개인 작품은 안내만 보이고 실행하지 않는다', async () => {
-    renderEmbed(GALLERY_ID);
+  it('없는 공유 주소는 안내만 보이고 실행하지 않는다', async () => {
+    renderEmbed('2f1c9a4e-5b6d-4c7e-8f90-123456789abc');
     await waitFor(() => expect(screen.getByTestId('embed-status')).toHaveTextContent('작품을 찾을 수 없습니다'));
     expect(engine.runCode).not.toHaveBeenCalled();
   });

@@ -6,7 +6,6 @@ import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import useAppStore from '../../stores/appStore';
 import { vocabularyWord } from '../../data/code-vocabulary';
 import { claimWordTip, rememberWord } from '../../utils/word-help';
-import useAuthStore from '../../stores/authStore';
 import TypingWordTip from '../learning/TypingWordTip';
 import { registerPythonHelp, pythonContext, completionChoices } from './python-completions';
 
@@ -34,7 +33,7 @@ const MONACO_THEME_MAP = {
 export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = false }) {
   const editorRef = useRef(null),hostRef=useRef(null),cleanupRef=useRef(()=>{});
   const [tip,setTip]=useState(null);
-  const locale=useAppStore(s=>s.locale),owner=useAuthStore(s=>s.user?.id);
+  const locale=useAppStore(s=>s.locale);
   useEffect(()=>()=>cleanupRef.current(),[]);
   const theme = useAppStore((s) => s.theme);
 
@@ -67,11 +66,11 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
           const exact=match?.[0].trim()===candidate.term.id&&term?.id===candidate.term.id&&!longer&&options.length>0&&options.every(c=>c.insertText===c.name);
           if(!exact){if(attempt<5)pending=setTimeout(()=>show(attempt+1),200);return;}
         }
-        const userId=useAuthStore.getState().user?.id,point=editor.getScrolledVisiblePosition(p),host=hostRef.current,dom=editor.getDomNode();
-        if(!point||!host||!dom||!claimWordTip(userId,candidate.term.id))return;
+        const point=editor.getScrolledVisiblePosition(p),host=hostRef.current,dom=editor.getDomNode();
+        if(!point||!host||!dom||!claimWordTip(candidate.term.id))return;
         if(widget)editor.trigger('word-help','hideSuggestWidget',{});
         lastKey=candidate.key;const width=Math.min(320,host.clientWidth-16),relativeTop=dom.getBoundingClientRect().top-host.getBoundingClientRect().top,below=relativeTop+point.top+point.height+8;
-        setTip({term:candidate.term,owner:userId,left:Math.max(8,Math.min(point.left,host.clientWidth-width-8)),top:below+215<host.clientHeight?below:Math.max(8,relativeTop+point.top-215),width});
+        setTip({term:candidate.term,left:Math.max(8,Math.min(point.left,host.clientWidth-width-8)),top:below+215<host.clientHeight?below:Math.max(8,relativeTop+point.top-215),width});
         hideTimer=setTimeout(()=>setTip(null),6000);
       };
       pending=setTimeout(show,320);
@@ -122,7 +121,7 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
           },
         }}
       /></div>
-      {tip&&tip.owner===owner&&<TypingWordTip tip={tip} ko={locale==='ko'} onClose={()=>setTip(null)} onRemember={()=>{rememberWord(owner,tip.term.id);setTip(null);}}/>}
+      {tip&&<TypingWordTip tip={tip} ko={locale==='ko'} onClose={()=>setTip(null)} onRemember={()=>{rememberWord(tip.term.id);setTip(null);}}/>}
     </div>
   );
 }

@@ -7,13 +7,13 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { clearScene, getMesh, processBatch } from '../../engine/vpython-bridge';
 import { forgeCommands, isForgeStudio } from '../../forge/recipes';
 
-export default function ForgePreview({model,view,onBell,onCapture,waveTick=0}) {
+export default function ForgePreview({model,view,onBell,waveTick=0}) {
   const ui = useUiText();
-  const host=useRef(null),state=useRef(null),processedWave=useRef(waveTick),callback=useRef({onBell,onCapture});
+  const host=useRef(null),state=useRef(null),processedWave=useRef(waveTick),callback=useRef({onBell});
   const [error,setError]=useState('');
   const studioView=isForgeStudio(model.recipe);
   const centerKey=model.center.join(','),range=model.range;
-  useEffect(()=>{callback.current={onBell,onCapture};},[onBell,onCapture]);
+  useEffect(()=>{callback.current={onBell};},[onBell]);
   useEffect(()=>{
     const el=host.current;
     let renderer;
@@ -46,8 +46,7 @@ export default function ForgePreview({model,view,onBell,onCapture,waveTick=0}) {
     };
     renderer.domElement.addEventListener('pointerdown',pointerDown);renderer.domElement.addEventListener('pointerup',pointerUp);
     state.current={scene,camera,controls,renderer,grid,ambient,key,fill,stage};
-    callback.current.onCapture?.(()=>renderer.domElement.toDataURL('image/jpeg',.65));
-    return()=>{cancelAnimationFrame(frame);observer.disconnect();controls.dispose();clearScene(scene);stage.dispose();grid.geometry.dispose();grid.material.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();state.current=null;callback.current.onCapture?.(null);};
+    return()=>{cancelAnimationFrame(frame);observer.disconnect();controls.dispose();clearScene(scene);stage.dispose();grid.geometry.dispose();grid.material.dispose();renderer.dispose();renderer.forceContextLoss();renderer.domElement.remove();state.current=null;};
   },[ui]);
   useEffect(()=>{
     const s=state.current;if(!s)return;

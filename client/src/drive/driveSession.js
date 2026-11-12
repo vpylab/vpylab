@@ -1,7 +1,7 @@
 /**
- * 편집기(만들기 화면)의 구글 드라이브 저장 — 오픈소스 판의 기본 저장 방식입니다.
+ * 편집기(만들기 화면)의 구글 드라이브 저장 — 개인 코드의 기본 저장 방식입니다.
  *
- * 드라이브 저장 실험(/drive-lab)에서 시험한 모듈을 그대로 씁니다.
+ * 아래 모듈을 사용합니다.
  *   - google-auth.js: 구글 로그인(토큰 1시간, drive.file 권한)
  *   - drive-storage.js: VPyLab 폴더, 만들기·열기·저장, 충돌 판정, 재시도, 폴더 되살리기
  *   - lab-state.js: 브라우저에 남기는 초안(14일 뒤 정리)
@@ -302,11 +302,10 @@ export const useDriveStore = create((set, get) => {
      * 구글 계정으로 승인합니다. 반드시 클릭 처리 안에서 부릅니다(팝업 차단 방지).
      * again=true면 같은 계정으로 다시 승인합니다(만료·철회 뒤).
      */
-    signIn({ again = false, consent = false, hint: knownEmail = '' } = {}) {
+    signIn({ again = false, consent = false } = {}) {
       if (!auth) return Promise.resolve({ status: 'not-ready' });
-      // knownEmail: 수업용 판에 구글로 로그인한 학생의 이메일. 계정 선택을 건너뛰고, 이미 승인했으면 클릭 없이 끝납니다.
-      const hint = again ? get().account?.email || '' : knownEmail;
-      const tokenPromise = auth.request({ prompt: consent ? 'consent' : again || hint ? '' : 'select_account', loginHint: hint });
+      const hint = again ? get().account?.email || '' : '';
+      const tokenPromise = auth.request({ prompt: consent ? 'consent' : again ? '' : 'select_account', loginHint: hint });
       set({ busy: 'signin', error: null });
       return (async () => {
         try {

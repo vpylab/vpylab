@@ -8,7 +8,7 @@ import HelpSlot from '../help/HelpSlot';
 const GOOGLE_LOGOUT_URL = 'https://accounts.google.com/Logout';
 
 /**
- * 구글 드라이브 저장·열기 대화상자(오픈소스 판 만들기 화면).
+ * 구글 드라이브 저장·열기 대화상자(만들기 화면).
  *   mode='save': 로그인 → (처음이면) 파일 이름 → 저장. 충돌·만료·권한 문제도 여기서 안내합니다.
  *   mode='files': 로그인 → VPyLab 폴더의 파일 목록 → 열기, 새 코드로 시작, 로그아웃.
  * 문구: docs/reference/solar/drive-editor-261109-solar.md

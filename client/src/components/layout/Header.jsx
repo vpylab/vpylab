@@ -3,23 +3,18 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useI18n } from '../../i18n/useI18n';
 import useAppStore from '../../stores/appStore';
-import useAuthStore from '../../stores/authStore';
 import { prewarm } from '../../engine/pyodide-singleton';
-import { DRIVE_SAVE, GITHUB_GALLERY, SERVER_FEATURES } from '../../lib/api-base.js';
 import BrandLogo from '../shared/BrandLogo';
 import { InstallButton, IosInstallHint } from './InstallPrompt';
 
 export default function Header() {
   const ui = useUiText();
   const { theme, setTheme, locale, setLocale, THEMES, THEME_META } = useAppStore();
-  const { user, profile, signOut, setAuthModalOpen } = useAuthStore();
-  const isTeacher = useAuthStore(s => s.isTeacher());
   const { t } = useI18n();
   const ko = locale === 'ko';
   const [openMenu, setOpenMenu] = useState(null);
   const rootRef = useRef(null);
   const moreRef = useRef(null);
-  const accountRef = useRef(null);
   const menuId = useId();
   const location = useLocation();
   const primary = [
@@ -27,20 +22,19 @@ export default function Header() {
     { label: ko ? '만들기' : 'Create', path: '/sandbox' },
     { label: ko ? '튜토리얼' : 'Tutorials', path: '/tutorials' },
     { label: ko ? '대장간' : 'Forge', path: '/forge' },
-    ...(SERVER_FEATURES || GITHUB_GALLERY ? [{ label: ko ? '갤러리' : 'Gallery', path: '/gallery' }] : []),
+    { label: ko ? '갤러리' : 'Gallery', path: '/gallery' },
     { label: t('nav.docs'), path: '/docs', reference: true },
     { label: ko ? '사용 안내' : 'Guide', path: '/guide' },
   ];
   const resources = [
     { label: ko ? 'VPyLab 소개' : 'About VPyLab', path: '/about' },
-    ...(isTeacher ? [{ label: t('nav.dashboard'), path: '/dashboard' }] : []),
   ];
   useEffect(() => {
     const outside = event => { if (!rootRef.current?.contains(event.target)) setOpenMenu(null); };
     const escape = event => {
       if (event.key !== 'Escape' || !openMenu) return;
       setOpenMenu(null);
-      (openMenu === 'account' ? accountRef : moreRef).current?.focus();
+      moreRef.current?.focus();
     };
     document.addEventListener('mousedown', outside);
     document.addEventListener('keydown', escape);
@@ -75,12 +69,6 @@ export default function Header() {
           </div>
         )}
       </div>
-      {user ? (
-        <div className="relative">
-          <button ref={accountRef} type="button" aria-expanded={openMenu === 'account'} aria-label={ko ? '내 계정' : 'My account'} onClick={() => setOpenMenu(openMenu === 'account' ? null : 'account')} className="border bg-transparent cursor-pointer text-xs px-3 py-2 max-w-28 truncate" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>{profile?.display_name || t('auth.user')}</button>
-          {openMenu === 'account' && <div className="absolute right-0 top-full mt-3 w-44 p-3" style={menuStyle}><p className="text-xs font-semibold px-2 py-2 break-words" style={{ color: 'var(--color-text-primary)' }}>{profile?.display_name || t('auth.user')}</p><button onClick={() => { signOut(); setOpenMenu(null); }} className="text-xs cursor-pointer border-0 bg-transparent text-left px-2 py-2 w-full" style={{ color: 'var(--color-error)' }}>{t('auth.logout')}</button></div>}
-        </div>
-      ) : SERVER_FEATURES && !DRIVE_SAVE && <button onClick={() => setAuthModalOpen(true)} className="text-xs py-2 px-3 cursor-pointer border bg-transparent shrink-0" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>{t('auth.login')}</button>}
       <IosInstallHint />
     </header>
   );

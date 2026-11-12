@@ -159,31 +159,6 @@ describe('실습 이동에서 Python 엔진 재사용', () => {
     expect(runtime.getStatus()).toBe('loading');
   });
 
-  it.each(['loading', 'ready', 'running'])('계정 전환은 %s 상태의 VM을 통째로 버리고 활성 화면을 복구한다', (state) => {
-    const screen = acquire();
-    if (state !== 'loading') workers[0].emit({ type: 'ready' });
-    if (state === 'running') runtime.runCode('while True: rate(30)');
-    const late = workers[0].onmessage;
-    screen.onMessage.mockClear();
-    runtime.resetForSessionChange();
-    expect(workers[0].terminate).toHaveBeenCalledOnce();
-    expect(workers).toHaveLength(2);
-    late({ data: { type: 'stdout', text: '이전 계정' } });
-    expect(screen.onMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'stdout' }));
-    workers[1].emit({ type: 'ready' });
-    expect(runtime.getStatus()).toBe('ready');
-  });
-
-  it('활성 실습이 없는 계정 전환은 엔진을 버리고 새로 로드하지 않는다', () => {
-    const first = acquire();
-    workers[0].emit({ type: 'ready' });
-    first.unsubscribe();
-    park();
-    runtime.resetForSessionChange();
-    expect(runtime.getStatus()).toBe('idle');
-    expect(workers).toHaveLength(1);
-  });
-
   it('실습을 떠난 뒤 다른 탭에서 자료를 봐도 10분 이내에는 엔진을 유지한다', () => {
     const first = acquire();
     workers[0].emit({ type: 'ready' });
