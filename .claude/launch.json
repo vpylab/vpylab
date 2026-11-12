@@ -87,6 +87,21 @@
       ],
       "port": 4086,
       "cwd": "client"
+    },
+    {
+      "name": "vpylab-pages-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "pages",
+        "dev",
+        "client/dist",
+        "--port",
+        "4086",
+        "--persist-to",
+        "/private/tmp/vpylab-pages-dev-state"
+      ],
+      "port": 4086
     }
   ]
 }

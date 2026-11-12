@@ -30,3 +30,6 @@ scripts/compat/out/*.partial.json
 
 # wrangler pages dev 로컬 상태
 .wrangler/
+
+# Cloudflare Pages 로컬 비밀값(wrangler pages dev)
+.dev.vars
