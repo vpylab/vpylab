@@ -11,7 +11,7 @@
 import {
   GALLERY_INDEX_VERSION, GALLERY_TOPIC, MAX_GALLERY_ITEMS, MAX_THUMBNAIL_BYTES, PROJECT_TOPIC, THUMBNAIL_PATH,
   cleanTitle, htmlUrlOf, isGitHubLogin, isSafeBranch, pagesUrlOf, parseFullName, thumbnailUrlOf, validateGalleryEntry, validateGalleryIndex,
-} from '../../server/shared/gallery-rules.js';
+} from '../../shared/gallery-rules.js';
 
 const API = 'https://api.github.com';
 export const SEARCH_PAGE_SIZE = 100;

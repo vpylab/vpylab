@@ -12,7 +12,7 @@
 import { makeForgeModule, moduleFromPublishedCode, moduleProgram, parseModuleFile } from './modules.js';
 import { loadForgeIndex } from './forge-index.js';
 import { FORGE_GITHUB_TEXT } from './forge-text.js';
-import { forgeFileUrlOf, forgeKeyOf, forgeSourceId, isForgeModuleId, parseForgeSourceId, readForgeModuleHeader } from '../../../server/shared/forge-rules.js';
+import { forgeFileUrlOf, forgeKeyOf, forgeSourceId, isForgeModuleId, parseForgeSourceId, readForgeModuleHeader } from '../../../shared/forge-rules.js';
 
 const loadSession = () => import('../github/githubSession.js');
 

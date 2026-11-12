@@ -8,7 +8,7 @@ import { makeForgeModule } from '../../forge/modules.js';
 import { createRecipe } from '../../forge/recipes.js';
 import { FORGE_GITHUB_TEXT } from '../../forge/forge-text.js';
 import * as githubRegistry from '../../forge/github-registry.js';
-import { validateForgeIndex } from '../../../../server/shared/forge-rules.js';
+import { validateForgeIndex } from '../../../../shared/forge-rules.js';
 import ForgeLibrary from './ForgeLibrary.jsx';
 import ForgeGitHubPublish from './ForgeGitHubPublish.jsx';
 

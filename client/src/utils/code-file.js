@@ -3,7 +3,7 @@
  *
  * 받는 파일
  *   - .py: 내용을 그대로 코드로 읽습니다.
- *   - .html: VPyLab이 내보낸 실행 파일(server/utils/standalone-template.js). 그 안에 Base64로 든 학생 코드를 꺼냅니다.
+ *   - .html: VPyLab이 내보낸 실행 파일(shared/standalone-template.js). 그 안에 Base64로 든 학생 코드를 꺼냅니다.
  *     파일을 실행하거나 화면에 그리지 않고 글자로만 읽습니다.
  *
  * 내보낸 HTML의 코드 위치는 아래 SOURCE_PATTERN 한 줄입니다. 템플릿의 그 줄을 바꾸면

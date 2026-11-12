@@ -1,4 +1,4 @@
-import { isAllowedIndexUrl } from '../../../server/shared/gallery-rules.js';
+import { isAllowedIndexUrl } from '../../../shared/gallery-rules.js';
 
 /**
  * Express API 주소. 운영은 VITE_API_URL(Railway), 개발은 localhost:4034.
@@ -59,5 +59,5 @@ export const GITHUB_FORGE = Boolean(FORGE_INDEX_URL);
 export const FORGE_REGISTRY = SERVER_FEATURES ? 'server' : GITHUB_FORGE ? 'github' : 'none';
 /** 만들기 화면에 팀 프로젝트(GitHub)가 있는 배포인지. 수업용 판은 운영 서버 방식, 오픈소스 판은 위의 애드온입니다. */
 export const TEAM_PROJECTS = SERVER_FEATURES || GITHUB_ADDON;
-/** 공유 주소의 이름을 정할 수 있는지. 두 판의 저장소가 모두 지원합니다(규칙: server/shared/share-names.js). */
+/** 공유 주소의 이름을 정할 수 있는지. 두 판의 저장소가 모두 지원합니다(규칙: shared/share-names.js). */
 export const SHARE_NAMES = SHARE_BACKEND !== 'none';

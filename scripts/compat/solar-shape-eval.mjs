@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import dotenv from '../../server/node_modules/dotenv/lib/main.js';
 import { apiReferenceDocs as docs } from '../../client/src/data/docs.js';
 import { projectDir } from '../project-paths.mjs';
-import { proposeShape } from '../../server/utils/shape-proposal.js';
+import { proposeShape } from '../../shared/shape-proposal.js';
 const args=process.argv.slice(2);
 if(!args.includes('--live'))throw new Error('실제 API 호출은 --live를 명시해야 합니다');
 const value=name=>{const i=args.indexOf(name);return i>=0?args[i+1]:null};

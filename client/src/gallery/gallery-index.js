@@ -5,11 +5,11 @@
  * 학교는 한 IP를 함께 사용해 검색 한도에 걸리기 쉽고, 검색 결과를 그대로 보이면 승인 단계를 둘 수 없기 때문입니다.
  * 목록은 .github/workflows/gallery-index.yml이 주기적으로 만들고(scripts/gallery/), 교사가 승인한 작품만 들어 있습니다.
  *
- * 읽은 목록은 만든 쪽과 같은 규칙(server/shared/gallery-rules.js)으로 다시 검사합니다.
+ * 읽은 목록은 만든 쪽과 같은 규칙(shared/gallery-rules.js)으로 다시 검사합니다.
  * 다른 학교가 자기 목록 주소를 넣을 수 있으므로 파일 내용을 믿지 않습니다.
  */
 import { GALLERY_INDEX_URL } from '../lib/api-base.js';
-import { isAllowedIndexUrl, validateGalleryIndex } from '../../../server/shared/gallery-rules.js';
+import { isAllowedIndexUrl, validateGalleryIndex } from '../../../shared/gallery-rules.js';
 
 export const GALLERY_FETCH_TIMEOUT_MS = 15_000;
 export const MAX_INDEX_BYTES = 2 * 1024 * 1024;

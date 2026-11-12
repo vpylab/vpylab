@@ -2,7 +2,7 @@ const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),http
 const {execFileSync}=require('node:child_process');let puppeteer;try{puppeteer=require('puppeteer')}catch{puppeteer=require(path.join(execFileSync('npm',['root','-g'],{encoding:'utf8'}).trim(),'puppeteer'))}
 const root=path.resolve(__dirname,'../..'),out=process.env.VPYLAB_TEST_OUT||path.join(os.tmpdir(),'vpylab-standalone-review');
 (async()=>{
- fs.mkdirSync(out,{recursive:true});const {generateStandaloneHTML}=await import(path.join(root,'server/utils/export-html.js'));
+ fs.mkdirSync(out,{recursive:true});const {generateStandaloneHTML}=await import(path.join(root,'shared/export-html.js'));
  const code=fs.readFileSync(path.join(root,'scripts/compat/fixtures/camera-compound.py'),'utf8');
  let html=process.env.VPYLAB_EXPORT_HTML?fs.readFileSync(process.env.VPYLAB_EXPORT_HTML,'utf8'):generateStandaloneHTML(code,'Camera and compound check');const index=html.lastIndexOf('</script>');html=html.slice(0,index)+'window.__reviewRuntime={cameraSystem,camera,controls,meshes,renderer,scene,processCmd};\n'+html.slice(index);
  const server=http.createServer((req,res)=>{res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html)});await new Promise(r=>server.listen(0,'127.0.0.1',r));

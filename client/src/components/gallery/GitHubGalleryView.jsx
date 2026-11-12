@@ -6,7 +6,7 @@ import { GITHUB_ADDON } from '../../lib/api-base.js';
 import { loadGalleryIndex } from '../../gallery/gallery-index.js';
 import { GALLERY_TEXT } from '../../gallery/gallery-text.js';
 import { useGitHubStore } from '../../github/githubSession.js';
-import { isAllowedGalleryUrl, parseFullName } from '../../../../server/shared/gallery-rules.js';
+import { isAllowedGalleryUrl, parseFullName } from '../../../../shared/gallery-rules.js';
 
 const secondary = { color: 'var(--color-text-secondary)' };
 const muted = { color: 'var(--color-text-muted)' };

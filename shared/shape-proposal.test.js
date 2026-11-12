@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {proposeShape} from './shape-proposal.js';
-import {validateShapeSpec,compileShapeSpec} from '../shared/shape-spec.js';
+import {validateShapeSpec,compileShapeSpec} from './shape-spec.js';
 const part=()=>({kind:'sphere',pos:[0,0,0],axis:[1,0,0],size:[1,1,1],color:[1,1,1],opacity:1,vertices:[],faces:[]});
 const spec=()=>({status:'ok',title:'구',explanation:'반지름을 바꾸세요',parts:[part()]});
 test('잘못된 수치·추가 필드·메시 인덱스·퇴화 삼각형은 실행 전에 거부한다',()=>{

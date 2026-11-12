@@ -13,10 +13,10 @@
  * 대장간의 모듈은 저장소 `<아이디>/vpylab-forge` 하나에 파일로 올립니다(modules/<모듈 ID>.py, topic `vpylab-forge`).
  * 이 모듈은 fetch와 토큰을 주입받는 순수 모듈이며 화면 상태를 갖지 않습니다.
  */
-import { GALLERY_TOPIC, MAX_THUMBNAIL_BYTES, THUMBNAIL_PATH } from '../../../server/shared/gallery-rules.js';
+import { GALLERY_TOPIC, MAX_THUMBNAIL_BYTES, THUMBNAIL_PATH } from '../../../shared/gallery-rules.js';
 import {
   FORGE_DIR, FORGE_REPO, FORGE_TOPIC, MAX_FORGE_FILE_BYTES, MAX_FORGE_MODULES_PER_REPO, forgeFilePath, forgeFileUrlOf, forgeIdOfFileName, isForgeModuleId,
-} from '../../../server/shared/forge-rules.js';
+} from '../../../shared/forge-rules.js';
 
 const API = 'https://api.github.com';
 

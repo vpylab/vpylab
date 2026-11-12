@@ -15,7 +15,7 @@
  * D1 바인딩 이름은 DB(wrangler.toml), IP 해시 소금은 비밀값 SHARE_SALT(없으면 고정 문자열)입니다.
  */
 
-import { RESERVED_NAMES, SHARE_NAME_MESSAGES, SHARE_NAME_PATTERN, checkShareName } from '../server/shared/share-names.js';
+import { RESERVED_NAMES, SHARE_NAME_MESSAGES, SHARE_NAME_PATTERN, checkShareName } from '../shared/share-names.js';
 
 export const MAX_CODE_SIZE = 50_000;
 export const MAX_TITLE = 200;
@@ -38,7 +38,7 @@ export class ShareError extends Error {
   }
 }
 
-/** 이름 정규화와 검사(규칙은 server/shared/share-names.js). 통과하면 소문자 이름, 아니면 ShareError */
+/** 이름 정규화와 검사(규칙은 shared/share-names.js). 통과하면 소문자 이름, 아니면 ShareError */
 export function normalizeName(raw) {
   const result = checkShareName(raw);
   if (result.error) throw new ShareError(400, result.error, SHARE_NAME_MESSAGES[result.error]);

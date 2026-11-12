@@ -6,7 +6,7 @@ import { fetchOwnForgeModules, fetchPublicForgeModules, unpublishForgeModule } f
 import * as githubRegistry from '../../forge/github-registry';
 import { FORGE_GITHUB_TEXT } from '../../forge/forge-text';
 import { FORGE_REGISTRY } from '../../lib/api-base.js';
-import { forgeKeyOf, parseForgeSourceId } from '../../../../server/shared/forge-rules.js';
+import { forgeKeyOf, parseForgeSourceId } from '../../../../shared/forge-rules.js';
 import { forgePresets, visibleForgePresets } from '../../forge/recipes';
 import useAuthStore from '../../stores/authStore';
 

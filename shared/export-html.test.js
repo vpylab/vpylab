@@ -5,9 +5,9 @@ import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { generateStandaloneHTML } from './export-html.js';
 import { generateStandaloneHTML as generateShared } from './standalone-template.js';
-import course from '../../client/src/data/light-sound-course.js';
+import course from '../client/src/data/light-sound-course.js';
 
-const editorTransform = readFileSync(new URL('../../client/src/engine/student-code-transform.py', import.meta.url), 'utf8');
+const editorTransform = readFileSync(new URL('../client/src/engine/student-code-transform.py', import.meta.url), 'utf8');
 const embeddedTransform = page => {
   const expression = page.match(/const transformSrc = decodeURIComponent\(escape\(atob\('[A-Za-z0-9+/=]+'\)\)\);/);
   assert(expression);

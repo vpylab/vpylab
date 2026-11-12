@@ -8,14 +8,14 @@
  *
  * 목록에는 모듈 자료(JSON)를 함께 넣습니다. 앱이 목록 파일 하나만 읽고 GitHub API를 부르지 않게 하려는 것입니다
  * (학교는 한 IP를 함께 사용해 로그인하지 않은 요청의 한도에 걸리기 쉽습니다).
- * 여기서는 크기와 겉모양만 검사합니다. 모듈의 내용은 앱이 대장간의 검사기로 다시 검사합니다(server/shared/forge-rules.js).
+ * 여기서는 크기와 겉모양만 검사합니다. 모듈의 내용은 앱이 대장간의 검사기로 다시 검사합니다(shared/forge-rules.js).
  *
  * 의존성 없이 Node의 fetch만 사용합니다. 네트워크와 시각은 주입받아 테스트합니다(forge-index.test.mjs).
  */
 import {
   FORGE_DIR, FORGE_INDEX_VERSION, FORGE_REPO, FORGE_TOPIC, MAX_FORGE_FILE_BYTES, MAX_FORGE_INDEX_BYTES, MAX_FORGE_ITEMS, MAX_FORGE_MODULES_PER_REPO,
   forgeIdOfFileName, forgeKeyOf, readForgeModuleHeader, toForgeRepo, validateForgeEntry, validateForgeIndex,
-} from '../../server/shared/forge-rules.js';
+} from '../../shared/forge-rules.js';
 import { GalleryIndexError, MAX_PENDING_ITEMS, classifyEntry, escapeMarkdown, getJson, mapLimited } from './gallery-index.mjs';
 
 const API = 'https://api.github.com';

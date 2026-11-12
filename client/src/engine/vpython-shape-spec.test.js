@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {compileShapeSpec} from '../../../server/shared/shape-spec.js';
+import {compileShapeSpec} from '../../../shared/shape-spec.js';
 import {hasPython,runPythonJobs} from '../test/python-runner';
 it.skipIf(!hasPython())('허용된 기본 모양·닫힌 반구·삼각형 메시가 실제 Python API에서 실행된다',()=>{
  const kinds=['sphere','box','ellipsoid','cylinder','cone','ring','hemisphere','mesh'];

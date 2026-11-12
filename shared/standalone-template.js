@@ -28,9 +28,9 @@
 
 
 
-import { createCompoundAppearanceTools } from '../shared/compound-appearance.js';
-import { createCameraSystem } from '../shared/camera-system.js';
-import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
+import { createCompoundAppearanceTools } from './compound-appearance.js';
+import { createCameraSystem } from './camera-system.js';
+import { createPrimitiveGeometry } from './primitive-geometry.js';
 
 const PYODIDE_VERSION = '0.27.0';
 const THREE_VERSION = '0.183.2';

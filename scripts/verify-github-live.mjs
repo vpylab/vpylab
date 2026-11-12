@@ -69,7 +69,7 @@ async function request(path, who, body, expected = 200) {
   return data;
 }
 async function loadHtmlGenerator() {
-  const { generateStandaloneHTML } = await import(pathToFileURL(join(root, 'server/utils/standalone-template.js')));
+  const { generateStandaloneHTML } = await import(pathToFileURL(join(root, 'shared/standalone-template.js')));
   const transform = await readFile(join(root, 'client/src/engine/student-code-transform.py'), 'utf8');
   return (code, title) => generateStandaloneHTML(code, title, {}, transform);
 }

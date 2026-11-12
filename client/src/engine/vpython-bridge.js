@@ -5,9 +5,9 @@
  */
 
 import * as THREE from 'three';
-import { createPrimitiveGeometry } from '../../../server/shared/primitive-geometry.js';
+import { createPrimitiveGeometry } from '../../../shared/primitive-geometry.js';
 const primitiveGeometry = createPrimitiveGeometry(THREE);
-import { createCompoundAppearanceTools } from '../../../server/shared/compound-appearance.js';
+import { createCompoundAppearanceTools } from '../../../shared/compound-appearance.js';
 const compoundAppearance = createCompoundAppearanceTools(THREE);
 import {
   registerObject,

@@ -1,4 +1,4 @@
-import { shapeResponseSchema, validateShapeSpec, compileShapeSpec } from '../shared/shape-spec.js';
+import { shapeResponseSchema, validateShapeSpec, compileShapeSpec } from './shape-spec.js';
 
 export const SHAPE_INSTRUCTIONS = `학생이 원하는 정적인 3D 모양의 부품 명세만 제안한다. 전체 프로그램·물리·음악·입력·팀 과제를 대신 풀지 않는다.
 전체 API 문서는 참고 자료다. 출력에는 JSON 명세만 사용한다. 문서에 있어도 이 명세에 없는 기능은 사용하지 않는다.

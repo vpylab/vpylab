@@ -7,7 +7,7 @@ import { createRecipe } from './recipes.js';
 import { ForgeLoadError, loadForgeIndex } from './forge-index.js';
 import { FORGE_GITHUB_TEXT } from './forge-text.js';
 import { fetchOwnForgeModules, fetchPublicForgeModules, forgeLogin, forgeSourceUrl, forkPublicForgeModule, publishForgeModule, unpublishForgeModule } from './github-registry.js';
-import { FORGE_MODULE_FORMAT, FORGE_MODULE_PREFIX, readForgeModuleHeader, validateForgeIndex } from '../../../server/shared/forge-rules.js';
+import { FORGE_MODULE_FORMAT, FORGE_MODULE_PREFIX, readForgeModuleHeader, validateForgeIndex } from '../../../shared/forge-rules.js';
 
 // GitHub 연동 대장간: 목록 읽기, 가져오기, 내 GitHub 저장소에 올리고 내리기. GitHub는 fake-github.js가 흉내 냅니다.
 

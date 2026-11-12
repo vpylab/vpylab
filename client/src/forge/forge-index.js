@@ -5,12 +5,12 @@
  * 목록은 .github/workflows/gallery-index.yml이 주기적으로 만들고(scripts/gallery/forge-index.mjs),
  * 교사가 승인한 저장소의 모듈만 들어 있습니다.
  *
- * 읽은 목록은 만든 쪽과 같은 규칙(server/shared/forge-rules.js)으로 다시 검사하고,
+ * 읽은 목록은 만든 쪽과 같은 규칙(shared/forge-rules.js)으로 다시 검사하고,
  * 모듈의 내용은 대장간의 검사기(parseModuleFile)로 한 번 더 검사합니다(github-registry.js).
  */
 import { FORGE_INDEX_URL } from '../lib/api-base.js';
-import { isAllowedIndexUrl } from '../../../server/shared/gallery-rules.js';
-import { MAX_FORGE_INDEX_BYTES, validateForgeIndex } from '../../../server/shared/forge-rules.js';
+import { isAllowedIndexUrl } from '../../../shared/gallery-rules.js';
+import { MAX_FORGE_INDEX_BYTES, validateForgeIndex } from '../../../shared/forge-rules.js';
 
 export const FORGE_FETCH_TIMEOUT_MS = 15_000;
 

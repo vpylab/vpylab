@@ -3,7 +3,7 @@ import { memoryStorage } from '../drive-lab/fake-google.js';
 import { createFakeGitHub } from './fake-github.js';
 import { GitHubError, createGitHubApi } from './github-api.js';
 import { configureGitHub, useGitHubStore } from './githubSession.js';
-import { FORGE_REPO, FORGE_TOPIC } from '../../../server/shared/forge-rules.js';
+import { FORGE_REPO, FORGE_TOPIC } from '../../../shared/forge-rules.js';
 
 // 대장간 모듈을 내 GitHub 저장소(<아이디>/vpylab-forge)에 올리고 내리기. GitHub는 fake-github.js가 흉내 냅니다.
 

@@ -7,13 +7,13 @@ import { supabase } from '../lib/supabase';
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string';
 
 import { API_BASE, SHARE_BACKEND } from '../lib/api-base.js';
-import { SHARE_NAME_PATTERN, checkShareName } from '../../../server/shared/share-names.js';
+import { SHARE_NAME_PATTERN, checkShareName } from '../../../shared/share-names.js';
 const MAX_CODE_SIZE = 50_000; // 50KB 상한
 
 /** 공유 링크로 열 때 편집기 대신 실행 화면(극장 모드)부터 보여 주라는 표시. /s/ 짧은 주소와 같은 동작입니다. */
 export const SHARE_RUN_VIEW = 'run';
 
-/** 이름 규칙은 두 판의 서버와 같은 파일을 씁니다(server/shared/share-names.js). */
+/** 이름 규칙은 두 판의 서버와 같은 파일을 씁니다(shared/share-names.js). */
 export { SHARE_NAME_PATTERN };
 
 /** 이 브라우저에서 만든 공유 주소의 수정 열쇠. 같은 이름을 다시 고칠 때만 씁니다. */

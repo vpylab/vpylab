@@ -9,7 +9,7 @@ import { main } from './build-index.mjs';
 import {
   FORGE_MODULE_PREFIX, MAX_FORGE_ITEMS, MAX_FORGE_MODULE_JSON_BYTES, checkForgeModule, forgeFilePath, forgeFileUrlOf, forgeIdOfFileName, forgeSourceId,
   isForgeModuleId, parseForgeSourceId, readForgeModuleHeader, toForgeRepo, validateForgeEntry, validateForgeIndex,
-} from '../../server/shared/forge-rules.js';
+} from '../../shared/forge-rules.js';
 
 const NOW = new Date('2026-11-12T03:00:00Z');
 const SHA = (seed) => String(seed).repeat(40).slice(0, 40).replace(/[^0-9a-f]/g, 'a');

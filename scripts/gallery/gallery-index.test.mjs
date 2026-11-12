@@ -10,7 +10,7 @@ import {
 import { main, parseArgs } from './build-index.mjs';
 import {
   MAX_THUMBNAIL_BYTES, cleanTitle, isAllowedGalleryUrl, isAllowedIndexUrl, parseFullName, validateGalleryEntry, validateGalleryIndex,
-} from '../../server/shared/gallery-rules.js';
+} from '../../shared/gallery-rules.js';
 
 const NOW = new Date('2026-11-12T03:00:00Z');
 

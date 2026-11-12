@@ -1,5 +1,5 @@
 import { activeParameters, buildForgeModel, createRecipe, forgeParameters, validateRecipe, forgeColorVector, isForgeStudio } from './recipes.js';
-import { forgeFileUrlOf, parseForgeSourceId } from '../../../server/shared/forge-rules.js';
+import { forgeFileUrlOf, parseForgeSourceId } from '../../../shared/forge-rules.js';
 
 export const MODULE_PREFIX = '# vpylab-forge:v1 ';
 export const MODULE_FORMAT = 'vpylab-forge';

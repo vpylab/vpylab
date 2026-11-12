@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createPrimitiveGeometry } from '../../../../server/shared/primitive-geometry.js';
+import { createPrimitiveGeometry } from '../../../../shared/primitive-geometry.js';
 import { welcomeLayout, welcomeParts, welcomeActionPose } from '../../data/welcome-friends';
 const primitives=createPrimitiveGeometry(THREE);
 export function createWelcomeModel(id){
