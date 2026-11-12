@@ -4,7 +4,7 @@ This document describes the code as it is in the repository. It is written for a
 
 ## Overview
 
-VPyLab is a single-page React app. A student writes VPython-style Python in a Monaco editor. The code runs in the browser, in Pyodide (CPython compiled to WebAssembly) inside a Web Worker. The Python side does not draw anything. It sends JSON commands to the main thread, where a bridge applies them to a Three.js scene and to a Web Audio sound system. The same codebase is built as two editions: an open edition with no server database for student work, and a classroom edition with Supabase, an Express server and GitHub integration.
+VPyLab is a single-page React app. A student writes VPython-style Python in a Monaco editor. The code runs in the browser, in Pyodide (CPython compiled to WebAssembly) inside a Web Worker. The Python side does not draw anything. It sends JSON commands to the main thread, where a bridge applies them to a Three.js scene and to a Web Audio sound system. The app is deployed as one static site on Cloudflare Pages. It has no server and no database of its own, and no account sign-in. Saving to the student's own Google Drive is built in; GitHub team projects, a student gallery and shared Forge modules are optional add-ons.
 
 ## The run path
 
@@ -43,11 +43,11 @@ A browser has no blocking wait, so `rate()`, `sleep()`, `input()`, `scene.pause(
 2. puts `await` on calls to those functions, repeating until nothing changes;
 3. awaits module-level calls with top-level await (`PyCF_ALLOW_TOP_LEVEL_AWAIT`). The code is not wrapped in a function, so module globals and `global` work as usual.
 
-Calls it cannot classify (a parameter, a list item, a method on an unknown receiver) become `await __vpylab_rt__.maybe_await(f())`, which awaits only if the result is awaitable. Line numbers are kept, so tracebacks point at the student's own lines. The public functions are `transform_student_code`, `compile_student_code` and `unparse_student_code`. The file does not import `js`, so it also runs under plain CPython in tests. `server/utils/student-code-transform.py` is a byte-identical copy used for exported HTML; `server/utils/export-html.test.js` fails if the two differ.
+Calls it cannot classify (a parameter, a list item, a method on an unknown receiver) become `await __vpylab_rt__.maybe_await(f())`, which awaits only if the result is awaitable. Line numbers are kept, so tracebacks point at the student's own lines. The public functions are `transform_student_code`, `compile_student_code` and `unparse_student_code`. The file does not import `js`, so it also runs under plain CPython in tests. Exported HTML embeds the same file. `shared/export-html.js` reads it when Node tools build a standalone page, and `shared/export-html.test.js` checks that the Node and browser exports use the same template and transform.
 
 ### `pyodide-singleton.js`
 
-Owns the one Worker that all run screens share. It imports `vpython-api.py`, `student-code-transform.py` and `physical-kit.py` as raw text (`?raw`) and sends them to the Worker in the `init` message. It keeps a status (`idle`, `loading`, `ready`, `running`, `stopping`, `error`), gives each run an increasing `runId`, and drops Worker messages whose `runId` is not the active one. Init fails after 45 seconds. When the last screen unsubscribes it stops the run, asks the Worker to `park` (reset Python state but keep the engine), and keeps the idle Worker for 10 minutes. `resetForSessionChange()` terminates the Worker when the account changes. `idle-prewarm.js` starts the engine early from non-editor pages.
+Owns the one Worker that all run screens share. It imports `vpython-api.py`, `student-code-transform.py` and `physical-kit.py` as raw text (`?raw`) and sends them to the Worker in the `init` message. It keeps a status (`idle`, `loading`, `ready`, `running`, `stopping`, `error`), gives each run an increasing `runId`, and drops Worker messages whose `runId` is not the active one. Init fails after 45 seconds. When the last screen unsubscribes it stops the run, asks the Worker to `park` (reset Python state but keep the engine), and keeps the idle Worker for 10 minutes. `idle-prewarm.js` starts the engine early from non-editor pages.
 
 ### `pyodide-worker.js`
 
@@ -84,81 +84,96 @@ About 6,200 lines. Defines the VPython-compatible classes and functions (`vector
 
 `sound-system.js` uses only the Web Audio API, with no audio files. `processSoundCommand(cmd)` handles notes, chords, synthesized effects and background music. It caps voices (`MAX_AUDIO_VOICES` = 24) and has one master gain for volume and mute.
 
-## Two editions from one codebase
+## One site, no server
 
-`client/src/lib/api-base.js` is the single switch.
+VPyLab is built once and deployed as one static site on Cloudflare Pages (https://vpylab.pages.dev). There is no application server, no database of its own and no account sign-in. The operator stores no student data. Until 2026-11-12 the same codebase was also built as a second "classroom edition" with an Express server and Supabase; that setup was deleted, and `docs/SCOPE.md` records the decision. `vpylab.vercel.app` only redirects to the Pages site (root `vercel.json`).
 
-| Constant | Value |
-|---|---|
-| `EDITION` | `'open'` if `VITE_EDITION=open`, otherwise `'classroom'` |
-| `OPEN_EDITION` | `EDITION === 'open'` |
-| `LAN_MODE` | `VITE_LAN_MODE === '1'` |
-| `SERVER_FEATURES` | `!LAN_MODE && !OPEN_EDITION` |
-| `API_BASE` | `''` in the open edition; otherwise `VITE_API_URL`, or `http://localhost:4034` in development |
-| `SHARE_BACKEND` | `'pages'` (open), `'server'` (classroom), `'none'` (LAN) |
-| `GITHUB_GALLERY` | open edition with `VITE_GALLERY_INDEX_URL` set to an allowed list address |
+The only server-side code is three Cloudflare Pages Functions in `functions/`, thin wrappers over modules in `cloudflare/`:
 
-| | Open edition | Classroom edition |
+| Request | File | Purpose | State |
+|---|---|---|---|
+| `POST /api/share` | `functions/api/share/index.js` | Create a short share link | D1 database `vpylab-shares`, bound as `DB` in `wrangler.toml` |
+| `GET`, `PUT`, `DELETE /api/share/:id` | `functions/api/share/[id].js` | Read a share, update it from the browser that made it, delete an unused random link | same |
+| `POST /api/github/token` | `functions/api/github/token.js` | Exchange a GitHub sign-in code for a token | none; the token is not stored or logged |
+
+`client/src/lib/api-base.js` holds the feature flags. Each one is derived from a public build-time value (`client/.env.example`). With none of them set, running code, lessons, share links and file download/open still work.
+
+| Constant | True when | Turns on |
 |---|---|---|
-| Address | https://vpylab.pages.dev | https://vpylab.vercel.app |
-| Build | `cd client && npm run build:open` | `cd client && npm run build:deploy` (the `buildCommand` in `vercel.json`) |
-| Hosting | Cloudflare Pages, deployed by `.github/workflows/deploy-pages.yml` after CI passes on `main` | Vercel (client, `api/` functions) and Railway (`server/`) |
-| Login | none | Supabase Auth |
-| Saving | the student's Google Drive | Supabase, with GitHub sync |
-| Share links | Pages Functions + D1 | Express + Supabase |
-| Gallery menu | hidden, or the GitHub gallery when `VITE_GALLERY_INDEX_URL` is set | shown (Supabase gallery) |
-| Sign-in button | hidden | shown |
+| `DRIVE_SAVE` | `VITE_GOOGLE_CLIENT_ID` is set | Saving to the student's Google Drive |
+| `GITHUB_ADDON`, `TEAM_PROJECTS` | `VITE_GITHUB_CLIENT_ID` is set | GitHub team projects; also required for publishing to the gallery and to Community modules |
+| `GITHUB_GALLERY` (`GALLERY_INDEX_URL`) | `VITE_GALLERY_INDEX_URL` is an allowed list address | The student gallery at `/gallery` |
+| `GITHUB_FORGE` (`FORGE_INDEX_URL`) | `VITE_FORGE_INDEX_URL` is an allowed list address | Community modules in the Forge |
+| `FORGE_REGISTRY` | `'github'` when `GITHUB_FORGE`, otherwise `'none'` | Where the Forge looks for shared modules |
 
-What the code does for the open edition:
+An allowed list address starts with `https://raw.githubusercontent.com/` and ends in `.json`, or is a same-origin path (`isAllowedIndexUrl` in `shared/gallery-rules.js`). Anything else leaves the feature off.
 
-- `build:open` clears `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `VITE_API_URL` before building, so the committed `client/.env.production` values do not reach the bundle.
-- `client/src/lib/supabase.js` points the Supabase client at `https://no-supabase.invalid` when `OPEN_EDITION` is true.
-- `Header.jsx` hides the sign-in button when `SERVER_FEATURES` is false, and shows the gallery link when `SERVER_FEATURES` or `GITHUB_GALLERY` is true. The routes in `client/src/App.jsx` are the same in both editions; they are not removed, only unlinked. The one exception is `/gallery`, which renders `pages/GitHubGallery.jsx` instead of `pages/Gallery.jsx` when `GITHUB_GALLERY` is true.
+Build, deployment and how to turn each feature on are in `docs/DEPLOY.md` (Korean).
 
-New code that needs the server or Supabase must be guarded by `SERVER_FEATURES`. Deployment details are in `docs/DEPLOY_TWO_EDITIONS.md` (Korean).
+### Routes
 
-Classroom LAN mode (`npm run classroom:lan`, port 4077) builds with `VITE_LAN_MODE=1`. `server/lan/index.js` serves the built app and the Pyodide files to a classroom Wi-Fi network and answers `/api/*` with 503. Login, gallery, share storage and GitHub are off; share links carry the code in the URL (`#code=`). See `docs/CLASSROOM_LAN_MODE.md` (Korean).
+Routes are declared in `client/src/App.jsx`.
 
-There is also a separate "classroom v2" app: `client/classroom.html`, `client/src/classroom/`, `server/classroom/` (Express `/api/v2`, SQLite). `docs/CLASSROOM_V2_ARCHITECTURE.md` (Korean, dated 2026-10-28) describes it as under local verification. Its current status was not checked for this document.
+| Route | Page |
+|---|---|
+| `/` | Home |
+| `/tutorials`, `/tutorials/:tutorialId` | Tutorials |
+| `/courses`, `/courses/:courseId`, `/courses/:courseId/:lessonId` | Courses |
+| `/sandbox` | Create (`pages/Sandbox.jsx`) |
+| `/examples`, `/missions`, `/mission/:missionId` | Examples, missions |
+| `/docs`, `/forge`, `/guide`, `/about`, `/privacy` | Reference, Forge, in-app guide, about, privacy |
+| `/gallery` | The GitHub gallery when `GITHUB_GALLERY` is true, otherwise the GlowScript originals |
+| `/gallery/glowscript`, `/gallery/glowscript/:projectId` | GlowScript originals and one original |
+| `/s/:id` | A short share link, opened in Create |
+| `/embed/:id` | View-only page for iframes; share links only |
+| `/github/callback` | Receives the GitHub sign-in result |
 
-## Storage paths
+### Headers and static files
 
-Both editions follow three steps (decided 2026-11-12, `docs/GOOGLE_FIRST_PLAN.md` section 0): no sign-in to start, Google Drive to save, GitHub only for team projects. The switches are in `client/src/lib/api-base.js` (`DRIVE_SAVE`, `GITHUB_ADDON`, `TEAM_PROJECTS`) and at the top of `client/src/pages/Sandbox.jsx` (`DRIVE_EDITOR`, `TEAM_PROJECTS`, `ACCOUNT_SAVE`).
+Response headers and the Content Security Policy are in `client/public/_headers`, which Vite copies to `dist/_headers`. `client/scripts/pages-config.test.mjs` checks the file. `/embed/*` is the only path that other sites may frame. `client/scripts/pages-static.mjs` is a Vite plugin that writes a `404.html` into `assets/`, `pyodide/` and `projects/` at the end of a build, so a missing file there returns 404 and not the single-page fallback. There must be no `404.html` at the top level, or Cloudflare Pages stops serving `index.html` for app routes.
 
-Without an account (both editions):
+## Three ways to work
 
-- `client/src/utils/code-file.js`: **Open file** reads a `.py` file, or an HTML file exported by VPyLab. The exported HTML carries the student code as Base64 in one line of `server/utils/standalone-template.js`; `code-file.test.js` fails if that line changes. The file is read as text and never rendered.
+A student starts with no sign-in and connects an account only when needed (decided 2026-11-12).
+
+### 1. No sign-in
+
+- `client/src/utils/code-file.js`: **Open file** reads a `.py` file, or an HTML file exported by VPyLab. The exported HTML carries the student code as Base64 in one line of `shared/standalone-template.js`. The file is read as text and never rendered.
+- `client/src/utils/export-html.js`: **Download HTML** builds a standalone page from `shared/standalone-template.js`. The page loads Pyodide and Three.js from a CDN when opened.
 - `client/src/utils/sandbox-draft.js`: the free-coding draft in `localStorage`, kept 14 days. Practice drafts from lessons stay per tab (`client/src/utils/practice-drafts.js`) so that the next student on a shared computer does not get them.
-- Share links (below).
+- `client/src/stores/appStore.js` (Zustand): theme, locale and mission progress in `localStorage`. It is the only store under `client/src/stores/`.
+- Share links: `client/src/utils/share.js` calls `/api/share`. The rules are in `cloudflare/share-core.js`: a random 6-character id or a chosen name, code up to 50,000 characters, an edit key whose hash is stored and whose value stays in the browser that made the link, and a per-IP rate limit keyed by a salted hash. The schema is `cloudflare/migrations/0001_shares.sql`. Name rules are shared with the client through `shared/share-names.js`. If the share API does not answer, the client falls back to a link that carries the code in the URL (`#code=`). Links have no expiry.
 
-Google Drive (both editions when `VITE_GOOGLE_CLIENT_ID` is set):
+### 2. Google Drive (core, when `VITE_GOOGLE_CLIENT_ID` is set)
 
-- In the classroom edition Save goes to Drive unless a team project is open; the account auto-save, Save as and personal history are switched off (`ACCOUNT_SAVE`).
+All files are in `client/src/drive/`.
 
-Classroom edition:
+- `google-auth.js`: Google Identity Services token flow. Scopes are `openid email profile` and `drive.file`. There is no refresh token. The access token is kept in the tab's `sessionStorage`, so a reload does not disconnect.
+- `drive-storage.js`: Drive v3 adapter (`list`, `create`, `open`, `save`, `revisions`, `revisionContent`, `trash`), a `VPyLab` folder, a 100 KB code limit, retries and conflict detection. It also uploads recorded videos in chunks to a `영상` folder.
+- `driveSession.js`: the Zustand store that the editor uses on top of those two modules, plus local drafts from `lab-state.js`. `resume()` restores the account and the open file after a reload. `renewInGesture()` asks Google for a new token inside the same click when the old one has expired, so Save continues without a separate step.
+- UI: `client/src/components/drive/DriveDialog.jsx` and `VideoSaveDialog.jsx`.
 
-- Client state is in Zustand stores under `client/src/stores/`: `authStore.js` (Supabase session, GitHub token), `codeStore.js` (saved code), `revisionStore.js` (history), `projectStore.js` (team projects), `galleryStore.js`, `codeShareStore.js`, `githubSyncStore.js`. `appStore.js` (theme, locale, mission progress in `localStorage`) is used by both editions.
-- Stores call Supabase directly from the browser with the anon key; access rules are row-level security policies in `supabase/migrations/`.
-- Express routes in `server/routes/`: `share.js` (`/api/share`), `publish.js` (`/api/publish`, GitHub Pages), `sync.js` (`/api/sync`, commit `main.py` to GitHub), `projects.js` (`/api/projects`, one GitHub repository per project). `server/index.js` adds `helmet`, CORS and rate limits (`server/middleware/`). The GitHub token is sent by the client with each request and is not stored on the server, according to the route comments.
-- In production the client calls `/srv/...` on its own origin; `vercel.json` rewrites that to `api/srv.mjs`, which forwards to Railway.
+Results of the 2026-11-08 stability run of these modules are in `docs/DRIVE_LAB_RESULTS_2026-11-08.md` (Korean). The separate test page that run used has been removed.
 
-Open edition:
+### 3. GitHub (optional add-ons)
 
-- `client/src/drive-lab/google-auth.js`: Google Identity Services token flow. Scopes are `openid email profile` and `drive.file`. There is no refresh token. The editor keeps the access token in the tab's `sessionStorage` (`tokenStore`), so a reload does not disconnect; the lab page keeps it in memory.
-- `client/src/drive-lab/drive-storage.js`: Drive v3 adapter (`list`, `create`, `open`, `save`, `revisions`, `revisionContent`, `trash`), a `VPyLab` folder, 100 KB code limit, retries, conflict detection.
-- `client/src/drive/driveSession.js`: the Zustand store that the editor uses on top of those two modules, plus local drafts from `client/src/drive-lab/lab-state.js`. `resume()` restores the account and the open file after a reload. `renewInGesture()` asks Google for a new token inside the same click when the old one has expired, so Save continues without a separate step. The client ID comes from `VITE_GOOGLE_CLIENT_ID`.
-- Share links: `functions/api/share/index.js` (POST) and `functions/api/share/[id].js` (GET, PUT, DELETE) are thin Cloudflare Pages Functions over `cloudflare/share-core.js`. Data is in the D1 database bound as `DB` in `wrangler.toml`; the schema is `cloudflare/migrations/0001_shares.sql`. Name rules are shared with the classroom server through `server/shared/share-names.js`. The client side is `client/src/utils/share.js`.
-- GitHub gallery (add-on, only when `VITE_GALLERY_INDEX_URL` is set; no server, no database). Three parts:
-  - Publishing: in the team project window, "Add to gallery" adds the topic `vpylab-gallery` to the student's repository and commits the current 3D view as `thumbnail.jpg` (`setGalleryListing` and `putThumbnail` in `client/src/github/github-api.js`, the store action `setGalleryListing` in `githubSession.js`). The Create screen passes the picture through the optional `getThumbnail` prop of `GitHubAddon`; publishing works without it.
-  - The list: `.github/workflows/gallery-index.yml` runs every 30 minutes. `scripts/gallery/build-index.mjs` searches GitHub for public repositories with the topic, keeps only those named in the approval file `approvals.txt`, and writes `gallery.json` (approved), `pending.json` and `PENDING.md` (waiting). The workflow commits them to the branch `gallery-data`. Teachers approve by editing `approvals.txt` on that branch in the GitHub web interface (`docs/GALLERY_GITHUB.md`, Korean). Nothing enters `gallery.json` before approval; `scripts/gallery/gallery-index.test.mjs` fixes that rule.
-  - Reading: `client/src/gallery/gallery-index.js` fetches that one file from `raw.githubusercontent.com`. The app never calls GitHub search. `client/src/pages/GitHubGallery.jsx` and `client/src/components/gallery/GitHubGalleryView.jsx` show cards (preview image, title, GitHub username, date, star count). A card opens the published page in a new tab or the code in the Create screen (`/sandbox?repo=owner/repo`). A student whose tab is connected to GitHub can star from the app (`public_repo` covers starring); otherwise the app links to the repository.
-  - Both sides validate entries with `server/shared/gallery-rules.js`: titles and usernames are plain text, and a URL is accepted only if it equals the address rebuilt from the repository name on `github.com`, `<owner>.github.io` or `raw.githubusercontent.com`.
-- Forge shared modules on GitHub (add-on, only when `VITE_FORGE_INDEX_URL` is set; no server, no database). `FORGE_REGISTRY` in `api-base.js` is `server` (classroom edition, Supabase, `client/src/forge/registry.js`), `github`, or `none`.
-  - Publishing: `ForgeGitHubPublish.jsx` (lazy, inside `AddonBoundary`) calls `putForgeModule`, which creates the public repository `<username>/vpylab-forge` if needed, adds the topic `vpylab-forge` and writes `modules/<module id>.py`. The first line of the file holds the module recipe.
-  - The list: the gallery workflow also runs `scripts/gallery/forge-index.mjs`, which reads the module files of approved repositories and writes `forge.json` and `forge-pending.json` to `gallery-data`. A file is read again only when its blob sha changes.
-  - Reading: `client/src/forge/forge-index.js` fetches `forge.json`; `github-registry.js` passes every entry through `parseModuleFile` and rebuilds the code from the recipe. Importing a module is local (no sign-in, no request) and records the source as `gh:<username>/<module id>`.
-  - Shared rules: `server/shared/forge-rules.js`.
-- GitHub team projects (add-on, only when `VITE_GITHUB_CLIENT_ID` is set): `client/src/github/github-oauth.js` opens the GitHub approval in a pop-up (state and PKCE); `client/src/pages/GitHubCallback.jsx` passes the result back over a `BroadcastChannel`; the Pages Function `functions/api/github/token.js` (rules in `cloudflare/github-oauth-core.js`) exchanges the code for a token with the client secret and stores nothing. `client/src/github/github-api.js` then calls `api.github.com` from the browser: one public repository per project (topic `vpylab-project`) with `main.py`, `history.md`, `index.html` for GitHub Pages and a README. The logic is ported from `server/routes/projects.js`. `client/src/github/githubSession.js` is the store and `client/src/components/github/GitHubProjectDialog.jsx` the window. The token is kept in the tab's `sessionStorage`.
+**Team projects** (only when `VITE_GITHUB_CLIENT_ID` is set). `client/src/github/github-oauth.js` opens the GitHub approval in a pop-up (state and PKCE). `client/src/pages/GitHubCallback.jsx` passes the result back over a `BroadcastChannel`. The Pages Function `functions/api/github/token.js` (rules in `cloudflare/github-oauth-core.js`) exchanges the code for a token with the client secret. `client/src/github/github-api.js` then calls `api.github.com` from the browser: one public repository per project (topic `vpylab-project`) with `main.py`, `history.md`, `index.html` for GitHub Pages and a README. `client/src/github/githubSession.js` is the store, `client/src/components/github/GitHubAddon.jsx` the entry point in Create and `GitHubProjectDialog.jsx` the window. The token is kept in the tab's `sessionStorage` (`tab-session.js`). The requested permissions are `public_repo` and `repo:invite`.
+
+**Student gallery** (only when `VITE_GALLERY_INDEX_URL` is set). Three parts:
+
+- Publishing: in the team project window, "Add to gallery" adds the topic `vpylab-gallery` to the student's repository and commits the current 3D view as `thumbnail.jpg` (`setGalleryListing` and `putThumbnail` in `github-api.js`). Publishing works without the picture.
+- The list: `.github/workflows/gallery-index.yml` runs every 30 minutes when the repository variable `GALLERY_INDEX` is `on`. `scripts/gallery/build-index.mjs` searches GitHub for public repositories with the topic, keeps only those named in the approval file `approvals.txt`, and writes `gallery.json` (approved), `pending.json` and `PENDING.md` (waiting). The workflow commits them to the branch `gallery-data`. Teachers approve by editing `approvals.txt` on that branch in the GitHub web interface (`docs/GALLERY_GITHUB.md`, Korean). Nothing enters `gallery.json` before approval; `scripts/gallery/gallery-index.test.mjs` fixes that rule.
+- Reading: `client/src/gallery/gallery-index.js` fetches that one file from `raw.githubusercontent.com`. The app never calls GitHub search. `client/src/pages/GitHubGallery.jsx` and `client/src/components/gallery/GitHubGalleryView.jsx` show the cards. A card opens the published page in a new tab or the code in Create (`/sandbox?repo=owner/repo`).
+- Both sides validate entries with `shared/gallery-rules.js`: titles and usernames are plain text, and a URL is accepted only if it equals the address rebuilt from the repository name on `github.com`, `<owner>.github.io` or `raw.githubusercontent.com`.
+
+**Forge Community modules** (only when `VITE_FORGE_INDEX_URL` is set).
+
+- Publishing: `client/src/components/forge/ForgeGitHubPublish.jsx` calls `putForgeModule`, which creates the public repository `<username>/vpylab-forge` if needed, adds the topic `vpylab-forge` and writes `modules/<module id>.py`. The first line of the file holds the module recipe.
+- The list: the gallery workflow also runs `scripts/gallery/forge-index.mjs`, which reads the module files of approved repositories and writes `forge.json` and `forge-pending.json` to `gallery-data`. A file is read again only when its blob sha changes.
+- Reading: `client/src/forge/forge-index.js` fetches `forge.json`; `client/src/forge/github-registry.js` passes every entry through `parseModuleFile` and rebuilds the code from the recipe. Importing a module is local (no sign-in, no request) and records the source as `gh:<username>/<module id>`.
+- Shared rules: `shared/forge-rules.js`.
+
+Status on 2026-11-12: the gallery list and the Community modules list are not turned on in production yet, and publishing with real GitHub accounts has not been verified end to end. The screens and scripts were checked against a fake GitHub.
 
 ## Content as data
 
@@ -167,7 +182,7 @@ Lessons and reference material are JavaScript modules in `client/src/data/`, not
 | File | Content |
 |---|---|
 | `missions.js`, `physical-missions.js` | Graded missions: `starterCode`, `solutionCode`, `assertions`, `hints`. Schema: `docs/MISSION_SCHEMA.md` (Korean) |
-| `courses.js`, `light-sound-course.js`, `github-project-course.js` | Courses made of lessons |
+| `courses.js`, `training.js`, `light-sound-course.js`, `github-project-course.js` | Courses and training steps made of lessons |
 | `tutorials.js`, `creative-labs.js`, `light-sound-labs.js`, `forge-tutorial.js`, `welcome-friends.js` | Short tutorials and labs |
 | `docs.js`, `shape-guides.js`, `doc-origins.js` | In-app API reference |
 | `examples.js`, `glowscript-projects.js` | Example programs |
@@ -185,36 +200,41 @@ Tests run real mission code under CPython, not Pyodide:
 
 | Path | Contents |
 |---|---|
-| `client/src/engine/` | Python runtime, worker, bridge, sound, grading, error explainer |
+| `client/` | The app. `npm run dev` (Vite, port 4033), `npm run build`, `npm run lint`, `npm run test:run` |
+| `client/src/engine/` | Python runtime, worker, bridge, sound, grading, error explainer, video recorder |
 | `client/src/pages/` | Route components (`Sandbox.jsx` is the Create screen) |
-| `client/src/components/` | UI by area: `editor/`, `viewport/`, `console/`, `docs/`, `gallery/`, `drive/`, `home/` ... |
+| `client/src/components/` | UI by area: `editor/`, `viewport/`, `console/`, `docs/`, `drive/`, `github/`, `gallery/`, `forge/`, `home/` ... |
 | `client/src/data/` | Missions, courses, tutorials, docs, examples |
 | `client/src/i18n/` | Locale selection and translations (see `docs/I18N_GUIDE.md`) |
-| `client/src/stores/` | Zustand stores (mostly classroom edition) |
-| `client/src/drive-lab/`, `client/src/drive/` | Google sign-in and Drive saving |
-| `client/src/github/`, `client/src/gallery/` | GitHub team projects and the GitHub gallery (open edition add-ons) |
-| `client/src/classroom/`, `training/`, `month-projects/`, `forge/` | Separate entry apps and the Forge data |
+| `client/src/stores/` | `appStore.js` (theme, locale, mission progress) |
+| `client/src/drive/` | Google sign-in and Drive saving |
+| `client/src/github/` | GitHub sign-in, team projects, and the calls used by the gallery and the Forge |
+| `client/src/gallery/` | Reading the gallery list |
+| `client/src/forge/` | Forge recipes, module code generation, Community modules |
 | `client/src/test/` | CPython test runner |
-| `client/scripts/` | Build helpers: Pyodide assets, service worker plugin, Cloudflare config |
-| `server/` | Express server: `routes/`, `middleware/`, `lan/`, `classroom/`, `utils/` |
-| `server/shared/` | Modules imported by both the client and the server (geometry, share-name rules), and the gallery list rules shared by the client and `scripts/gallery/` |
-| `api/` | Vercel functions: link preview cards (`og.mjs`, `og-image.mjs`) and the Railway proxy (`srv.mjs`) |
-| `functions/`, `cloudflare/` | Cloudflare Pages Functions and their core logic and D1 migrations |
-| `supabase/migrations/` | Classroom edition database schema |
-| `scripts/` | Classroom tools, GlowScript compatibility harness (`scripts/compat/`), gallery list builder (`scripts/gallery/`) |
+| `client/scripts/` | Build helpers: Pyodide assets, service worker plugin, static 404 pages, and the header checks |
+| `client/public/_headers` | Response headers and CSP |
+| `functions/`, `cloudflare/` | Cloudflare Pages Functions, their logic and tests, and the D1 migrations |
+| `shared/` | Modules used by the app, the functions and the scripts: `gallery-rules.js`, `forge-rules.js`, `share-names.js`, `camera-system.js`, `primitive-geometry.js`, `compound-appearance.js`, `standalone-template.js`, `shape-spec.js` and others |
+| `scripts/gallery/` | Builder for the gallery and Forge lists |
+| `scripts/compat/` | VPython and GlowScript compatibility harness |
+| `scripts/research/` | Research tools kept outside the app |
 | `docs/` | Design notes and reports, mostly Korean |
+| `wrangler.toml` | Cloudflare Pages settings and the D1 binding |
+| `vercel.json` | Redirect from `vpylab.vercel.app` to the Pages site |
 
 ## Where do I change X
 
 | Task | Files |
 |---|---|
 | Add a mission | Add an object to `client/src/data/missions.js` with `ko` and `en` text. Run `npm --prefix client run test:run`; `missions.test.js` and `missions.grading.test.js` validate it. |
-| Add an API function | 1. Define it in `client/src/engine/vpython-api.py` and emit a command with `_add_command`. 2. Add its name to `_vpython_names` in `client/src/engine/pyodide-worker.js`, or `from vpython import *` will not export it. 3. Handle the command in `processBatch` (or the `create` switch) in `client/src/engine/vpython-bridge.js`. 4. If it waits, make it `async def` and add the name to `BLOCKING_NAMES` in both copies of `student-code-transform.py`. 5. If grading should see it, update `registry-props.js` and `command-replay.js`. |
+| Add an API function | 1. Define it in `client/src/engine/vpython-api.py` and emit a command with `_add_command`. 2. Add its name to `_vpython_names` in `client/src/engine/pyodide-worker.js`, or `from vpython import *` will not export it. 3. Handle the command in `processBatch` (or the `create` switch) in `client/src/engine/vpython-bridge.js`. 4. If it waits, make it `async def` and add the name to `BLOCKING_NAMES` in `student-code-transform.py`. 5. If grading should see it, update `registry-props.js` and `command-replay.js`. |
 | Add a doc entry | Add an object to `apiDocs` in `client/src/data/docs.js` (`title`, `description` as `{ ko, en }`). `docs.test.js` checks the data. |
 | Add an installable package | `INSTALLABLE_PACKAGES` in `pyodide-worker.js`. |
-| Change the CSP or other headers | Edit `vercel.json` only. `client/scripts/cloudflare-pages.mjs` reads `vercel.json` and writes `_headers` and `_redirects` into the build output. It converts Vercel paths to Cloudflare paths, and for `--edition open` removes Supabase and Railway hosts from the CSP (`openEditionCsp`) and adds Google sign-in and Drive hosts to the `/*` rule (`withGoogleSignIn`). It also writes a `404.html` into folders excluded from the SPA rewrite. The LAN server has its own CSP in `server/lan/index.js`. |
-| Turn a feature off in the open edition | Guard it with `SERVER_FEATURES` from `client/src/lib/api-base.js`. |
-| Change share-link rules | `cloudflare/share-core.js` (open), `server/routes/share.js` (classroom), `server/shared/share-names.js` (both). |
+| Change the CSP or other headers | Edit `client/public/_headers` only, then run the client tests (`client/scripts/pages-config.test.mjs`). Adding a network origin needs a recorded decision (`docs/SCOPE.md`, rule 6). |
+| Turn a feature on or off for a deployment | The build-time values in `client/.env.example` and the flags in `client/src/lib/api-base.js`. |
+| Change share-link rules | `cloudflare/share-core.js` (storage and limits), `shared/share-names.js` (names, used by both sides), `client/src/utils/share.js` (client). |
+| Change gallery or Forge list rules | `shared/gallery-rules.js`, `shared/forge-rules.js`, then `scripts/gallery/`. |
 
 ## Tests and checks
 
@@ -222,38 +242,38 @@ Commands that exist in the `package.json` files:
 
 | Command | What it runs |
 |---|---|
+| `npm test` (repository root) | `node --test` over `shared/`, `cloudflare/` and `scripts/gallery/`, then the client tests |
 | `npm --prefix client run test:run` | Vitest (jsdom). Some tests need Python; see above |
 | `npm --prefix client run lint` | ESLint |
-| `npm --prefix client run build` | Vite build of the main app |
-| `npm --prefix client run build:classroom` | Build of the classroom v2 entry |
-| `npm --prefix server test` | `node --test` over `server/classroom`, `middleware`, `lan`, `routes`, `utils` |
-| `npm run test:classroom` | Classroom server tests, client tests and the curriculum check |
+| `npm --prefix client run build` | Vite build into `client/dist` |
+| `node --test shared/*.test.js cloudflare/*.test.js` | Shared modules and the Pages Functions logic |
+| `node --test scripts/gallery/*.test.mjs` | List builder: approval rules, URL rules, fake GitHub search |
 | `npm run compat:check` | GlowScript compatibility corpus (uses `python3.12` unless `PYTHON` is set) |
-| `node --test scripts/gallery/*.test.mjs` | Gallery list builder: approval rules, URL rules, fake GitHub search |
 
 `.github/workflows/ci.yml` runs on pushes and pull requests to `main`, with Node 24 and Python 3.12:
 
-1. `classroom-v2`: `node --test server/classroom/*.test.js server/middleware/*.test.js server/lan/*.test.js server/routes/*.test.js server/utils/*.test.js scripts/classroom/backup.test.mjs cloudflare/*.test.js`, then `npm --prefix client run build:classroom`, then `node scripts/classroom/check-curriculum.mjs`.
-2. `validate-missions`: `npm run test:run` in `client/`.
-3. `validate-i18n`: an inline script that compares the keys of every `client/src/i18n/*.json` file with `en.json`.
-4. `validate-mission-i18n`: an inline script that requires `ko` and `en` in each mission's `title`, `description` and `hints`.
-5. `lint`: `npm run lint` in `client/`.
-6. `build`: `npm run build` in `client/`, after jobs 2 to 5 pass.
-7. `security`: `grep` for `.innerHTML =`, `.outerHTML =` and `.insertAdjacentHTML(` in `client/src` (test files excluded), and for secret-like strings in the repository.
+1. `shared-and-functions`: `node --test shared/*.test.js cloudflare/*.test.js`.
+2. `research-tools`: `node --test scripts/research/*.test.mjs`. Allowed to fail, because the tools are outside the app.
+3. `gallery-index`: `node --test scripts/gallery/*.test.mjs`. Must pass.
+4. `validate-missions`: `npm run test:run` in `client/`.
+5. `validate-i18n`: an inline script that compares the keys of every `client/src/i18n/*.json` file with `en.json`.
+6. `validate-mission-i18n`: an inline script that requires `ko` and `en` in each mission's `title`, `description` and `hints`.
+7. `lint`: `npm run lint` in `client/`.
+8. `build`: `npm run build` in `client/`, after jobs 4 to 7 pass.
+9. `security`: `grep` for `.innerHTML =`, `.outerHTML =` and `.insertAdjacentHTML(` in `client/src` (test files excluded), and for secret-like strings in the repository.
 
-CI also has two jobs for tools outside the app: `research-tools` (`node --test scripts/research/*.test.mjs`, allowed to fail) and `gallery-index` (`node --test scripts/gallery/*.test.mjs`, must pass).
+Other workflows: `deploy-pages.yml` (named "Deploy"; builds and deploys to Cloudflare Pages after CI passes on `main`), `gallery-index.yml` (builds the gallery and Forge lists on a schedule and commits them to the branch `gallery-data`; runs only when the repository variable `GALLERY_INDEX` is `on`), `i18n-check.yml` (translation coverage comment on pull requests), `mission-review.yml` (runs the mission tests on pull requests that change `client/src/data/missions.js`), `stale.yml`, `welcome.yml`.
 
-Other workflows: `gallery-index.yml` (builds the gallery list on a schedule and commits it to the branch `gallery-data`; runs only when the repository variable `GALLERY_INDEX` is `on`), `i18n-check.yml` (translation coverage comment on pull requests), `mission-review.yml` (runs `src/data/missions.test.js` on pull requests that match its path filter), `deploy-pages.yml` (open edition deploy), `stale.yml`, `welcome.yml`.
+To run the whole site locally including the functions, build and then run `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state`, with local secrets in a git-ignored `.dev.vars`. The Vite dev server on port 4033 does not serve `/api/*`.
 
 ## Known rough edges
 
 - Most code comments, test names, commit-facing docs and user-facing source strings are Korean. Korean identifiers also appear in Python (`색상`, `음표`, the module `피지컬키트`).
 - Several files are dense and hard to read: some components are written with minimal whitespace on very long lines (for example `client/src/components/home/WelcomeFriends.jsx`, `client/src/components/editor/python-completions.js`).
-- Large single files: `vpython-api.py` (about 6,200 lines), `server/routes/projects.js` (over 2,000), `vpython-bridge.js` (about 1,500), `pages/Sandbox.jsx` (about 1,500), `data/examples.js` and `data/missions.js` (over 3,000 each).
-- The client imports from `server/shared/` (`vpython-bridge.js`, `utils/share.js`), so the client cannot be built without the `server/` folder.
-- `student-code-transform.py` exists twice and must be kept identical (a test enforces it).
-- Bundle size: Monaco and Three.js are split into their own chunks in `client/vite.config.js`. `docs/DEPLOY_TWO_EDITIONS.md` reports a 24 MB deploy on 2026-11-07, which includes the Pyodide files. This was not re-measured here.
+- Large single files: `vpython-api.py` (about 6,200 lines), `data/examples.js` and `data/missions.js` (over 3,000 each), `vpython-bridge.js` (about 1,500), `pages/Sandbox.jsx` and `github/github-api.js` (over 1,000 each).
+- The client imports from `shared/` with relative paths that leave `client/` (for example `client/src/lib/api-base.js`), so the client cannot be built without the `shared/` folder.
+- Video recording is imported directly by `Sandbox.jsx`; see the known gap in `docs/SCOPE.md`.
+- Bundle size: Monaco and Three.js are split into their own chunks in `client/vite.config.js`. `docs/DEPLOY.md` reports a 24 MB deploy on 2026-11-07, which includes the Pyodide files. This was not re-measured after the 2026-11-12 cleanup.
 - The i18n system has two mechanisms and many two-way `ko`/`en` branches in components. See `docs/I18N_GUIDE.md`.
-- The separate entry apps (`classroom`, `training`, `month-projects`, `drive-lab`) do not call the translation functions in their main components and appear to be Korean only.
-- Comments and docs can lag behind the code. When they disagree, trust the code and fix the comment or document in the same pull request.
+- Comments and docs can lag behind the code. When they disagree, trust the code and fix the comment or document in the same pull request. Dated reports in `docs/` describe the day they were written and may describe the removed two-edition setup.
 - The Worker restrictions are a list of removed APIs, not a proven sandbox. No security review was done for this document.

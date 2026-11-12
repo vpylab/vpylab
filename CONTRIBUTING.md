@@ -10,7 +10,7 @@ Thank you for helping. Teachers, students and developers are all welcome.
 
 | Contribution | Who it suits | Where it lives |
 |---|---|---|
-| Fix a bug | Developers | `client/src/`, `server/` |
+| Fix a bug | Developers | `client/src/`, `shared/`, `cloudflare/` |
 | Add or improve tests | Developers | next to the code, `*.test.js` |
 | Translate the interface or lessons | Anyone | [docs/I18N_GUIDE.md](docs/I18N_GUIDE.md) |
 | Add or improve a mission or lesson | Teachers, students | `client/src/data/`, [docs/MISSION_SCHEMA.md](docs/MISSION_SCHEMA.md) |
@@ -25,20 +25,16 @@ Requirements: Node.js 20 or later. Python 3.12 is needed for the tests that run 
 
 ```bash
 git clone https://github.com/<your-username>/vpylab.git
-cd vpylab
+cd vpylab/client
 npm install
-cd client && npm install && cd ..
-cd server && npm install && cd ..
+npm run dev                          # http://localhost:4033
 ```
 
-Run the open edition. It needs no accounts, keys or database, so start here:
+This needs no accounts, keys or database. VPyLab has no server of its own: the app is a static site, and the only server-side code is a few Cloudflare Pages Functions in `functions/` (logic in `cloudflare/`).
 
-```bash
-cd client
-VITE_EDITION=open npm run dev        # http://localhost:4033
-```
-
-The classroom edition needs your own Supabase project. See the `.env.example` files and [README.md](README.md#for-developers).
+- The Vite dev server does not serve `/api/*`. Sharing then falls back to a long link that carries the code, and GitHub sign-in does not work.
+- To run the functions too, build and use wrangler: `npx wrangler pages dev client/dist --port 4086 --persist-to /private/tmp/vpylab-pages-dev-state`. Local secrets go in a git-ignored `.dev.vars`.
+- Saving to Google Drive and the GitHub features need public client IDs at build time. Copy `client/.env.example` to `client/.env.local` and fill in your own. See [docs/DEPLOY.md](docs/DEPLOY.md) (Korean).
 
 ## Before you open a pull request
 
@@ -48,7 +44,7 @@ Run what CI runs:
 npm --prefix client run lint
 npm --prefix client run test:run
 npm --prefix client run build
-npm --prefix server test             # only if you touched server/
+node --test shared/*.test.js cloudflare/*.test.js scripts/gallery/*.test.mjs   # only if you touched shared/, cloudflare/ or scripts/gallery/
 ```
 
 Then:
@@ -65,8 +61,9 @@ Then:
 - **Security.**
   - Never write to `innerHTML`, `outerHTML` or `insertAdjacentHTML`. Use `textContent` and DOM methods. CI rejects these.
   - Student Python runs in a Web Worker with network and storage APIs removed. Do not add them back.
-  - Never commit `.env` files or keys.
-- **Two editions.** Anything that needs the server or database must be behind `SERVER_FEATURES` (`client/src/lib/api-base.js`) so the open edition keeps working without it.
+  - Never commit `.env` files, `.dev.vars` or keys. Values in `VITE_` variables are public.
+  - Response headers and the Content Security Policy live in `client/public/_headers`. Adding a network origin needs a recorded decision ([docs/SCOPE.md](docs/SCOPE.md), rule 6).
+- **No server, no database.** VPyLab is one static site and the operator stores no student data. Do not add a feature that needs an application server, a database or VPyLab accounts. Optional features are switched by the build-time flags in `client/src/lib/api-base.js` and must leave the core working when they are off.
 - **Lessons must run.** A mission's starter code must not pass its own checks, and its solution must pass. The tests verify this by running the code.
 
 ## Commit messages

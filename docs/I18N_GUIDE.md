@@ -76,7 +76,7 @@ What `translateUi(locale, source, ...values)` does:
 What `translateSystemMessage(locale, source)` does (English only):
 
 1. Normalize whitespace and look for an exact catalog key.
-2. If there is none, try every catalog key that contains placeholders as a pattern: each `{n}` becomes a non-greedy "match anything" group. On a match, the captured text is put into the English pattern. This is how a message that was already formatted in Korean elsewhere (in the Worker, a store, or the server) can still be translated, for example the Worker's `📦 numpy 설치 중...` matches the key `📦 {0} 설치 중...`.
+2. If there is none, try every catalog key that contains placeholders as a pattern: each `{n}` becomes a non-greedy "match anything" group. On a match, the captured text is put into the English pattern. This is how a message that was already formatted in Korean elsewhere (in the Worker or a store) can still be translated, for example the Worker's `📦 numpy 설치 중...` matches the key `📦 {0} 설치 중...`.
 3. If nothing matches, return the source unchanged.
 
 Rules that follow from this:
@@ -93,7 +93,7 @@ Lesson and reference data in `client/src/data/` uses three different patterns.
 
 1. **Per-locale fields `{ ko, en }`.** `missions.js`, `physical-missions.js`, `tutorials.js`, `training.js`, `creative-labs.js`, `light-sound-labs.js`, `forge-tutorial.js`, `shape-guides.js`, `welcome-friends.js` and `doc-origins.js` define a helper `const text = (ko, en) => ({ ko, en })` and call it with two positional arguments. `docs.js` and course titles in `courses.js` write `{ ko: ..., en: ... }` literally. Components read `value[locale]`, usually with a fallback to `value.ko`.
 2. **Korean-only data translated through the catalog.** The two workbook courses (`light-sound-course.js`, `github-project-course.js`) keep lesson text in Korean only. `localizeCourse(course, locale)` in `client/src/i18n/owned-content.js` returns a translated copy for `en`: it walks the object and passes every string through `translateUi`, except fields named `code`, `accessibleCode`, `supportCode`, `copyCode`, `signature`, `url`, `path`, `id`, `ko`, `en`. The original object is not changed. For the two core courses (`beg-light-sound`, `beg-github-project`) `localizeLessonCode` also rewrites lesson code for English: the Korean commands `음표` and `소리` become `play_note_and_wait` and `play_sound`, and Korean note names such as `"도4"` become `"C4"`. Comments and other strings in the code are left as they are. `client/src/pages/Examples.jsx` uses the same catalog approach for example titles and descriptions (`ui(ex.title)`).
-3. **Suffix fields.** `EXAMPLE_CATEGORIES` in `examples.js` uses `label` and `labelEn`. `code-vocabulary.js` passes Korean and English as separate positional arguments. `client/src/components/shared/LoadingScreen.jsx` has `ALL_TIPS_KO` and `ALL_TIPS_EN` arrays.
+3. **Suffix fields.** `EXAMPLE_CATEGORIES` in `examples.js` uses `label` and `labelEn`. `code-vocabulary.js` passes Korean and English as separate positional arguments.
 
 Other localized text outside these patterns: Python error explanations in `client/src/engine/python-error-explainer.js` (tables with `ko` and `en`), grading messages in `client/src/engine/grading-engine.js` (`pickText(value, lang)`, falling back to `ko`), and the default editor code in `client/src/data/default-code.js` (two string replacements for `en`).
 
@@ -105,7 +105,7 @@ The example below uses Japanese (`ja`). Every item is a code change. Nothing her
 
 ### Where `ko` and `en` are hard-coded
 
-Paths are relative to the repository root. Found by searching `client/src`, `server`, `api`, `functions`, `cloudflare` and the HTML entry files; test files are not listed.
+Paths are relative to the repository root. Found by searching `client/src`, `shared`, `functions`, `cloudflare` and `client/index.html`; test files are not listed. The list was last checked against the files on 2026-11-12, after the server, the separate entry apps and the account screens were removed.
 
 **Locale list and core i18n code**
 
@@ -121,13 +121,12 @@ Paths are relative to the repository root. Found by searching `client/src`, `ser
 
 **Two-way branches where any non-Korean locale gets English** (`locale === 'ko' ? '…' : '…'`, often through a local `const ko = locale === 'ko'` or `lang === 'ko'`)
 
-- Pages: `client/src/pages/Home.jsx`, `Gallery.jsx`, `GalleryDetail.jsx`, `Missions.jsx`, `MissionPlay.jsx`, `Tutorials.jsx`, `Courses.jsx`, `Examples.jsx`, `Docs.jsx`, `SourceProject.jsx`, `Sandbox.jsx`
-- `client/src/components/auth/AuthModal.jsx`
+- Pages: `client/src/pages/Home.jsx`, `Gallery.jsx`, `Missions.jsx`, `MissionPlay.jsx`, `Tutorials.jsx`, `Courses.jsx`, `Examples.jsx`, `Docs.jsx`, `SourceProject.jsx`, `Sandbox.jsx`
 - `client/src/components/docs/DocCodeBlock.jsx`, `DocContent.jsx`, `DocSidebar.jsx`
 - `client/src/components/editor/CodeEditor.jsx`, `python-completions.js`
 - `client/src/components/home/HomePreviewBoundary.jsx`, `HomeProjectPlayer.jsx`, `HomeSettingsDialog.jsx`, `PersonalHomeProject.jsx`, `StageLightEditor.jsx`, `WelcomeFriends.jsx`
 - `client/src/components/learning/CodeVocabulary.jsx`, `TypingWordTip.jsx`
-- `client/src/components/shared/RuntimeStatus.jsx`, `LoadingScreen.jsx`
+- `client/src/components/shared/RuntimeStatus.jsx`
 
 **Two-way branches where any non-English locale gets Korean** (`locale === 'en' ? … : …`)
 
@@ -143,30 +142,26 @@ Paths are relative to the repository root. Found by searching `client/src`, `ser
 - `client/src/engine/grading-engine.js` (`pickText`, `options.lang || 'ko'`)
 - `client/src/data/docs.js` (`searchDocs(query, locale = 'ko')`)
 - `client/src/hooks/usePyodide.js` (`locale = 'ko'`)
-- `client/src/classroom/curriculum.js`, `client/src/classroom/CurriculumLibrary.jsx` (always read `.ko`)
 
-**Fixed date and number locales**
+**Date and number formats**
 
-- `'ko-KR'`: `client/src/stores/projectStore.js`, `client/src/pages/Sandbox.jsx`, `client/src/components/gallery/GalleryCard.jsx`, `client/src/classroom/Workspace.jsx`, `PeerReview.jsx`, `GitHubLearningPanel.jsx`
-- `'ko-KR'` or `'en-US'`: `client/src/pages/GalleryDetail.jsx`
+- Dates in `client/src/components/gallery/GitHubGalleryView.jsx`, `client/src/components/github/GitHubProjectDialog.jsx` and `client/src/components/drive/DriveDialog.jsx` are formatted with the browser's default locale (`toLocaleDateString()` and similar with no locale argument), not with the app's selected language.
 
 **Static files with `lang="ko"` or Korean text**
 
-- `client/index.html`, `classroom.html`, `training.html`, `drive-lab.html`, `month-projects.html`, `brand-preview.html`
+- `client/index.html`, `client/brand-preview.html`
 - `client/public/manifest.webmanifest` (`"lang": "ko"`, Korean description and shortcut names)
-- `server/utils/standalone-template.js`, `server/routes/projects.js`, `api/_lib/og.mjs` (generated HTML)
+- `shared/standalone-template.js` (exported HTML) and the project page template in `client/src/github/github-api.js` (generated HTML with `lang="ko"`)
 
 **Data shape**
 
 - The `text(ko, en)` helper in the data files listed under "Content localization" takes exactly two arguments.
-- `labelEn` in `client/src/data/examples.js`; the positional `english` argument in `client/src/data/code-vocabulary.js`; `ALL_TIPS_KO` / `ALL_TIPS_EN` in `LoadingScreen.jsx`.
+- `labelEn` in `client/src/data/examples.js`; the positional `english` argument in `client/src/data/code-vocabulary.js`.
 
 **Checks and scripts**
 
 - `.github/workflows/ci.yml`: `requiredLangs = ['ko', 'en']` for missions.
 - `scripts/compat/english-browser.cjs`: a browser check written for English.
-
-The separate entry apps (`client/src/classroom/`, `client/src/training/`, `client/src/month-projects/`, `client/src/drive-lab/`) do not call `t()` or `ui()` in their main components. They appear to be Korean only and are outside the scope of a new locale unless they are internationalized first.
 
 ### What a new locale gets with only the easy steps
 
@@ -187,7 +182,7 @@ The result is a mixed-language interface. A usable third language needs the refa
 4. **Remove the two-way branches.** Replace each `ko ? '한국어' : 'English'` with `ui("한국어")` plus a catalog entry (or a `t()` key). This is the largest part: about 30 files. It needs someone who can confirm that the existing English text is moved into the catalog unchanged. No Korean reading is needed for this step, because both strings are already in the code.
 5. **Decide the data shape.** Either extend `text(ko, en)` and the `{ ko, en }` objects with a third field and give every reader a common fallback helper (`value[locale] ?? value.en ?? value.ko`), or move that text into the catalog as the workbook courses already do. `grading-engine.js` already has `pickText`; the pages do not share one helper.
 6. **Translate.** Copy `en.json` to `ja.json` (292 keys). Copy `catalogs/en-ui-text.json` to `catalogs/ja-ui-text.json` and translate the values (about 1,800 entries). The keys are Korean, but each entry already has its English value beside it, so a translator can work from English. Keep every `{0}`, `{1}` placeholder. Then the data files: missions, docs, tutorials, courses, examples.
-7. **Fix the rest.** Date formats (`'ko-KR'`), `python-error-explainer.js`, `default-code.js`, `LoadingScreen.jsx` tips, and `manifest.webmanifest` if the installed app name should change.
+7. **Fix the rest.** Date formats, `python-error-explainer.js`, `default-code.js`, and `manifest.webmanifest` if the installed app name should change.
 8. **Add tests** next to the existing ones (see below) for the new locale, and extend the browser check if you can run it.
 
 Do not translate: Python keywords and API names (`sphere`, `vector`, `rate`), `from vpython import *`, or the Korean API aliases. Do translate code comments in starter code where the data has a per-locale field for them.
@@ -223,6 +218,5 @@ npm --prefix client run test:run -- src/components/courses/WorkbookCourse.test.j
 
 ## Not verified
 
-- Whether every Korean message produced by the Worker, the stores and the server has a catalog entry.
-- Whether server responses (`server/routes/`) are localized anywhere other than through the catalog on the client.
+- Whether every Korean message produced by the Worker, the stores and the Pages Functions (`cloudflare/`) has a catalog entry.
 - The Crowdin or Weblate integration mentioned in the earlier Korean guide: no configuration for either exists in the repository.

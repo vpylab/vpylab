@@ -2,7 +2,7 @@
 
 English · [한국어](#한국어)
 
-Status: in effect from 2026-11-10 until the maintainer lifts it in this file.
+Status: in effect from 2026-11-10 until the maintainer lifts it in this file. Updated 2026-11-12 for the move to one version.
 
 ## Why this file exists
 
@@ -19,12 +19,12 @@ VPyLab is **Python that students write in the browser and see and hear at once a
 | Light and sound from the same code | `client/src/engine/sound-system.js` and the lighting parts of the API |
 | The Create screen: editor, 3D view, console, run and stop | `client/src/pages/Sandbox.jsx` |
 | Lessons that lead from first run to an original project (Training, Tutorials) and the reference docs | `client/src/data/` |
-| Google sign-in and saving to the student's own Google Drive ([plan](GOOGLE_FIRST_PLAN.md)) | `client/src/drive-lab/`, `client/src/drive/` |
-| Working without an account: opening and downloading code files, the draft kept in the browser, share links | `client/src/utils/code-file.js`, `sandbox-draft.js`, `share.js` |
-| Two editions from one codebase, and the classroom edition's existing sign-in, saving and team flow | `client/src/lib/api-base.js`, `client/src/stores/`, `server/` |
+| Google sign-in and saving to the student's own Google Drive | `client/src/drive/` |
+| Working without an account: opening and downloading code files, the draft kept in the browser, share links | `client/src/utils/code-file.js`, `sandbox-draft.js`, `share.js`, `functions/api/share/`, `cloudflare/share-core.js` |
+| One static site with no server of its own, where the operator stores no student data | `client/public/_headers`, `functions/`, [DEPLOY.md](DEPLOY.md) |
 | Interface in Korean and English | `client/src/i18n/` |
 
-Google sign-in and Drive saving are core, not an extra. They are the planned way for the project to keep no student data.
+Google sign-in and Drive saving are core, not an extra. They are how the project keeps no student data.
 
 ## What is welcome during the freeze
 
@@ -33,18 +33,25 @@ Google sign-in and Drive saving are core, not an extra. They are the planned way
 - Accessibility.
 - Translations, and making it easier to add a language.
 - Better lessons, missions and documentation.
-- The steps of the [Google-first plan](GOOGLE_FIRST_PLAN.md).
+- Cleaning up after the move to one version: leftover code, comments and documents of the removed server setup.
 - Work that shows whether students learn: studies, measurement tools kept outside the app (`scripts/research/`).
 
 ## What is paused
 
-New features outside the core. This includes new screens, new content types, new integrations, new storage backends beyond the Google-first plan, and new spin-offs inside this repository.
+New features outside the core. This includes new screens, new content types, new integrations, new storage backends, and new spin-offs inside this repository.
 
-Features that already exist stay. Nothing is removed by this file.
+Features that exist today stay. The removals of 2026-11-12 were a separate decision by the maintainer and are recorded below.
 
 ## The add-on rule
 
-Anything that is not core is an add-on, including features that already exist: video recording and saving videos to Drive, the Forge, the gallery, the physical-computing pilot missions, classroom LAN mode, the teacher-training app, GitHub team projects in the open edition, the GitHub gallery in the open edition.
+Anything that is not core is an add-on, including features that already exist:
+
+- video recording and saving videos to Drive
+- the Forge
+- the physical-computing pilot missions
+- GitHub team projects (`client/src/github/`)
+- the student gallery on GitHub (`client/src/gallery/`)
+- the Forge's Community modules on GitHub (`client/src/forge/github-registry.js`)
 
 An add-on must meet all of these:
 
@@ -61,17 +68,30 @@ Existing add-ons were not all written to this rule. Bringing them in line is wel
 
 ## Recorded decisions (rule 6)
 
-- **2026-11-12, GitHub team projects in the open edition** (`client/src/github/`, `functions/api/github/token.js`). The maintainer decided the three-step flow in [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md) section 0: no sign-in to start, Google Drive to save, GitHub only for team projects. This add-on adds, only in builds that set `VITE_GITHUB_CLIENT_ID`: the network origin `https://api.github.com` in the main app's CSP, the GitHub permissions `public_repo` and `repo:invite` requested from a student who chooses to connect, and one Pages Function that exchanges the sign-in code for a token and stores nothing. The project stores no student data for it. The token stays in the browser tab's storage.
+Records are kept in the order they were made. A later record can supersede an earlier one; the earlier text is kept as history.
+
+- **2026-11-12, GitHub team projects in the open edition** (`client/src/github/`, `functions/api/github/token.js`). *Superseded in part by "one version" below: there is no separate open edition any more, and the origin `https://api.github.com` is now in the CSP of every build.* The maintainer decided the three-step flow: no sign-in to start, Google Drive to save, GitHub only for team projects. This add-on adds, only in builds that set `VITE_GITHUB_CLIENT_ID`: the network origin `https://api.github.com` in the main app's CSP, the GitHub permissions `public_repo` and `repo:invite` requested from a student who chooses to connect, and one Pages Function that exchanges the sign-in code for a token and stores nothing. The project stores no student data for it. The token stays in the browser tab's storage.
 - **2026-11-12, the Google access token moves from page memory to the browser tab's storage** (`sessionStorage`), so a refresh does not disconnect Drive. It is removed when the tab closes or the student signs out.
-- **2026-11-12, the gallery is rebuilt on GitHub for the open edition** (`client/src/gallery/`, `scripts/gallery/`, `.github/workflows/gallery-index.yml`). The maintainer decided to rebuild the gallery with no server and no database, on top of the GitHub team projects add-on. It is on only in open-edition builds that set `VITE_GALLERY_INDEX_URL`. The classroom edition's existing gallery is unchanged.
+- **2026-11-12, the gallery is rebuilt on GitHub for the open edition** (`client/src/gallery/`, `scripts/gallery/`, `.github/workflows/gallery-index.yml`). *Superseded in part by "one version" below: this is now the only gallery, and the classroom edition's gallery no longer exists.* The maintainer decided to rebuild the gallery with no server and no database, on top of the GitHub team projects add-on. It is on only in open-edition builds that set `VITE_GALLERY_INDEX_URL`. The classroom edition's existing gallery is unchanged.
   - Network origins: none added to the CSP. The app reads one static list file and the preview images from `https://raw.githubusercontent.com`, which `connect-src` and `img-src` already allowed. Starring from the app calls `https://api.github.com`, which is in the CSP only in builds with the GitHub add-on. Running pages open in a new tab, so nothing is added to `frame-src`.
   - Permissions: none added. Adding a project to the gallery (repository topics and a `thumbnail.jpg` commit) and starring use the `public_repo` permission that the GitHub add-on already requests. GitHub's "Scopes for OAuth apps" page says `public_repo` is "also required for starring public repositories".
   - Stored data: nothing on a server. The branch `gallery-data` of this repository holds public repository metadata written by a scheduled workflow: the approved list, the list waiting for approval (repository name, title, GitHub username, date), and the approval file that teachers edit. The student's own repository gains the topic `vpylab-gallery` and a preview image.
   - Work appears in the gallery only after a teacher adds it to the approval file. The workflow's token has `contents: write` only in the job that commits to `gallery-data`.
-- **2026-11-12, the Forge's public registry moves to GitHub for the open edition** (`client/src/forge/github-registry.js`, `scripts/gallery/forge-index.mjs`). This is a step of the move away from the server and database, not a new feature: the classroom edition already had public registration of Forge modules in Supabase. It is an add-on on top of the GitHub add-on and the gallery list workflow. Without `VITE_FORGE_INDEX_URL` the Forge works as before, without the shared-modules tab.
+- **2026-11-12, the Forge's public registry moves to GitHub for the open edition** (`client/src/forge/github-registry.js`, `scripts/gallery/forge-index.mjs`). *Superseded in part by "one version" below: the Supabase registry it replaced no longer exists.* This is a step of the move away from the server and database, not a new feature: the classroom edition already had public registration of Forge modules in Supabase. It is an add-on on top of the GitHub add-on and the gallery list workflow. Without `VITE_FORGE_INDEX_URL` the Forge works as before, without the shared-modules tab.
   - Network origins and permissions: none added. The app reads one static file from `https://raw.githubusercontent.com`. Publishing creates the public repository `<username>/vpylab-forge` and writes files to it with the `public_repo` permission the GitHub add-on already requests.
   - Stored data: nothing on a server. The `gallery-data` branch gains `forge.json` (module recipes from approved repositories, with GitHub usernames) and `forge-pending.json`.
   - The list carries recipes, not code. The app rebuilds the Python code from a recipe that passed the Forge's validator, so a hand-edited file in a student's repository does not run in another student's browser.
+- **2026-11-12, one version.** VPyLab had shipped as two editions from one codebase: a classroom edition (Vercel, a Railway Express server, Supabase) and an open edition (Cloudflare Pages, no server, no database). The maintainer decided that the service had not really been used yet, that everything of the old setup should be deleted, and that one version is built, managed and deployed from now on. That one version is what the open edition was. This record supersedes the edition wording in the records above.
+  - Removed: the Express server (including the classroom server and classroom LAN mode), the Vercel functions (link preview cards and the server proxy), the Supabase schema and client, account sign-in, account-saved code and revisions, server-mode team projects with invite codes, the Supabase gallery (publish, likes, remix), the teacher dashboard, "send code to students", the classroom app, the teacher-training app, the month-projects page, the Drive lab page, the edition build setting and the committed production env file.
+  - Kept as the one version: the core above, share links on Cloudflare D1, and the three GitHub add-ons.
+  - The three ways to work, decided the same day: (1) no sign-in: run, edit, open and download files, share links; (2) save to the student's own Google Drive; (3) GitHub, optional, for team projects, the gallery and Community modules.
+  - Short share links have no expiry, and students may use a share link as a way to keep code.
+  - Team collaboration is on GitHub, not Google Drive. With the `drive.file` permission the app can open only files it created, so it cannot open a file a teammate shared.
+  - A teacher cannot see code that students saved to their own Drive. Work is handed in as a share link or a file.
+  - A GitHub account requires age 13 or older, so everything on GitHub is optional.
+  - Network origins: response headers are now one static file (`client/public/_headers`). The Google sign-in and Drive origins and `https://api.github.com` are in the main app's CSP in every build, also when the matching feature is switched off. The Supabase and Railway origins are gone.
+  - Stored data: the only data the operator stores is what a student shares with **Share** (code and title, in Cloudflare D1). Student code otherwise lives in the student's browser, the student's Google Drive, or the student's GitHub repositories.
+  - Not done on 2026-11-12: the gallery list and the Community modules list are not turned on in production; publishing with real GitHub accounts has not been verified end to end; the old Supabase data, the Railway service and the Vercel project still exist and will be deleted separately.
 
 ## How to propose a feature anyway
 
@@ -85,7 +105,7 @@ The maintainer lifts the freeze by editing this file. Reasonable conditions: a s
 
 ## 한국어
 
-상태: 2026-11-10부터 적용합니다. 관리자가 이 파일을 고쳐 해제할 때까지 유지합니다.
+상태: 2026-11-10부터 적용합니다. 관리자가 이 파일을 고쳐 해제할 때까지 유지합니다. 2026-11-12에 하나의 버전으로 정리한 내용을 반영했습니다.
 
 ### 이 문서를 두는 까닭
 
@@ -100,12 +120,12 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 - 같은 코드에서 나오는 빛과 소리
 - 만들기 화면(편집기, 3D 화면, 출력, 실행과 정지)
 - 첫 실행에서 자기 작품까지 이어지는 학습 자료(트레이닝, 튜토리얼)와 문서
-- 구글 로그인과 학생 본인의 구글 드라이브 저장([계획](GOOGLE_FIRST_PLAN.md))
+- 구글 로그인과 학생 본인의 구글 드라이브 저장(`client/src/drive/`)
 - 계정 없이 작업하기(코드 파일 열기와 내려받기, 브라우저에 남는 초안, 공유 링크)
-- 코드 하나로 두 판을 배포하는 구조, 수업용 판의 기존 로그인·저장·팀 흐름
+- 자체 서버가 없는 정적 사이트 하나로 운영하고, 운영자가 학생 데이터를 보관하지 않는 구조([DEPLOY.md](DEPLOY.md))
 - 한국어와 영어 화면
 
-구글 로그인과 드라이브 저장은 추가 기능이 아니라 핵심입니다. 운영자가 학생 데이터를 보관하지 않기 위한 계획된 방식입니다.
+구글 로그인과 드라이브 저장은 추가 기능이 아니라 핵심입니다. 운영자가 학생 데이터를 보관하지 않기 위한 방식입니다.
 
 ### 동결 기간에 받는 작업
 
@@ -114,18 +134,25 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 - 접근성
 - 번역, 언어를 추가하기 쉽게 만드는 작업
 - 학습 자료, 미션, 문서 개선
-- 구글 중심 전환 계획의 단계
+- 하나의 버전으로 정리한 뒤 남은 예전 서버 구성의 코드, 주석, 문서 정리
 - 학습 효과를 확인하는 작업(수업 연구, 앱 밖에 두는 측정 도구 `scripts/research/`)
 
 ### 멈추는 것
 
-핵심 밖의 새 기능을 멈춥니다. 새 화면, 새 콘텐츠 유형, 새 외부 연동, 구글 중심 전환 계획에 없는 저장 방식, 이 저장소 안의 새 스핀오프가 여기에 해당합니다.
+핵심 밖의 새 기능을 멈춥니다. 새 화면, 새 콘텐츠 유형, 새 외부 연동, 새 저장 방식, 이 저장소 안의 새 스핀오프가 여기에 해당합니다.
 
-이미 있는 기능은 그대로 둡니다. 이 문서 때문에 지우는 기능은 없습니다.
+지금 있는 기능은 그대로 둡니다. 2026-11-12에 지운 것은 관리자가 따로 내린 결정이며 아래에 기록했습니다.
 
 ### 애드온 규칙
 
-핵심이 아닌 것은 모두 애드온입니다. 이미 있는 기능도 포함합니다. 영상 녹화와 영상의 드라이브 저장, 대장간, 갤러리, 피지컬 컴퓨팅 시범 미션, 교실 LAN 모드, 교사 연수용 앱, 오픈소스 판의 GitHub 팀 프로젝트, 오픈소스 판의 GitHub 연동 갤러리가 애드온입니다.
+핵심이 아닌 것은 모두 애드온입니다. 이미 있는 기능도 포함합니다.
+
+- 영상 녹화와 영상의 드라이브 저장
+- 대장간
+- 피지컬 컴퓨팅 시범 미션
+- GitHub 팀 프로젝트(`client/src/github/`)
+- GitHub 연동 학생 작품 갤러리(`client/src/gallery/`)
+- GitHub 연동 대장간 모두의 모듈(`client/src/forge/github-registry.js`)
 
 애드온은 아래를 모두 지켜야 합니다.
 
@@ -142,17 +169,30 @@ VPyLab은 **학생이 브라우저에서 파이썬을 작성하면 3D 도형과 
 
 ### 기록한 결정 (규칙 6)
 
-- **2026-11-12, 오픈소스 판의 GitHub 팀 프로젝트** (`client/src/github/`, `functions/api/github/token.js`). 관리자가 [GOOGLE_FIRST_PLAN.md](GOOGLE_FIRST_PLAN.md) 0절의 세 단계(로그인 없이 시작, 저장은 구글 드라이브, 팀 프로젝트만 GitHub)를 정했습니다. 이 애드온은 `VITE_GITHUB_CLIENT_ID`를 넣은 빌드에서만 다음을 더합니다. 본 앱 CSP의 외부 주소 `https://api.github.com`, 연결을 고른 학생에게 요청하는 GitHub 권한 `public_repo`와 `repo:invite`, 로그인 코드를 토큰으로 바꾸고 아무것도 저장하지 않는 Pages 함수 하나입니다. 운영자가 보관하는 학생 데이터는 없습니다. 토큰은 브라우저 탭 저장소에 둡니다.
+기록은 결정한 순서대로 둡니다. 뒤의 기록이 앞의 기록을 대신할 수 있으며, 앞의 글은 기록으로 남깁니다.
+
+- **2026-11-12, 오픈소스 판의 GitHub 팀 프로젝트** (`client/src/github/`, `functions/api/github/token.js`). *아래 "하나의 버전" 기록이 일부를 대신합니다. 오픈소스 판이라는 구분은 없어졌고, `https://api.github.com`은 이제 모든 빌드의 CSP에 들어 있습니다.* 관리자가 세 단계(로그인 없이 시작, 저장은 구글 드라이브, 팀 프로젝트만 GitHub)를 정했습니다. 이 애드온은 `VITE_GITHUB_CLIENT_ID`를 넣은 빌드에서만 다음을 더합니다. 본 앱 CSP의 외부 주소 `https://api.github.com`, 연결을 고른 학생에게 요청하는 GitHub 권한 `public_repo`와 `repo:invite`, 로그인 코드를 토큰으로 바꾸고 아무것도 저장하지 않는 Pages 함수 하나입니다. 운영자가 보관하는 학생 데이터는 없습니다. 토큰은 브라우저 탭 저장소에 둡니다.
 - **2026-11-12, 구글 접근 토큰을 페이지 메모리에서 브라우저 탭 저장소**(`sessionStorage`)**로 옮김.** 새로 고침해도 드라이브 연결이 유지됩니다. 탭을 닫거나 로그아웃하면 지워집니다.
-- **2026-11-12, 오픈소스 판의 갤러리를 GitHub 연동으로 다시 만듦** (`client/src/gallery/`, `scripts/gallery/`, `.github/workflows/gallery-index.yml`). 관리자가 갤러리를 서버와 DB 없이, GitHub 팀 프로젝트 애드온 위에 다시 만들기로 정했습니다. `VITE_GALLERY_INDEX_URL`을 넣은 오픈소스 판 빌드에서만 켜집니다. 수업용 판의 기존 갤러리는 그대로입니다.
+- **2026-11-12, 오픈소스 판의 갤러리를 GitHub 연동으로 다시 만듦** (`client/src/gallery/`, `scripts/gallery/`, `.github/workflows/gallery-index.yml`). *아래 "하나의 버전" 기록이 일부를 대신합니다. 이제 갤러리는 이것 하나이며, 수업용 판의 갤러리는 없어졌습니다.* 관리자가 갤러리를 서버와 DB 없이, GitHub 팀 프로젝트 애드온 위에 다시 만들기로 정했습니다. `VITE_GALLERY_INDEX_URL`을 넣은 오픈소스 판 빌드에서만 켜집니다. 수업용 판의 기존 갤러리는 그대로입니다.
   - 외부 주소: CSP에 더한 주소가 없습니다. 앱은 정적 목록 파일 하나와 미리보기 그림을 `https://raw.githubusercontent.com`에서 읽으며, 이 주소는 `connect-src`와 `img-src`에 이미 있었습니다. 앱에서 스타를 누를 때는 `https://api.github.com`을 호출하고, 이 주소는 GitHub 애드온을 넣은 빌드의 CSP에만 있습니다. 실행 화면은 새 탭으로 열기 때문에 `frame-src`에 더한 것이 없습니다.
   - 권한: 새로 요청하는 권한이 없습니다. 갤러리에 올리기(저장소 topic 변경과 `thumbnail.jpg` 커밋)와 스타는 GitHub 애드온이 이미 요청하는 `public_repo`로 동작합니다. GitHub 문서 "Scopes for OAuth apps"에 `public_repo`가 공개 저장소의 스타에도 필요한 권한이라고 적혀 있습니다.
   - 보관 데이터: 서버에 보관하는 것이 없습니다. 이 저장소의 `gallery-data` 브랜치에 예약 워크플로가 공개 저장소의 정보를 적습니다. 승인된 목록, 승인 대기 목록(저장소 이름, 제목, GitHub 아이디, 날짜), 교사가 고치는 승인 파일입니다. 학생의 저장소에는 topic `vpylab-gallery`와 미리보기 그림이 더해집니다.
   - 교사가 승인 파일에 추가한 작품만 갤러리에 표시됩니다. 워크플로의 토큰은 `gallery-data`에 커밋하는 작업에서만 `contents: write`를 갖습니다.
-- **2026-11-12, 오픈소스 판의 대장간 공개 등록을 GitHub 연동으로 옮김** (`client/src/forge/github-registry.js`, `scripts/gallery/forge-index.mjs`). 새 기능이 아니라 서버와 DB를 없애는 전환의 한 단계입니다. 수업용 판에는 대장간 모듈의 공개 등록이 Supabase 방식으로 이미 있었습니다. GitHub 애드온과 갤러리 목록 워크플로 위에 얹은 애드온이며, `VITE_FORGE_INDEX_URL`이 없으면 대장간은 모두의 모듈 탭 없이 지금처럼 동작합니다.
+- **2026-11-12, 오픈소스 판의 대장간 공개 등록을 GitHub 연동으로 옮김** (`client/src/forge/github-registry.js`, `scripts/gallery/forge-index.mjs`). *아래 "하나의 버전" 기록이 일부를 대신합니다. 이 방식이 대신한 Supabase 등록은 없어졌습니다.* 새 기능이 아니라 서버와 DB를 없애는 전환의 한 단계입니다. 수업용 판에는 대장간 모듈의 공개 등록이 Supabase 방식으로 이미 있었습니다. GitHub 애드온과 갤러리 목록 워크플로 위에 얹은 애드온이며, `VITE_FORGE_INDEX_URL`이 없으면 대장간은 모두의 모듈 탭 없이 지금처럼 동작합니다.
   - 외부 주소와 권한: 더한 것이 없습니다. 앱은 `https://raw.githubusercontent.com`의 정적 파일 하나를 읽습니다. 공개 등록은 공개 저장소 `<아이디>/vpylab-forge`를 만들고 파일을 올리며, GitHub 애드온이 이미 요청하는 `public_repo`로 동작합니다.
   - 보관 데이터: 서버에 보관하는 것이 없습니다. `gallery-data` 브랜치에 `forge.json`(승인된 저장소의 모듈 레시피와 GitHub 아이디)과 `forge-pending.json`이 더해집니다.
   - 목록에는 코드가 아니라 레시피를 싣습니다. 앱이 대장간의 검사기를 통과한 레시피에서 파이썬 코드를 다시 만들므로, 학생이 저장소의 파일을 손으로 고쳐도 다른 학생의 브라우저에서 실행되지 않습니다.
+- **2026-11-12, 하나의 버전.** VPyLab은 코드 하나에서 두 가지 판을 배포해 왔습니다. 수업용 판(Vercel, Railway의 Express 서버, Supabase)과 오픈소스 판(Cloudflare Pages, 서버와 DB 없음)입니다. 관리자는 이 서비스가 아직 제대로 사용된 적이 없다고 보고, 예전 구성을 모두 지우고 앞으로는 하나의 버전만 만들고 관리하고 배포하기로 정했습니다. 그 하나의 버전은 오픈소스 판이던 것입니다. 이 기록이 위 기록들의 판 구분 표현을 대신합니다.
+  - 지운 것: Express 서버(교실 서버와 교실 LAN 모드 포함), Vercel 함수(공유 미리보기 카드와 서버 중계), Supabase 스키마와 클라이언트, 계정 로그인, 계정에 저장한 코드와 저장 이력, 초대 코드를 사용하는 서버 방식 팀 프로젝트, Supabase 갤러리(발행, 좋아요, 리믹스), 교사 대시보드, "학생에게 코드 보내기", 교실 앱, 교사 연수용 앱, 월간 프로젝트 화면, 드라이브 실험 페이지, 판을 고르는 빌드 설정, 커밋되어 있던 운영 환경변수 파일.
+  - 하나의 버전으로 남긴 것: 위의 핵심, Cloudflare D1의 공유 링크, GitHub 애드온 세 가지.
+  - 같은 날 정한 세 가지 작업 방법: (1) 로그인 없이 실행, 편집, 파일 열기와 내려받기, 공유 링크. (2) 학생 본인의 구글 드라이브에 저장. (3) 선택 기능인 GitHub로 팀 프로젝트, 갤러리, 모두의 모듈.
+  - 짧은 공유 링크는 만료 없이 보관합니다. 학생이 공유 링크를 코드 보관 용도로 사용해도 됩니다.
+  - 팀 협업은 구글 드라이브가 아니라 GitHub가 맡습니다. `drive.file` 권한으로는 앱이 만든 파일만 열 수 있어 팀원이 공유한 파일을 열 수 없기 때문입니다.
+  - 교사는 학생이 자기 드라이브에 저장한 코드를 볼 수 없습니다. 제출은 공유 링크나 파일로 합니다.
+  - GitHub 계정은 13세 이상만 만들 수 있으므로 GitHub를 사용하는 기능은 모두 선택 기능입니다.
+  - 외부 주소: 응답 헤더는 이제 정적 파일 하나(`client/public/_headers`)입니다. 구글 로그인과 드라이브 주소, `https://api.github.com`은 해당 기능을 끈 빌드에서도 본 앱의 CSP에 들어 있습니다. Supabase와 Railway 주소는 없어졌습니다.
+  - 보관 데이터: 운영자가 보관하는 것은 학생이 **공유**를 눌러 올린 코드와 제목뿐입니다(Cloudflare D1). 그 밖의 학생 코드는 학생의 브라우저, 학생의 구글 드라이브, 학생의 GitHub 저장소에 있습니다.
+  - 2026-11-12에 끝내지 못한 것: 운영 사이트에서 갤러리 목록과 모두의 모듈 목록을 켜지 않았습니다. 실제 GitHub 계정으로 올리는 과정을 처음부터 끝까지 확인하지 못했습니다. 예전 Supabase 데이터, Railway 서비스, Vercel 프로젝트는 아직 남아 있으며 따로 지웁니다.
 
 ### 그래도 기능을 제안하려면
 

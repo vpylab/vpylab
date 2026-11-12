@@ -349,7 +349,7 @@ name = input('이름: ')           # 3D 화면 위 입력 위젯으로 받는다
 
 `play_sound`, `play_note`, `play_chord`, `play_sequence`, `play_sfx`, `start_bgm`, `stop_bgm`, `note`, `play_instrument`, 한글 별칭(`소리`, `음표`, `효과음`, `배경음악`, `배경음악정지`, `화음`, `악기`).
 
-자세한 사용법은 [PROGRESS.md](../PROGRESS.md)의 사운드 섹션 참조.
+자세한 사용법은 앱의 **문서** 메뉴에 있는 "사운드 / 음악" 분류를 참고합니다(`client/src/data/docs.js`).
 
 ---
 

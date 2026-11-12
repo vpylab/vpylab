@@ -1,6 +1,6 @@
 # VPyLab student guide
 
-Open [VPyLab in English](https://vpylab.vercel.app/?lang=en), or choose **More → Language → English** (on a phone, **Menu → Language**). Your browser remembers the language. Switching languages keeps your current code and Forge draft.
+Open [VPyLab in English](https://vpylab.pages.dev/?lang=en), or choose **More → Language → English** (on a phone, **Menu → Language**). Your browser remembers the language. Switching languages keeps your current code and Forge draft.
 
 ## Where to start
 
@@ -18,7 +18,7 @@ The English foundation lessons use `play_note_and_wait("C4", 0.4)`; the Korean a
 
 Completion uses the documentation and local rules. Type a function, argument, known property, color, variable, or function name. **Tab** accepts, **Esc** closes, and **Enter** adds a new line. You can also press **Complete** or Ctrl+Space. Suggestions avoid comments and strings; unknown object types may have fewer suggestions.
 
-A small picture, meaning, and example appear beside the caret when you type a word such as `sphere`, `radius`, `opacity`, or `compound`. A word appears automatically at most twice per account in this browser. **Got it** hides future automatic help for that word. Typing, scrolling, Esc, or waiting briefly closes the card without moving focus. The manual dictionary under documentation and tutorial examples stays collapsed until opened. This help does not become a code comment. No runtime AI service receives your code for completion or word help.
+A small picture, meaning, and example appear beside the caret when you type a word such as `sphere`, `radius`, `opacity`, or `compound`. A word appears automatically at most twice in this browser. **Got it** hides future automatic help for that word. Typing, scrolling, Esc, or waiting briefly closes the card without moving focus. The manual dictionary under documentation and tutorial examples stays collapsed until opened. This help does not become a code comment. No runtime AI service receives your code for completion or word help.
 
 ## Friends and your own home
 
@@ -28,7 +28,7 @@ Drag sideways to turn the 3D friends; **Reset view** restores the view. Choose D
 
 To feature your work, open it in Create and choose **Tools → Set current project as my home**. The home stores a code copy and preview. Change the welcome message and background, then explicitly run the project. Editing the home copy leaves the original project separate. Set it again to update the home. Restoring the default home keeps the copy; enable **Show this project on home** to display it again.
 
-Home preferences, word-help history, and browser drafts belong to the current browser and account (guests have separate storage). They do not publish a project or synchronize to another device. Keep important original code in a saved project.
+Home preferences, word-help history, and browser drafts belong to the current browser. They do not publish a project or synchronize to another device. Keep important original code in a saved file.
 
 ## Forge: one object, many projects
 
@@ -47,7 +47,7 @@ Use the actual function name in your copied code. A compound's color multiplies 
 
 The bell progresses through **shape only → click sound → sound waves**. The rings visualize sound. Bell sound and helper commands are VPyLab extensions; other VPython environments may need adaptation. Exported standalone HTML supports a narrower extrusion subset.
 
-In **Community modules**, a public object's code starts collapsed. Sign in and fork it to leave a private fork record in your account, then modify it in the workbench. Republishing retains the original title, author, and added reference links. You can add up to eight references and unpublish your own module later. Public module code can be accessed and reused; a collapsed code panel is not a privacy control. Browser drafts and account records are separate.
+In **Community modules**, a public object's code starts collapsed. Fork it, then modify it in the workbench. Republishing retains the original title, author, and added reference links. You can add up to eight references and unpublish your own module later. Public module code can be accessed and reused; a collapsed code panel is not a privacy control.
 
 The character tutorial combines parts, moves the compound, and changes only the controlled character's tint when it collects an item. Try arrow keys, WASD, or the on-screen buttons. Partners can develop body, face, movement, and sound, then read and combine their code.
 
@@ -55,12 +55,8 @@ The character tutorial combines parts, moves the compound, and changes only the 
 
 **Tools → Save as video** in Create records the 3D view and sound together, for a presentation or a submission. Recording stops by itself at 30 seconds, or when you press **Finish recording**. The video file is then downloaded to this computer. Recording happens in your browser and the video is not sent to a server. Leaving Create while recording cancels it. On a shared computer, move the file somewhere safe before the lesson ends.
 
-## Keeping your practice record
-
-When you are signed in, the missions you pass in Training are also saved to your account. Sign in with the same account on another computer and they show as passed again. If a mission has a record in both places, the higher score is shown. Missions you pass without signing in stay in that browser and move to your account when you sign in later. Signing out clears the record from that computer; signing in brings it back. On a shared computer, sign out when you finish so the next person does not see your record. Only passed missions are restored. Code you are still writing is kept only when you press Save.
-
 ## Saving and working together
 
-Create or join a team project from Create. Save a clearly named version and describe why you changed it. Compare the latest shared version before replacing someone else's work. Use the version history to inspect or restore a previous snapshot. GitHub connection is optional and creates a public repository; code and saved change notes may be public. Verify the repository or running link after saving or publishing.
+Create or join a team project from Create. Save a clearly named version and describe why you changed it. Compare the latest shared version before replacing someone else's work. GitHub connection is optional and creates a public repository; code and saved change notes may be public. Verify the repository or running link after saving or publishing.
 
 Stop ends audio, queued sounds, and runtime events; leaving an execution screen also releases them. Normal Python completion may leave event handlers or scheduled audio active, so use Stop when finished.

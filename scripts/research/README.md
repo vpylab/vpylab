@@ -41,7 +41,7 @@ Similarity is containment over 5-token shingles: the share of the student's shin
 
 ## Preparing input
 
-The teacher exports data from their own class by hand. The tool never connects to Supabase, GitHub or Google Drive.
+The teacher exports data from their own class by hand. The tool never connects to GitHub, Google Drive or any other service.
 
 - A folder of `.py` files (`--dir`). The file name without `.py` becomes the id.
 - Or a JSON file (`--json`) with an array of `{ "id": "...", "author": "...", "code": "...", "savedAt": "..." }`. `author` and `savedAt` are optional.

@@ -86,7 +86,7 @@ const messages = { ko, en, ja };  // 추가
 - `client/src/i18n/ui-text.js`: 영어 사전만 불러오고 `locale === 'en'`일 때만 번역합니다. 언어별 사전(`catalogs/<언어>-ui-text.json`)을 불러오도록 고칩니다.
 - `client/src/i18n/owned-content.js`: `locale !== 'en'`이면 한국어 원본을 그대로 돌려줍니다.
 - 화면 코드 약 30개 파일에 `locale === 'ko' ? '한국어' : 'English'` 형태의 분기가 있습니다. `ui()` 또는 `t()`로 바꿔야 합니다. 파일 목록은 영문 문서에 있습니다.
-- 날짜 형식 `'ko-KR'`, `python-error-explainer.js`, `default-code.js`, `LoadingScreen.jsx`의 도움말 배열도 두 언어로 고정되어 있습니다.
+- `python-error-explainer.js`와 `default-code.js`도 두 언어로 고정되어 있습니다. 날짜는 선택한 언어가 아니라 브라우저의 기본 형식으로 표시됩니다.
 
 ### Step 3: 미션 텍스트 번역
 
