@@ -5,24 +5,29 @@
  */
 const KEY = 'vpylab:help:done:v1';
 
-function read() {
+/** 테스트에서는 저장소를 바꿔 넣습니다. 기본은 이 브라우저의 localStorage입니다. */
+function storageOf(storage) {
+  return storage || globalThis.localStorage;
+}
+
+function read(storage) {
   try {
-    const parsed = JSON.parse(localStorage.getItem(KEY) || '{}');
+    const parsed = JSON.parse(storageOf(storage).getItem(KEY) || '{}');
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return {};
   }
 }
 
-export function isHelpDone(id) {
-  return read()[id] === 1;
+export function isHelpDone(id, storage) {
+  return read(storage)[id] === 1;
 }
 
-export function markHelpDone(id) {
+export function markHelpDone(id, storage) {
   try {
-    const done = read();
+    const done = read(storage);
     if (done[id] === 1) return;
-    localStorage.setItem(KEY, JSON.stringify({ ...done, [id]: 1 }));
+    storageOf(storage).setItem(KEY, JSON.stringify({ ...done, [id]: 1 }));
   } catch {
     // 저장하지 못해도 안내와 대화상자는 그대로 동작합니다.
   }
