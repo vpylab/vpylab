@@ -9,12 +9,15 @@
  * Supabase(로그인, vpylab_* 테이블)와 관련된 부분은 옮기지 않았습니다.
  *
  * 프로젝트 = 공개 저장소 하나. topic `vpylab-project`가 붙은 저장소를 VPyLab 프로젝트로 봅니다.
+ * 갤러리에 올린 프로젝트에는 topic `vpylab-gallery`가 더 붙습니다(목록은 scripts/gallery/가 만듭니다).
  * 이 모듈은 fetch와 토큰을 주입받는 순수 모듈이며 화면 상태를 갖지 않습니다.
  */
+import { GALLERY_TOPIC, MAX_THUMBNAIL_BYTES, THUMBNAIL_PATH } from '../../../server/shared/gallery-rules.js';
 
 const API = 'https://api.github.com';
 
 export const PROJECT_TOPIC = 'vpylab-project';
+export { GALLERY_TOPIC, MAX_THUMBNAIL_BYTES, THUMBNAIL_PATH };
 export const MAX_CODE_BYTES = 100 * 1024; // 서버 상한(server/routes/projects.js)과 같습니다.
 export const MAX_HISTORY_BYTES = 256 * 1024;
 export const MAX_HTML_BYTES = 1024 * 1024;
@@ -417,6 +420,7 @@ export function createGitHubApi({
       canAdmin: Boolean(permissions.admin),
       isOwner: Boolean(login) && String(owner).toLowerCase() === String(login).toLowerCase(),
       defaultBranch: info.default_branch || 'main',
+      inGallery: Array.isArray(info.topics) && info.topics.includes(GALLERY_TOPIC),
     };
   }
 
@@ -728,10 +732,11 @@ export function createGitHubApi({
      *   - 원격의 최신 커밋이 baseSha와 다르면 쓰지 않고 { status: 'conflict', remote: { headSha, code } }를 돌려줍니다.
      *   - force: true면 최신 커밋 위에 내 코드로 새 커밋을 만듭니다. 브랜치를 강제로 밀지는 않습니다.
      *   - ownCodes: 결과를 모르는 내 저장 시도(시간 초과 등)의 코드. 원격이 그 코드와 같으면 내 저장으로 봅니다.
+     *   - baseCode: 내가 마지막으로 읽거나 저장한 코드. 그 뒤 커밋이 생겼어도 main.py가 그대로면(예: 갤러리 미리보기 그림만 올라옴) 충돌이 아닙니다.
      *   - pages: true면 저장 뒤 GitHub Pages가 켜져 있는지 확인하고 꺼져 있으면 켭니다.
      */
     async commit({
-      fullName, code, html, message, record, baseSha, force = false, title, openUrl, author, ownCodes = [], pages = false, codeLines, lineDelta,
+      fullName, code, html, message, record, baseSha, baseCode, force = false, title, openUrl, author, ownCodes = [], pages = false, codeLines, lineDelta,
     } = {}) {
       const { owner, repo } = parse(fullName);
       assertCode(code);
@@ -778,7 +783,8 @@ export function createGitHubApi({
           const remote = await getContentsFile(owner, repo, 'main.py', headSha);
           const remoteCode = remote?.text ?? '';
           if (remoteCode === code) return { status: 'saved', headSha, commitUrl: commitUrlOf(headSha), alreadySaved: true };
-          if (!ownCodes.includes(remoteCode)) return { status: 'conflict', remote: { headSha, code: remoteCode } };
+          const mainUnchanged = typeof baseCode === 'string' && remoteCode === baseCode;
+          if (!mainUnchanged && !ownCodes.includes(remoteCode)) return { status: 'conflict', remote: { headSha, code: remoteCode } };
         }
 
         const history = await getContentsFile(owner, repo, 'history.md', headSha);
@@ -920,6 +926,76 @@ export function createGitHubApi({
         throw error;
       }
       return { accepted: invitationId };
+    },
+
+    // ── 갤러리(선택 기능) ─────────────────────────────────────
+
+    /**
+     * 갤러리에 올리거나 내립니다: topic `vpylab-gallery`를 더하거나 뺍니다. 다른 topic은 그대로 둡니다.
+     * topic은 저장소 관리자만 바꿀 수 있습니다. 목록에 실리는 것은 교사가 승인한 뒤입니다(scripts/gallery/).
+     */
+    async setGalleryListing(fullName, listed) {
+      const { owner, repo } = parse(fullName);
+      const info = await request(`/repos/${owner}/${repo}`);
+      if (!info.permissions?.admin) {
+        throw new GitHubError('갤러리에 올리거나 내리는 것은 저장소 소유자만 할 수 있습니다.', { status: 403, reason: 'forbidden', detail: 'galleryOwnerOnly' });
+      }
+      const topics = Array.isArray(info.topics) ? info.topics.filter((name) => typeof name === 'string') : [];
+      const next = listed
+        ? [...new Set([...topics, PROJECT_TOPIC, GALLERY_TOPIC])]
+        : topics.filter((name) => name !== GALLERY_TOPIC);
+      const changed = next.length !== topics.length || next.some((name) => !topics.includes(name));
+      if (changed) await request(`/repos/${owner}/${repo}/topics`, { method: 'PUT', body: { names: next } });
+      return { inGallery: Boolean(listed), changed };
+    },
+
+    /**
+     * 갤러리 카드의 미리보기 그림을 저장소의 thumbnail.jpg로 커밋합니다(JPEG data URL, 200KB 이하).
+     * 돌려주는 parentSha는 이 커밋의 바로 앞 커밋입니다. 내가 알던 최신 커밋과 같으면 그사이 팀원의 저장이 없었다는 뜻입니다.
+     */
+    async putThumbnail(fullName, dataUrl) {
+      const { owner, repo } = parse(fullName);
+      const match = /^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/.exec(typeof dataUrl === 'string' ? dataUrl : '');
+      if (!match) throw new GitHubError('미리보기 그림은 JPEG여야 합니다.', { status: 400, reason: 'rejected', detail: 'thumbnailType' });
+      const content = match[1];
+      const bytes = Math.floor((content.length * 3) / 4) - (content.endsWith('==') ? 2 : content.endsWith('=') ? 1 : 0);
+      if (bytes <= 0 || bytes > MAX_THUMBNAIL_BYTES) {
+        throw new GitHubError('미리보기 그림이 200KB를 넘습니다.', { status: 413, reason: 'tooLarge', detail: 'thumbnail' });
+      }
+      const info = await request(`/repos/${owner}/${repo}`);
+      const branch = info.default_branch || 'main';
+      let sha;
+      try {
+        const existing = await request(`/repos/${owner}/${repo}/contents/${THUMBNAIL_PATH}?ref=${encodeURIComponent(branch)}`);
+        sha = typeof existing.sha === 'string' ? existing.sha : undefined;
+      } catch (error) {
+        if (error.status !== 404) throw error; // 404: 아직 그림이 없습니다.
+      }
+      const result = await request(`/repos/${owner}/${repo}/contents/${THUMBNAIL_PATH}`, {
+        method: 'PUT', body: { message: '갤러리 미리보기 그림', content, branch, ...(sha ? { sha } : {}) },
+      });
+      return { headSha: result.commit?.sha || null, parentSha: result.commit?.parents?.[0]?.sha || null };
+    },
+
+    // ── 스타(갤러리의 좋아요) ─────────────────────────────────
+
+    /** 내가 이 저장소에 스타를 눌렀는지. GitHub는 눌렀으면 204, 아니면 404로 답합니다. */
+    async isStarred(fullName) {
+      const { owner, repo } = parse(fullName);
+      try {
+        await request(`/user/starred/${owner}/${repo}`);
+        return true;
+      } catch (error) {
+        if (error.status === 404) return false;
+        throw error;
+      }
+    },
+
+    /** 스타를 누르거나 취소합니다. 공개 저장소의 스타에는 public_repo 권한이 필요합니다(GitHub 문서 "Scopes for OAuth apps"). */
+    async setStarred(fullName, starred) {
+      const { owner, repo } = parse(fullName);
+      await request(`/user/starred/${owner}/${repo}`, { method: starred ? 'PUT' : 'DELETE' });
+      return { starred: Boolean(starred) };
     },
   };
 }

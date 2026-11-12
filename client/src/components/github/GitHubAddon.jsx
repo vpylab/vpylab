@@ -11,8 +11,11 @@ import GitHubProjectDialog from './GitHubProjectDialog.jsx';
  *
  * 새로 고침 대비: 연결과 연 프로젝트는 스토어가 탭 저장소에 남깁니다. 저장하지 않은 편집 내용은 여기서 탭 저장소에 남겼다가
  * 다시 열릴 때 편집기에 되돌립니다(onRestore).
+ *
+ * getThumbnail(선택): 갤러리에 올릴 때 저장소에 넣을 미리보기 그림(JPEG data URL)을 돌려주는 함수입니다.
+ * 없거나 null을 돌려줘도 갤러리에 올리기는 그림 없이 진행합니다.
  */
-export default function GitHubAddon({ controlRef, code, getCode, defaultTitle, shouldRestore, onReady, onProjectChange, onRestore, onLoaded, onSaved }) {
+export default function GitHubAddon({ controlRef, code, getCode, defaultTitle, getThumbnail, shouldRestore, onReady, onProjectChange, onRestore, onLoaded, onSaved }) {
   const project = useGitHubStore((state) => state.project);
   const [mode, setMode] = useState(null); // 'projects' | 'commit' | null
   const started = useRef(false);
@@ -92,6 +95,7 @@ export default function GitHubAddon({ controlRef, code, getCode, defaultTitle, s
       mode={mode}
       getCode={getCode}
       defaultTitle={defaultTitle}
+      getThumbnail={getThumbnail}
       onLoaded={(loaded, title) => { clearProjectDraft(); onLoaded?.(loaded, title); setMode(null); }}
       onSaved={(result) => { clearProjectDraft(); onSaved?.(result); setMode(null); }}
       onClose={() => setMode(null)}

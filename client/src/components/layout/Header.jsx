@@ -5,7 +5,7 @@ import { useI18n } from '../../i18n/useI18n';
 import useAppStore from '../../stores/appStore';
 import useAuthStore from '../../stores/authStore';
 import { prewarm } from '../../engine/pyodide-singleton';
-import { DRIVE_SAVE, SERVER_FEATURES } from '../../lib/api-base.js';
+import { DRIVE_SAVE, GITHUB_GALLERY, SERVER_FEATURES } from '../../lib/api-base.js';
 import BrandLogo from '../shared/BrandLogo';
 import { InstallButton, IosInstallHint } from './InstallPrompt';
 
@@ -27,7 +27,7 @@ export default function Header() {
     { label: ko ? '만들기' : 'Create', path: '/sandbox' },
     { label: ko ? '튜토리얼' : 'Tutorials', path: '/tutorials' },
     { label: ko ? '대장간' : 'Forge', path: '/forge' },
-    ...(SERVER_FEATURES ? [{ label: ko ? '갤러리' : 'Gallery', path: '/gallery' }] : []),
+    ...(SERVER_FEATURES || GITHUB_GALLERY ? [{ label: ko ? '갤러리' : 'Gallery', path: '/gallery' }] : []),
     { label: t('nav.docs'), path: '/docs', reference: true },
     { label: ko ? '사용 안내' : 'Guide', path: '/guide' },
   ];

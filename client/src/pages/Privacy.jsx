@@ -1,6 +1,6 @@
 import { useUiText } from "../i18n/ui-text";
 import Header from '../components/layout/Header';
-import { DRIVE_SAVE, GITHUB_ADDON, OPEN_EDITION } from '../lib/api-base.js';
+import { DRIVE_SAVE, GITHUB_ADDON, GITHUB_GALLERY, OPEN_EDITION } from '../lib/api-base.js';
 
 const Section = ({ title, children }) => (
   <section
@@ -40,6 +40,9 @@ const CLASSROOM_DRIVE_TEXT = "만들기 화면의 저장은 구글 로그인으�
 // GitHub 팀 프로젝트 애드온을 켠 공개판 배포에만 보입니다. 문구: docs/reference/solar/github-privacy-261112-solar.md(IP 문장은 사실 보완으로 덧붙임)
 const OPEN_GITHUB_SECTION = ["GitHub 팀 프로젝트 (선택 기능)", "팀 프로젝트는 선택 기능이며 만들기 화면의 팀 프로젝트 창에서 GitHub 계정을 연결할 때만 동작합니다. 연결할 때 GitHub에 요청하는 권한은 public_repo와 repo:invite이며 공개 저장소를 만들고 저장하고 받은 초대를 수락하는 데 사용합니다. 연결한 뒤에는 브라우저가 GitHub와 직접 통신하며 코드와 기록은 GitHub 저장소에 저장되고 VPyLab 서버에는 저장되지 않습니다. 로그인 확인 코드를 접근 토큰으로 바꾸는 한 번의 요청만 이 사이트의 함수를 거치며 그 함수는 토큰을 저장하거나 기록하지 않습니다. 이 요청에도 3절과 같은 방식으로 IP 주소를 변환한 값을 요청 수 제한에 사용하며, IP 주소 자체는 저장하지 않습니다. GitHub 접근 토큰은 브라우저 탭의 저장 공간인 sessionStorage에 있으며 탭을 닫거나 연결을 해제하면 사라집니다. 프로젝트 저장소는 공개 저장소이므로 누구나 코드, 저장 기록, 작성자의 GitHub 아이디를 볼 수 있으며 따라서 코드와 기록에 이름, 연락처 같은 개인정보를 넣지 않아야 합니다. 권한은 github.com/settings/applications에서 거둘 수 있고 저장소는 GitHub에서 직접 지웁니다."];
 
+// GitHub 연동 갤러리를 켠 공개판 배포에만 보입니다. 문구: docs/reference/solar/github-gallery-261112-solar.md(블록 14)
+const OPEN_GALLERY_SECTION = ["갤러리 (선택 기능)", "갤러리에 올리기는 선택 기능이며, 만들기 화면의 팀 프로젝트 창에서 \"갤러리에 올리기\"를 누를 때만 동작합니다. 누르면 그 프로젝트의 GitHub 저장소에 갤러리 표시(topic vpylab-gallery)가 붙고, 그때의 3D 화면이 미리보기 그림 thumbnail.jpg로 저장소에 저장됩니다. 교사가 승인한 작품만 갤러리 화면에 표시됩니다. 갤러리에서 누구나 볼 수 있는 것은 코드, 실행 화면, 미리보기 그림, 제목, GitHub 아이디, 고친 날짜, 스타 수입니다. 이 정보는 모두 GitHub의 공개 저장소에 있는 정보이며, VPyLab은 따로 서버나 DB에 저장하지 않습니다. 작품 목록 파일과 승인 대기 목록은 VPyLab의 공개 GitHub 저장소에 있으며, 승인 전에도 저장소 이름, 제목, GitHub 아이디가 승인 대기 목록에 공개됩니다. 갤러리 화면은 목록 파일과 미리보기 그림을 raw.githubusercontent.com에서 불러오며, 이때의 접속 기록은 GitHub의 정책에 따라 처리됩니다. \"갤러리에서 내리기\"를 누르면 다음 목록 갱신 때 갤러리에서 빠지며, 저장소를 비공개로 바꾸거나 지워도 빠집니다. 갤러리에서 스타를 누르면 GitHub 계정의 스타 목록에 남고 다른 사람이 볼 수 있습니다. 코드, 제목, 미리보기 그림에 이름, 연락처, 얼굴 같은 개인정보를 넣지 않아야 합니다."];
+
 function OpenPrivacy({ ui }) {
   return (
     <>
@@ -47,7 +50,9 @@ function OpenPrivacy({ ui }) {
         <h1 className="text-2xl font-bold mb-2 tracking-tight" style={{ color: 'var(--color-text-primary)' }}>{ui("개인정보 처리방침 (공개판)")}</h1>
         <p className="text-xs" style={{ color: 'var(--color-text-muted)' }}>{ui("최종 수정일: 2026-11-12")}</p>
       </header>
-      {OPEN_SECTIONS.flatMap((section) => (GITHUB_ADDON && section[0].startsWith('6.') ? [OPEN_GITHUB_SECTION, section] : [section])).map(([title, body]) => (
+      {OPEN_SECTIONS.flatMap((section) => (section[0].startsWith('6.')
+        ? [...(GITHUB_ADDON ? [OPEN_GITHUB_SECTION] : []), ...(GITHUB_GALLERY ? [OPEN_GALLERY_SECTION] : []), section]
+        : [section])).map(([title, body]) => (
         <Section key={title} title={ui(title)}><p>{ui(body)}</p></Section>
       ))}
     </>

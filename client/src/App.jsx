@@ -8,6 +8,7 @@ import AuthModal from './components/auth/AuthModal';
 import useAuthStore from './stores/authStore';
 import { resetForSessionChange, prewarm } from './engine/pyodide-singleton';
 import { scheduleIdlePrewarm } from './engine/idle-prewarm';
+import { GITHUB_GALLERY } from './lib/api-base.js';
 import './index.css';
 
 // 배포 후 구 청크 404 → 자동 새로고침 (Vite + SPA 배포 공통 이슈)
@@ -39,6 +40,8 @@ const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
 const Embed = lazyWithRetry(() => import('./pages/Embed'));
 // GitHub 팀 프로젝트 애드온의 로그인 창(팝업)이 돌아오는 작은 화면입니다.
 const GitHubCallback = lazyWithRetry(() => import('./pages/GitHubCallback'));
+// GitHub 연동 갤러리(오픈소스 판, 목록 주소가 설정된 배포에서만). 수업용 판의 /gallery는 기존 갤러리 그대로입니다.
+const GitHubGallery = GITHUB_GALLERY ? lazyWithRetry(() => import('./pages/GitHubGallery')) : null;
 
 function AppContent() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -85,7 +88,7 @@ function AppContent() {
           <Route path="/guide" element={<Guide />} />
           <Route path="/about" element={<About />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/gallery" element={GitHubGallery ? <GitHubGallery /> : <Gallery />} />
           <Route path="/gallery/glowscript/:projectId" element={<SourceProject />} />
           <Route path="/gallery/:id" element={<GalleryDetail />} />
           {/* 공유 주소는 만들기 화면이 직접 읽습니다. 주소창에 /s/이름이 남아 새로 고침·복사해도 작품이 다시 열립니다. */}

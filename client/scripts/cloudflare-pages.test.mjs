@@ -122,3 +122,17 @@ describe('GitHub 팀 프로젝트 애드온의 CSP', () => {
     expect(cspOf(buildCloudflareConfig(vercel, { edition: 'classroom', github: true }), '/*')).not.toContain('https://api.github.com');
   });
 });
+
+describe('GitHub 연동 갤러리의 CSP', () => {
+  const directive = (config, path, name) => parse(config.headers)[path]
+    .find((line) => line.startsWith('Content-Security-Policy:'))
+    .replace('Content-Security-Policy:', '').split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name} `)) || '';
+
+  it('갤러리는 새 외부 주소 없이 동작한다: 목록과 미리보기 그림은 이미 허용된 raw.githubusercontent.com에서 읽는다', () => {
+    const open = buildCloudflareConfig(vercel, { edition: 'open' });
+    expect(directive(open, '/*', 'connect-src').split(' ')).toContain('https://raw.githubusercontent.com');
+    expect(directive(open, '/*', 'img-src').split(' ')).toContain('https:');
+    // 실행 화면은 새 탭으로 엽니다. 학생의 github.io 화면을 앱 안에 끼워 넣지 않습니다.
+    expect(directive(open, '/*', 'frame-src')).not.toMatch(/github\.io/);
+  });
+});

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUiText } from '../../i18n/ui-text';
 import { GITHUB_PAGES_WARNING_TEXT, GITHUB_REASON_TEXT, isGitHubConfigured, useGitHubStore } from '../../github/githubSession';
+import { GALLERY_TEXT } from '../../gallery/gallery-text.js';
+import { GITHUB_GALLERY } from '../../lib/api-base.js';
 import { markHelpDone } from '../help/help-memory';
 import HelpSlot from '../help/HelpSlot';
 
@@ -36,9 +38,11 @@ const firstLine = (text) => String(text || '').split('\n')[0];
  * @param {(code: string, title: string) => void} [props.onLoaded] 프로젝트의 코드를 편집기에 넣을 때
  * @param {(result: object) => void} [props.onSaved] 저장(saved) 또는 프로젝트 만들기(created)가 끝났을 때
  * @param {() => boolean} [props.isDirty] 편집기에 저장하지 않은 변경이 있는지(없으면 GitHub에 저장한 코드와 비교)
+ * @param {boolean} [props.gallery] 갤러리 구역을 보일지. 기본은 갤러리 목록 주소가 설정된 배포인지입니다.
+ * @param {() => string|null} [props.getThumbnail] 갤러리에 올릴 때 저장소에 넣을 미리보기 그림(JPEG data URL). 없어도 올리기는 됩니다.
  * @param {() => void} props.onClose
  */
-export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoaded, onSaved, onClose, isDirty }) {
+export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoaded, onSaved, onClose, isDirty, gallery = GITHUB_GALLERY, getThumbnail }) {
   const ui = useUiText();
   const {
     account, project, projects, invitations, invitationsUnavailable, collaborators, pending, commits,
@@ -209,6 +213,19 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
     store().detach();
     teamFor.current = '';
     setNotice(ui("프로젝트 연결을 끊었습니다. 편집기의 코드와 GitHub 저장소는 그대로 있습니다."));
+  }
+
+  /** 갤러리에 올리거나 내립니다. 올릴 때는 지금 3D 화면의 미리보기 그림을 함께 저장합니다(그림이 없어도 진행). */
+  async function listInGallery(listed) {
+    setNotice('');
+    let thumbnail = null;
+    if (listed) {
+      try { thumbnail = getThumbnail?.() || null; } catch { thumbnail = null; }
+    }
+    const result = await store().setGalleryListing(listed, { thumbnail });
+    keepIfAuth(result, () => listInGallery(listed));
+    if (result.status === 'listed') setNotice(ui(result.thumbnail === 'saved' ? GALLERY_TEXT.listedWithPicture : GALLERY_TEXT.listedWithoutPicture));
+    else if (result.status === 'unlisted') setNotice(ui(GALLERY_TEXT.unlisted));
   }
 
   async function invite(event) {
@@ -442,6 +459,32 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
               <button type="button" className={button} disabled={working} onClick={pull} data-testid="github-pull">{busy === 'pull' ? ui("가져오는 중…") : ui("최신 코드 가져오기")}</button>
               <button type="button" className={button} disabled={working} onClick={detach} data-testid="github-detach">{ui("프로젝트 연결 끊기")}</button>
             </div>
+
+            {gallery && (
+              <div className="flex flex-col gap-2" data-testid="github-gallery">
+                <h3 className="m-0 text-xs font-semibold">{ui("갤러리")}</h3>
+                {!project.canAdmin && <p className="m-0 text-xs" style={muted}>{ui(GITHUB_REASON_TEXT.galleryOwnerOnly)}</p>}
+                {project.canAdmin && !project.inGallery && (
+                  <>
+                    <p className="m-0 text-xs" style={secondary}>{ui(GALLERY_TEXT.beforeListing)}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className={button} disabled={working} onClick={() => listInGallery(true)} data-testid="github-gallery-list">
+                        {busy === 'gallery' ? ui("올리는 중…") : ui("갤러리에 올리기")}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {project.canAdmin && project.inGallery && (
+                  <>
+                    <p className="m-0 text-xs" style={secondary}>{ui(GALLERY_TEXT.listed)}</p>
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className={button} disabled={working} onClick={() => listInGallery(true)} data-testid="github-gallery-thumbnail">{ui("미리보기 그림 새로 올리기")}</button>
+                      <button type="button" className={button} disabled={working} onClick={() => listInGallery(false)} data-testid="github-gallery-unlist">{ui("갤러리에서 내리기")}</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
             <h3 className="m-0 text-xs font-semibold">{ui("팀원")}</h3>
             {teamLoading && collaborators.length === 0 && <p className="m-0 text-xs" style={muted}>{ui("팀 정보를 불러오는 중…")}</p>}

@@ -1536,6 +1536,8 @@ export default function Sandbox() {
               code={code}
               getCode={() => codeRef.current}
               defaultTitle={shareTitle()}
+              // 갤러리에 올릴 때의 미리보기 그림: 지금 3D 화면이 편집기의 코드를 실행한 모습일 때만 넘깁니다(JPEG, 없으면 null).
+              getThumbnail={() => (lastStartedCode.current === codeRef.current ? captureThumbnail(sceneRef.current?._renderer?.domElement, 640, 0.8, 'jpeg') : null)}
               shouldRestore={() => githubRestoreAllowed.current && !githubDetachPending && codeRef.current === initialCodeRef.current}
               onReady={() => { githubDetachPending = false; }}
               onProjectChange={(next) => {
