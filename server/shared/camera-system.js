@@ -1,26 +1,28 @@
 // 편집기와 독립 HTML의 카메라 계산을 같은 구현으로 유지합니다.
+//
+// 기본 동작: 물체가 만들어진 자리에 맞춰 화면을 잡고, 물체가 움직이거나 커져도 카메라는 그대로 둔다.
+// 움직이는 물체를 따라가거나 줌을 계속 바꾸지 않는다. 카메라는 다음 경우에만 바뀐다.
+//   - 새 물체가 지금 화면 범위 밖에 만들어질 때 (그 물체가 만들어진 자리까지 담도록 넓힌다)
+//   - 학생 코드가 scene.center·range·forward·up·fov, scene.camera.pos·axis·follow()를 사용할 때
+//   - 학생이 마우스로 돌리거나 확대할 때
+//   - "화면에 맞추기"(fitOnce)를 누를 때
+//   - 계속 맞추기를 켰을 때 (scene.autoscale = True 또는 화면의 "자동 맞춤")
 export const CAMERA_MODES = {
-  AUTO_FIT: 'auto-fit',     // 전체 물체를 감싸는 자동 줌
-  FOLLOW: 'follow',          // 물체 중심 부드러운 추적
-  MANUAL: 'manual',          // 사용자 수동 조작
+  AUTO_FIT: 'auto-fit',     // 카메라 시스템이 화면 맞춤을 관리 (만들어진 자리 기준, 또는 계속 맞추기)
+  MANUAL: 'manual',          // 학생 코드나 마우스가 카메라를 정함
 };
 
-export function createCameraSystem(THREE, MODE = { AUTO_FIT: 'auto-fit', FOLLOW: 'follow', MANUAL: 'manual' }) {
+export function createCameraSystem(THREE, MODE = { AUTO_FIT: 'auto-fit', MANUAL: 'manual' }) {
 // 기본 설정
 const DEFAULTS = {
-  // Auto-Fit
+  // 화면 맞춤
   fitPadding: 1.8,           // 바운딩 박스 대비 여유 공간 배율
   fitMinDistance: 1e-9,          // 최소 카메라 거리
-  fitDelay: 300,              // 코드 실행 후 Auto-Fit까지 딜레이 (ms)
+  continuousFit: false,       // true면 실행 중에도 계속 화면에 맞춘다 (예전 "자동")
 
-  // Smooth Follow
-  followUpdateInterval: 1,   // 추적 모드에서 바운딩 갱신 주기 (프레임)
-  zoomLocked: true,            // 추적 모드 기본값: 줌 고정
-  lerpFactor: 0.05,          // 카메라 이동 보간 속도 (0=안움직임, 1=즉시)
-  zoomLerpFactor: 0.03,      // 줌 보간 속도
-  followThreshold: 0.01,     // Auto-Fit → Follow 전환 감지 임계값
-  followCenterDeadzone: 0.03, // 추적 중 이 이하 미세 중심 변화는 무시
-  zoomThreshold: 0.08,       // 추적 중 이 이하 거리 변화율은 무시
+  framingLerpFactor: 0.25,   // 기본(고정) 맞춤의 보간 속도 (빠르게 자리 잡고 멈춘다)
+  centerLerpFactor: 0.12,    // 계속 맞추기의 중심 보간 속도
+  zoomLerpFactor: 0.03,      // 계속 맞추기의 줌 보간 속도
 
   // 기본 카메라
   defaultDistance: 10 / Math.tan(Math.PI / 6),         // 물체 없을 때 기본 거리
@@ -48,18 +50,18 @@ return class CameraSystem {
     this._lastBounds = null;
     this._hasFit = false;
     this._userInteracted = false;
-    this._fitTimer = null;
     this._frameCount = 0;
 
-    // 추적 모드용: 이전 프레임의 물체 위치 기록
-    this._prevPositions = new Map(); // object.uuid → Vector3
-    this._followZoomLocked = false;   // Follow 모드 내부 줌 고정 플래그
+    // 고정 카메라의 기준: 물체가 처음 나타난 자리(만들어진 자리)를 모은 상자.
+    // 물체가 나중에 움직이거나 커져도 이 상자는 바뀌지 않으므로 카메라도 바뀌지 않는다.
+    this._homeBox = new THREE.Box3();
+    this._homeSeen = new WeakSet();
+    this._codeAutoscale = false;      // 학생 코드가 scene.autoscale = True를 명시했는가 (실행마다 초기화)
     this._explicitRange = null;       // scene.range로 지정한 시야 반경 (GlowScript 호환)
     this._followTarget = null;        // scene.camera.follow(obj)로 지정한 추적 대상
 
     // 사용자 조작 감지 — 마우스 이벤트로 수동 모드 전환
     this._onUserInteraction = () => {
-      clearTimeout(this._fitTimer);
       this._autoEnabled = false;
       this._explicitRange = null;
       this._centerPinned = null;
@@ -187,65 +189,6 @@ return class CameraSystem {
   }
 
   /**
-   * 추적 모드용: 움직이는 물체만의 바운딩 박스 계산
-   * 이전 프레임과 위치를 비교해 이동한 물체를 감지한다.
-   * 움직이는 물체가 없으면 전체 물체 상태를 반환한다.
-   */
-  _computeMovingObjectsState() {
-    const objects = this._getVPythonObjects();
-    if (objects.length === 0) return null;
-
-    const MOVE_THRESHOLD = 0.001; // 이 이상 이동하면 '움직이는 물체'로 판정
-    const worldPos = new THREE.Vector3();
-    const movingObjects = [];
-    const currentPositions = new Map();
-
-    for (const obj of objects) {
-      obj.getWorldPosition(worldPos);
-      currentPositions.set(obj.uuid, worldPos.clone());
-
-      const prev = this._prevPositions.get(obj.uuid);
-      if (prev && prev.distanceTo(worldPos) > MOVE_THRESHOLD) {
-        movingObjects.push(obj);
-      }
-    }
-
-    // 현재 위치를 다음 프레임 비교용으로 저장
-    this._prevPositions = currentPositions;
-
-    // 움직이는 물체가 있으면 그것들만으로 바운딩 계산
-    const targetObjects = movingObjects.length > 0 ? movingObjects : objects;
-
-    const box = new THREE.Box3();
-    let hasBounds = false;
-    for (const obj of targetObjects) {
-      hasBounds = this._expandBoxByObject(box, obj) || hasBounds;
-    }
-
-    if (!hasBounds || box.isEmpty()) return null;
-
-    const size = new THREE.Vector3();
-    box.getSize(size);
-
-    // 추적 중심은 렌더 바운딩 중심이 아니라 객체 앵커 위치를 사용한다.
-    // Group 내부 자식 위치가 치우쳐도 학생이 움직이는 주 객체를 따라가게 하기 위함.
-    const anchorCenter = new THREE.Vector3();
-    const anchorPos = new THREE.Vector3();
-    for (const obj of targetObjects) {
-      obj.getWorldPosition(anchorPos);
-      anchorCenter.add(anchorPos);
-    }
-    anchorCenter.divideScalar(targetObjects.length);
-
-    return {
-      center: anchorCenter,
-      size,
-      radius: size.length() / 2,
-      hasMovingObjects: movingObjects.length > 0,
-    };
-  }
-
-  /**
    * 바운딩 박스에 맞는 카메라 거리 계산
    */
   _distanceForBounds(radius) {
@@ -261,8 +204,51 @@ return class CameraSystem {
     return distance;
   }
 
+  /** 계속 맞추기가 켜져 있는가: 화면의 "자동 맞춤" 또는 코드의 scene.autoscale = True. */
+  isContinuousFit() {
+    return Boolean(this.options.continuousFit || this._codeAutoscale);
+  }
+
+  /** 기준 상자를 비운다. 다음에 보이는 물체부터 다시 모은다. */
+  _resetHome() {
+    this._homeBox.makeEmpty();
+    this._homeSeen = new WeakSet();
+  }
+
   /**
-   * Auto-Fit: 모든 물체에 맞춰 카메라 줌
+   * 처음 보는 물체가 만들어진 자리를 기준 상자에 더한다. 상자가 커졌으면 true.
+   * 궤적(trail)은 움직임에서 나온 것이므로 실행 중에는 세지 않는다. "화면에 맞추기"처럼 지금 보이는
+   * 것을 모두 담을 때만 includeTrails로 함께 센다. 아직 모양이 없는 물체는 다음에 다시 본다.
+   */
+  _absorbNewObjects(includeTrails = false) {
+    let grew = false;
+    const box = new THREE.Box3();
+    for (const obj of this._getVPythonObjects()) {
+      if (this._homeSeen.has(obj) || (obj.userData?.vpTrail && !includeTrails)) continue;
+      box.makeEmpty();
+      if (!this._expandBoxByObject(box, obj) || box.isEmpty()) continue;
+      if (![box.min.x, box.min.y, box.min.z, box.max.x, box.max.y, box.max.z].every(Number.isFinite)) continue;
+      this._homeSeen.add(obj);
+      if (this._homeBox.isEmpty() || !this._homeBox.containsBox(box)) {
+        this._homeBox.union(box);
+        grew = true;
+      }
+    }
+    return grew;
+  }
+
+  /** 기준 상자를 카메라 맞춤 상태로 바꾼다. 아직 물체가 없으면 null. */
+  _homeState() {
+    if (this._homeBox.isEmpty()) return null;
+    const center = new THREE.Vector3();
+    const size = new THREE.Vector3();
+    this._homeBox.getCenter(center);
+    this._homeBox.getSize(size);
+    return { center, size, radius: size.length() / 2 };
+  }
+
+  /**
+   * 화면 맞춤: 모든 물체가 담기는 중심과 거리
    */
   _fitState(state) {
     if (!state || !this._centerPinned) return state;
@@ -272,7 +258,9 @@ return class CameraSystem {
   _autoFit() {
     if (!this._autoEnabled || this.mode === MODE.MANUAL) return;
     this.scene.updateMatrixWorld(true);
-    const state = this._fitState(this._computeCameraState());
+    const continuous = this.isContinuousFit();
+    if (!continuous) this._absorbNewObjects();
+    const state = this._fitState(continuous ? this._computeCameraState() : this._homeState());
     if (!state) {
       this._targetCenter.copy(this._centerPinned || new THREE.Vector3());
       this._targetDistance = this.options.defaultDistance;
@@ -302,9 +290,12 @@ return class CameraSystem {
         this._followTarget.getWorldPosition(center);
         this._currentDistance = this._currentCameraDistance();
         if (this._autoEnabled) {
+          // 거리는 새 물체가 범위 밖에 만들어졌을 때(또는 계속 맞추기일 때)만 다시 계산한다
           this.scene.updateMatrixWorld(true);
-          const state = this._computeCameraState();
-          if (state) this._currentDistance = this._distanceForBounds(state.radius + state.center.distanceTo(center));
+          if (this.isContinuousFit() || this._absorbNewObjects()) {
+            const state = this._computeCameraState();
+            if (state) this._currentDistance = this._distanceForBounds(state.radius + state.center.distanceTo(center));
+          }
         }
         this._targetDistance = this._currentDistance;
         const direction = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
@@ -322,52 +313,32 @@ return class CameraSystem {
     // 수동 모드면 아무것도 하지 않음
     if (this.mode === MODE.MANUAL) return;
 
-    // Auto-Fit은 매 프레임, Follow는 더 자주 측정해 계단식 움직임을 줄인다.
-    const shouldUpdateState = this.mode === MODE.AUTO_FIT
-      || this._frameCount % this.options.followUpdateInterval === 0;
-
-    if (shouldUpdateState) {
-      this.scene.updateMatrixWorld(true);
-
-      if (this.mode === MODE.AUTO_FIT) {
-        // 자동 모드: 전체 물체가 항상 화면 안에 담기도록 중심 + 줌 조절
-        const state = this._fitState(this._computeCameraState());
-        if (state) {
-          this._targetCenter.copy(state.center);
-          if (!this.options.zoomLocked || !this._hasFit) {
-            this._targetDistance = this._distanceForBounds(state.radius);
-          }
-          this._hasFit = true;
-          this._lastBounds = state;
-        }
-      } else if (this.mode === MODE.FOLLOW) {
-        // 추적 모드: 움직이는 물체의 중심만 따라감 (줌은 고정)
-        const state = this._computeMovingObjectsState();
-        if (state) {
-          const centerDiff = state.center.distanceTo(this._targetCenter);
-          if (centerDiff > this.options.followCenterDeadzone) {
-            this._targetCenter.copy(state.center);
-          }
-          if (!this.options.zoomLocked) {
-            const nextDistance = this._distanceForBounds(state.radius);
-            const distanceDiffRatio = Math.abs(nextDistance - this._targetDistance)
-              / Math.max(this._targetDistance, 1);
-            if (distanceDiffRatio > this.options.zoomThreshold) {
-              this._targetDistance = nextDistance;
-            }
-          }
-          this._lastBounds = state;
-        }
-      }
+    // 기본: 새 물체가 범위 밖에 만들어졌을 때만 목표를 다시 계산한다. 물체가 움직이는 것만으로는
+    // 목표가 바뀌지 않으므로 카메라는 한 곳에 머문다. 계속 맞추기일 때는 매 프레임 지금 물체에 맞춘다.
+    this.scene.updateMatrixWorld(true);
+    const continuous = this.isContinuousFit();
+    let state = null;
+    if (continuous) state = this._computeCameraState();
+    else if (this._absorbNewObjects()) state = this._homeState();
+    state = this._fitState(state);
+    if (state) {
+      this._targetCenter.copy(state.center);
+      this._targetDistance = this._distanceForBounds(state.radius);
+      this._hasFit = true;
+      this._lastBounds = state;
     }
 
-    // 부드럽게 보간
-    const lerpFactor = this.mode === MODE.AUTO_FIT
-      ? 0.12  // Auto-Fit은 좀 더 빠르게
-      : this.options.lerpFactor;
-
-    this._currentCenter.lerp(this._targetCenter, lerpFactor);
-    this._currentDistance += (this._targetDistance - this._currentDistance) * this.options.zoomLerpFactor;
+    // 부드럽게 보간: 기본 맞춤은 빠르게 자리 잡고, 계속 맞추기는 천천히 따라간다
+    const centerLerp = continuous ? this.options.centerLerpFactor : this.options.framingLerpFactor;
+    const zoomLerp = continuous ? this.options.zoomLerpFactor : this.options.framingLerpFactor;
+    this._currentCenter.lerp(this._targetCenter, centerLerp);
+    this._currentDistance += (this._targetDistance - this._currentDistance) * zoomLerp;
+    if (!continuous) {
+      // 충분히 가까워지면 목표에 붙여 카메라가 완전히 멈추게 한다
+      const tolerance = 1e-6 * Math.max(this._targetDistance, 1e-9);
+      if (this._currentCenter.distanceTo(this._targetCenter) <= tolerance) this._currentCenter.copy(this._targetCenter);
+      if (Math.abs(this._targetDistance - this._currentDistance) <= tolerance) this._currentDistance = this._targetDistance;
+    }
 
     // 카메라 방향을 타겟 업데이트 전에 저장
     const direction = new THREE.Vector3();
@@ -389,10 +360,9 @@ return class CameraSystem {
   }
 
   /**
-   * Auto-Fit으로 리셋 (더블클릭, 리셋 버튼 등)
+   * 화면 맞춤을 다시 카메라 시스템에 맡긴다. 지금 물체가 있는 자리를 새 기준으로 삼아 맞춘다.
    */
   resetToAutoFit({ keepCenter = false } = {}) {
-    clearTimeout(this._fitTimer);
     this._autoEnabled = true;
     if (!keepCenter) this._centerPinned = null;
     this._syncCurrentView();
@@ -400,32 +370,50 @@ return class CameraSystem {
     this._userInteracted = false;
     this._followTarget = null;
     this._explicitRange = null;
+    this._resetHome();
+    this.scene.updateMatrixWorld(true);
+    this._absorbNewObjects(true); // 지금 그려진 궤적까지 담는다
     this._autoFit();
   }
 
   /**
-   * Follow 모드로 전환 (UI 버튼 등)
+   * "화면에 맞추기": 지금 있는 물체가 모두 보이도록 한 번만 맞추고 그 자리에 둔다.
+   * scene.camera.follow(obj)로 따라가는 중이면 대상은 유지하고 거리만 맞춘다.
    */
-  switchToFollow() {
-    clearTimeout(this._fitTimer);
-    this._autoEnabled = true;
-    this._centerPinned = null;
-    this._followTarget = null;
-    this._syncCurrentView();
-    this.mode = MODE.FOLLOW;
-    this._userInteracted = false;
-    // 이전 위치 기록 초기화 (다음 프레임부터 이동 감지 시작)
-    this._prevPositions.clear();
-    // 현재 전체 상태에서 추적 시작점 설정
+  fitOnce() {
+    this._codeAutoscale = false;
     this.scene.updateMatrixWorld(true);
-    const state = this._computeCameraState();
-    if (state) {
-      this._targetCenter.copy(state.center);
+    if (this._followTarget?.parent) {
+      const state = this._computeCameraState();
+      const center = this._followTarget.getWorldPosition(new THREE.Vector3());
+      if (state) this._applyDistance(this._distanceForBounds(state.radius + state.center.distanceTo(center)));
+      this._resetHome();
+      this._absorbNewObjects(true);
+      return;
+    }
+    this.resetToAutoFit();
+  }
+
+  /**
+   * 계속 맞추기(예전 "자동")를 켜거나 끈다. 보는 사람의 선택이므로 새 실행에서도 유지된다.
+   */
+  setContinuousFit(enabled) {
+    this.options.continuousFit = Boolean(enabled);
+    if (this.options.continuousFit) {
+      if (this._followTarget) this._autoEnabled = true;
+      else this.resetToAutoFit();
+    } else {
+      this._codeAutoscale = false;
+      // 지금 보이는 그대로 멈추고, 지금 물체가 있는 자리를 새 기준으로 삼는다
+      if (this.mode === MODE.AUTO_FIT && !this._followTarget) this._syncCurrentView();
+      this.scene.updateMatrixWorld(true);
+      this._resetHome();
+      this._absorbNewObjects(true);
     }
   }
 
   /**
-   * 코드 실행 시작 시 호출 — 딜레이 후 Auto-Fit
+   * 코드 실행 시작 시 호출 — 카메라를 기본 위치로 되돌리고 기준 상자를 비운다
    */
   onCodeStart() {
     this._autoEnabled = true;
@@ -434,9 +422,10 @@ return class CameraSystem {
     this.mode = MODE.AUTO_FIT;
     this._userInteracted = false;
     this._frameCount = 0;
-    this._prevPositions.clear();
     this._followTarget = null;
     this._explicitRange = null;
+    this._resetHome();
+    this._codeAutoscale = false;
 
     // Python scene도 매번 초기화된다. 예전 작품의 중심·시야가 새 작품에 남지 않게 한다.
     this.controls.reset?.();
@@ -453,12 +442,6 @@ return class CameraSystem {
     this.controls.update?.();
     this._lastBounds = null;
     this._hasFit = false;
-
-    // 약간의 딜레이 후 Auto-Fit (물체 생성 시간 확보)
-    clearTimeout(this._fitTimer);
-    this._fitTimer = setTimeout(() => {
-      if (this._autoEnabled && this.mode === MODE.AUTO_FIT) this._autoFit();
-    }, this.options.fitDelay);
   }
 
   /**
@@ -469,34 +452,10 @@ return class CameraSystem {
   }
 
   /**
-   * 줌 고정 설정
-   */
-  setZoomLocked(locked) {
-    this.options.zoomLocked = Boolean(locked);
-
-    // 줌 고정 해제 시 현재 상태에 맞게 거리 재계산
-    if (!locked) {
-      this.scene.updateMatrixWorld(true);
-      const state = this._computeCameraState();
-      if (state) {
-        this._targetDistance = this._distanceForBounds(state.radius);
-      }
-    }
-  }
-
-  /**
-   * 줌 고정 상태 조회
-   */
-  isZoomLocked() {
-    return this.options.zoomLocked;
-  }
-
-  /**
    * scene.range = N — VPython 호환: 시야 반경 N. MANUAL 모드로 전환.
    */
   setExplicitRange(range) {
     if (!Number.isFinite(range) || range <= 0) return;
-    clearTimeout(this._fitTimer);
     this._autoEnabled = false;
     this.mode = MODE.MANUAL;
     this._userInteracted = true;
@@ -551,7 +510,7 @@ return class CameraSystem {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     if (this.mode === MODE.MANUAL || this._followTarget) this._applyDistance(this._distanceForRange(range));
-    else this._autoFit();
+    else this._autoFit(); // 기본은 만들어진 자리 기준으로 다시 계산하므로 물체가 움직였어도 화면이 달라지지 않는다
   }
 
   _applyDistance(distance) {
@@ -625,7 +584,6 @@ return class CameraSystem {
    * scene.camera.pos = vec — 카메라를 옮기고 중심도 같이 평행이동한다 (방향·거리 유지).
    */
   setCameraPos(x, y, z) {
-    clearTimeout(this._fitTimer);
     this._autoEnabled = false;
     this._centerPinned = null;
     this.mode = MODE.MANUAL;
@@ -644,7 +602,6 @@ return class CameraSystem {
    * 축의 길이가 카메라 거리가 되고, range는 거리·fov에서 다시 계산된다.
    */
   setCameraAxis(x, y, z) {
-    clearTimeout(this._fitTimer);
     this._autoEnabled = false;
     this._centerPinned = null;
     const axis = new THREE.Vector3(x, y, z);
@@ -664,7 +621,6 @@ return class CameraSystem {
 
   /** scene.camera.follow(obj) — 객체를 계속 화면 중심에 둔다. null이면 해제. */
   followObject(mesh) {
-    clearTimeout(this._fitTimer);
     this._followTarget = mesh || null;
     if (mesh) {
       if (this._autoEnabled) {
@@ -690,9 +646,14 @@ return class CameraSystem {
 
   /** 현재 range (화면 짧은 변 방향 시야 절반) — GlowScript 의미. */
   getRange() {
+    return this._rangeForDistance(this._currentCameraDistance());
+  }
+
+  /** 카메라 거리에서 보이는 range (_distanceForRange의 반대). */
+  _rangeForDistance(distance) {
     const fov = this.camera.fov * (Math.PI / 180);
     const aspect = this.camera.aspect || 1;
-    const verticalHalfExtent = this._currentCameraDistance() * Math.tan(fov / 2);
+    const verticalHalfExtent = distance * Math.tan(fov / 2);
     return aspect >= 1 ? verticalHalfExtent : verticalHalfExtent * aspect;
   }
 
@@ -720,7 +681,6 @@ return class CameraSystem {
    * scene.center = vec — 카메라 타겟 중심점 설정. 자동 맞춤 여부는 유지.
    */
   setExplicitCenter(x, y, z) {
-    clearTimeout(this._fitTimer);
     this._centerPinned = new THREE.Vector3(x, y, z);
     this.mode = this._autoEnabled ? MODE.AUTO_FIT : MODE.MANUAL;
     this._userInteracted = true;
@@ -740,14 +700,15 @@ return class CameraSystem {
   }
 
   /**
-   * scene.autoscale = bool — true면 Auto-Fit으로 복귀, false면 MANUAL 유지
+   * scene.autoscale = bool — 학생 코드가 True를 명시하면 VPython처럼 실행 중에도 계속 화면에 맞춘다.
+   * False면 지금 카메라를 그대로 둔다.
    */
   setAutoscale(enabled) {
+    this._codeAutoscale = Boolean(enabled);
     if (this._followTarget) { this._autoEnabled = Boolean(enabled); return; }
     if (enabled) {
       this.resetToAutoFit({ keepCenter: true });
     } else {
-      clearTimeout(this._fitTimer);
       this._autoEnabled = false;
       this.mode = MODE.MANUAL;
       this._userInteracted = true;
@@ -758,7 +719,6 @@ return class CameraSystem {
    * 정리
    */
   dispose() {
-    clearTimeout(this._fitTimer);
     const domElement = this.controls?.domElement;
     if (domElement) {
       domElement.removeEventListener('pointerdown', this._onPointerDown);

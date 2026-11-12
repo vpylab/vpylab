@@ -339,13 +339,11 @@
   "viewport": {
     "fullscreen": "전체 화면",
     "exitFullscreen": "전체 화면 나가기",
-    "autoFit": "자동",
-    "follow": "추적",
-    "lockZoom": "줌 고정",
+    "fitOnce": "화면에 맞추기",
+    "autoFit": "자동 맞춤",
     "axes": "XYZ",
-    "autoFitTip": "전체 물체가 화면에 담기도록 자동 줌",
-    "followTip": "움직이는 물체 중심을 따라감",
-    "lockZoomTip": "카메라 줌 거리를 현재 상태로 고정합니다",
+    "fitOnceTip": "지금 있는 물체가 모두 보이도록 카메라를 한 번 맞춥니다. 3D 화면을 두 번 눌러도 같은 동작입니다.",
+    "autoFitTip": "켜면 실행하는 동안 물체가 모두 보이도록 카메라가 계속 조절됩니다. 끄면 카메라가 한 곳에 고정되며 처음에는 꺼져 있습니다.",
     "webglUnavailable": "이 컴퓨터에서는 3D 화면을 열 수 없습니다.",
     "webglUnavailableHelp": "코드 편집과 콘솔 출력은 계속 사용할 수 있습니다. 브라우저 설정에서 하드웨어 가속을 켜거나 최신 크롬 또는 엣지에서 열면 3D 화면이 표시됩니다."
   },

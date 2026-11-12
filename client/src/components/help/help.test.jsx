@@ -61,10 +61,10 @@ describe('그 자리 안내: 펼치기와 부품', () => {
   });
 
   it('브라우저 저장소를 사용할 수 없어도 오류 없이 "한 적 없음"으로 동작한다', () => {
-    vi.spyOn(localStorage, 'getItem').mockImplementation(() => { throw new Error('blocked'); });
-    vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new Error('blocked'); });
-    expect(() => markHelpDone('drive-signin')).not.toThrow();
-    expect(isHelpDone('drive-signin')).toBe(false);
+    // 저장소 흉내를 직접 넘깁니다. 실행 환경마다 localStorage 구현이 달라 메서드를 가로채는 방식은 믿을 수 없습니다.
+    const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+    expect(() => markHelpDone('drive-signin', blocked)).not.toThrow();
+    expect(isHelpDone('drive-signin', blocked)).toBe(false);
   });
 
   it('한 번 성공한 브라우저에서는 로그인 순서를 접어 두고 캐릭터의 말도 줄인다', () => {

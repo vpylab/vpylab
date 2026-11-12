@@ -2094,6 +2094,8 @@
   "브라우저 창을 닫습니다.": "Close the browser window.",
   "승인 창을 열지 못했습니다. 브라우저의 팝업 차단을 해제하세요.": "The approval window could not be opened. Allow pop-ups in your browser.",
   "승인 창이 닫혔습니다. 다시 시도하세요.": "The approval window was closed. Try again.",
+  "일식과 월식: 시점 바꾸기": "Eclipses: switching views",
+  "우주, 서울, 달 표면으로 시점을 바꾸며 일식과 월식을 관찰합니다. 크기와 거리는 한 화면에 보이도록 바꾼 모형입니다.": "Switch the view between space, Seoul and the Moon’s surface to watch solar and lunar eclipses. Sizes and distances are changed so that everything fits in one view.",
   "이 화면은 학생이 GitHub 팀 프로젝트로 만들어 올린 작품을 모아 보여 줍니다. 교사가 승인한 작품만 표시되며, 작품을 누르면 실행 화면을 열거나 코드를 볼 수 있습니다.": "This page collects work that students made as GitHub team projects and added to the gallery. Only work approved by a teacher is shown. Select a work to open its running page or to view its code.",
   "만들기 화면의 \"팀 프로젝트\" 창에서 프로젝트를 연 뒤 \"갤러리에 올리기\"를 누르면 작품을 올릴 수 있습니다. 올리려면 GitHub 계정이 필요하며, GitHub 계정이 없는 학생은 올릴 수 없습니다. GitHub 계정은 13세 이상만 만들 수 있습니다. 올린 작품은 교사가 승인한 뒤에 이 화면에 표시됩니다.": "To add your work, open your project in the \"Team projects\" window of the Create screen and press \"Add to gallery\". You need a GitHub account, so students without one cannot add work. GitHub accounts are for people aged 13 or older. Your work appears on this page after a teacher approves it.",
   "작품 목록을 불러오지 못했습니다. VPyLab의 다른 화면은 그대로 사용할 수 있습니다. \"다시 시도\"를 누르면 목록을 다시 불러옵니다.": "The list of works could not be loaded. The other VPyLab screens still work. Press \"Retry\" to load the list again.",

@@ -882,6 +882,9 @@ export default function Sandbox() {
     clearRegistry();
     if (sceneRef.current?._cameraSystem) {
       sceneRef.current._cameraSystem.onCodeStart();
+      // 갤러리의 GlowScript 원작은 표준 VPython의 자동 맞춤(autoscale 기본값 True)을 전제로 만들어졌으므로
+      // 고정 카메라 대신 scene.autoscale = True와 같은 상태로 시작한다.
+      if (showcaseProject) sceneRef.current._cameraSystem.setAutoscale(true);
     }
     setOutputs([]);
     setActiveTab('3d');
@@ -889,7 +892,7 @@ export default function Sandbox() {
     addOutput(ui("실행을 시작했습니다."), 'log');
     lastStartedCode.current=sourceCode;
     runCode(sourceCode);
-  }, [addOutput, runCode, stopExecution, ui]);
+  }, [addOutput, runCode, stopExecution, ui, showcaseProject]);
 
   const handleRun = () => {
     if (!isReady || repoLoadStatus === 'loading') return;
