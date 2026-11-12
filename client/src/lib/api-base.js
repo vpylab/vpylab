@@ -21,5 +21,17 @@ export const API_BASE = OPEN_EDITION ? '' : import.meta.env.VITE_API_URL || (LAN
  *   none: 교실 LAN 모드. 저장소가 없어 코드를 주소(#code=)에 담습니다.
  */
 export const SHARE_BACKEND = LAN_MODE ? 'none' : OPEN_EDITION ? 'pages' : 'server';
+/**
+ * 개인 코드를 학생 본인의 구글 드라이브에 저장하는 배포인지(구글 클라이언트 ID가 설정됨). 두 판 모두 해당합니다.
+ * 이 배포에서는 로그인 없이 시작하고, 운영 계정 로그인은 팀 프로젝트·갤러리·교사 기능에서만 요청합니다.
+ */
+export const DRIVE_SAVE = Boolean((import.meta.env.VITE_GOOGLE_CLIENT_ID || '').trim());
+/**
+ * 오픈소스 판의 GitHub 팀 프로젝트 애드온(서버 없이 브라우저가 GitHub API를 직접 호출, client/src/github/).
+ * GitHub OAuth 앱의 클라이언트 ID가 설정된 배포에서만 켜집니다. 없어도 실행·드라이브 저장은 그대로 동작합니다.
+ */
+export const GITHUB_ADDON = OPEN_EDITION && Boolean((import.meta.env.VITE_GITHUB_CLIENT_ID || '').trim());
+/** 만들기 화면에 팀 프로젝트(GitHub)가 있는 배포인지. 수업용 판은 운영 서버 방식, 오픈소스 판은 위의 애드온입니다. */
+export const TEAM_PROJECTS = SERVER_FEATURES || GITHUB_ADDON;
 /** 공유 주소의 이름을 정할 수 있는지. 두 판의 저장소가 모두 지원합니다(규칙: server/shared/share-names.js). */
 export const SHARE_NAMES = SHARE_BACKEND !== 'none';

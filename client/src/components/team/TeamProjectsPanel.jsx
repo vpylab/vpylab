@@ -2,6 +2,7 @@ import { useUiText } from "../../i18n/ui-text";
 import { useEffect, useState } from 'react';
 import useProjectStore from '../../stores/projectStore';
 import useAuthStore from '../../stores/authStore';
+import { DRIVE_SAVE } from '../../lib/api-base.js';
 import TeamMembersModal from './TeamMembersModal';
 
 function normalizeRepoNameInput(value) {
@@ -307,7 +308,9 @@ export default function TeamProjectsPanel({
         <div className="flex-1 flex items-center justify-center" style={{ padding: 48 }}>
           <EmptyState
             title={ui("로그인이 필요합니다")}
-            description={ui("GitHub 프로젝트, 초대 코드, 저장 이력은 로그인 후 사용할 수 있습니다.")}
+            description={DRIVE_SAVE
+              ? ui("팀 프로젝트는 GitHub 계정으로 로그인해 사용합니다. 혼자 만드는 작품은 로그인 없이 만들 수 있고 구글 드라이브에 저장할 수 있습니다.")
+              : ui("GitHub 프로젝트, 초대 코드, 저장 이력은 로그인 후 사용할 수 있습니다.")}
             actionLabel={ui("로그인하기")}
             onAction={() => {
               onClose?.();

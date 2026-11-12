@@ -121,6 +121,18 @@ There is also a separate "classroom v2" app: `client/classroom.html`, `client/sr
 
 ## Storage paths
 
+Both editions follow three steps (decided 2026-11-12, `docs/GOOGLE_FIRST_PLAN.md` section 0): no sign-in to start, Google Drive to save, GitHub only for team projects. The switches are in `client/src/lib/api-base.js` (`DRIVE_SAVE`, `GITHUB_ADDON`, `TEAM_PROJECTS`) and at the top of `client/src/pages/Sandbox.jsx` (`DRIVE_EDITOR`, `TEAM_PROJECTS`, `ACCOUNT_SAVE`).
+
+Without an account (both editions):
+
+- `client/src/utils/code-file.js`: **Open file** reads a `.py` file, or an HTML file exported by VPyLab. The exported HTML carries the student code as Base64 in one line of `server/utils/standalone-template.js`; `code-file.test.js` fails if that line changes. The file is read as text and never rendered.
+- `client/src/utils/sandbox-draft.js`: the free-coding draft in `localStorage`, kept 14 days. Practice drafts from lessons stay per tab (`client/src/utils/practice-drafts.js`) so that the next student on a shared computer does not get them.
+- Share links (below).
+
+Google Drive (both editions when `VITE_GOOGLE_CLIENT_ID` is set):
+
+- In the classroom edition Save goes to Drive unless a team project is open; the account auto-save, Save as and personal history are switched off (`ACCOUNT_SAVE`).
+
 Classroom edition:
 
 - Client state is in Zustand stores under `client/src/stores/`: `authStore.js` (Supabase session, GitHub token), `codeStore.js` (saved code), `revisionStore.js` (history), `projectStore.js` (team projects), `galleryStore.js`, `codeShareStore.js`, `githubSyncStore.js`. `appStore.js` (theme, locale, mission progress in `localStorage`) is used by both editions.
@@ -130,10 +142,11 @@ Classroom edition:
 
 Open edition:
 
-- `client/src/drive-lab/google-auth.js`: Google Identity Services token flow. Scopes are `openid email profile` and `drive.file`. The access token is kept in memory; there is no refresh token.
+- `client/src/drive-lab/google-auth.js`: Google Identity Services token flow. Scopes are `openid email profile` and `drive.file`. There is no refresh token. The editor keeps the access token in the tab's `sessionStorage` (`tokenStore`), so a reload does not disconnect; the lab page keeps it in memory.
 - `client/src/drive-lab/drive-storage.js`: Drive v3 adapter (`list`, `create`, `open`, `save`, `revisions`, `revisionContent`, `trash`), a `VPyLab` folder, 100 KB code limit, retries, conflict detection.
-- `client/src/drive/driveSession.js`: the Zustand store that the editor uses on top of those two modules, plus local drafts from `client/src/drive-lab/lab-state.js`. The client ID comes from `VITE_GOOGLE_CLIENT_ID`.
+- `client/src/drive/driveSession.js`: the Zustand store that the editor uses on top of those two modules, plus local drafts from `client/src/drive-lab/lab-state.js`. `resume()` restores the account and the open file after a reload. `renewInGesture()` asks Google for a new token inside the same click when the old one has expired, so Save continues without a separate step. The client ID comes from `VITE_GOOGLE_CLIENT_ID`.
 - Share links: `functions/api/share/index.js` (POST) and `functions/api/share/[id].js` (GET, PUT, DELETE) are thin Cloudflare Pages Functions over `cloudflare/share-core.js`. Data is in the D1 database bound as `DB` in `wrangler.toml`; the schema is `cloudflare/migrations/0001_shares.sql`. Name rules are shared with the classroom server through `server/shared/share-names.js`. The client side is `client/src/utils/share.js`.
+- GitHub team projects (add-on, only when `VITE_GITHUB_CLIENT_ID` is set): `client/src/github/github-oauth.js` opens the GitHub approval in a pop-up (state and PKCE); `client/src/pages/GitHubCallback.jsx` passes the result back over a `BroadcastChannel`; the Pages Function `functions/api/github/token.js` (rules in `cloudflare/github-oauth-core.js`) exchanges the code for a token with the client secret and stores nothing. `client/src/github/github-api.js` then calls `api.github.com` from the browser: one public repository per project (topic `vpylab-project`) with `main.py`, `history.md`, `index.html` for GitHub Pages and a README. The logic is ported from `server/routes/projects.js`. `client/src/github/githubSession.js` is the store and `client/src/components/github/GitHubProjectDialog.jsx` the window. The token is kept in the tab's `sessionStorage`.
 
 ## Content as data
 

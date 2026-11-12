@@ -3,7 +3,7 @@ import { useI18n } from '../../i18n/useI18n';
 import useAuthStore from '../../stores/authStore';
 import useAppStore from '../../stores/appStore';
 import { BrandMark } from '../shared/BrandLogo';
-import { OPEN_EDITION } from '../../lib/api-base.js';
+import { DRIVE_SAVE, OPEN_EDITION } from '../../lib/api-base.js';
 
 /**
  * 오픈소스 판에는 운영 서버 로그인이 없습니다. 코드는 학생 본인의 구글 드라이브에 저장할 예정이며(docs/GOOGLE_FIRST_PLAN.md 2단계),
@@ -51,13 +51,16 @@ export default function AuthModal() {
         </div>
 
         {OPEN_EDITION ? <OpenEditionSaveNotice ko={locale === 'ko'} onClose={() => setAuthModalOpen(false)} /> : <>
-        <h2 id="auth-dialog-title" className="auth-title">VPyLab {t('auth.login')}</h2>
-        <p className="auth-desc">{t('auth.loginDescription')}</p>
+        <h2 id="auth-dialog-title" className="auth-title">{DRIVE_SAVE ? ui("팀 프로젝트 로그인") : <>VPyLab {t('auth.login')}</>}</h2>
+        {/* 개인 코드를 구글 드라이브에 저장하는 배포: 로그인은 팀 프로젝트(GitHub)와 갤러리·교사 기능에만 필요합니다. */}
+        <p className="auth-desc">{DRIVE_SAVE
+          ? ui("코드 실행과 내 작품 저장에는 로그인이 필요 없습니다. 내 작품은 만들기 화면의 \"저장\"으로 구글 드라이브에 저장됩니다. 팀 프로젝트는 GitHub 계정으로 로그인해 사용합니다.")
+          : t('auth.loginDescription')}</p>
         {githubAuthError && <p role="alert" className="auth-desc">{ui(githubAuthError)}</p>}
 
         {/* 소셜 버튼 */}
         <div className="auth-buttons">
-          <button onClick={signInWithGoogle} className="auth-btn auth-btn-google">
+          {!DRIVE_SAVE && <button onClick={signInWithGoogle} className="auth-btn auth-btn-google">
             <svg width="18" height="18" viewBox="0 0 18 18">
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
               <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/>
@@ -65,7 +68,7 @@ export default function AuthModal() {
               <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
             </svg>
             {t('auth.googleLogin')}
-          </button>
+          </button>}
 
           <button onClick={signInWithGitHub} className="auth-btn auth-btn-github">
             <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor">
@@ -76,7 +79,9 @@ export default function AuthModal() {
         </div>
 
         {/* 안내 */}
-        <p className="auth-notice">{t('auth.notice')}</p>
+        {DRIVE_SAVE
+          ? <p className="auth-notice">{ui("교사 계정은 구글 계정으로 로그인합니다.")} <button type="button" onClick={signInWithGoogle} className="underline cursor-pointer border-none bg-transparent p-0" style={{ color: 'inherit', font: 'inherit' }}>{t('auth.googleLogin')}</button></p>
+          : <p className="auth-notice">{t('auth.notice')}</p>}
         </>}
       </div>
 

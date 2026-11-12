@@ -4,35 +4,104 @@
     {
       "name": "vpylab-client",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 4033,
       "cwd": "client"
     },
     {
       "name": "vpylab-classroom",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:classroom"],
+      "runtimeArgs": [
+        "run",
+        "dev:classroom"
+      ],
       "port": 4043
     },
     {
       "name": "classroom-lan",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "classroom:lan", "--", "--skip-build", "--no-qr"],
+      "runtimeArgs": [
+        "run",
+        "classroom:lan",
+        "--",
+        "--skip-build",
+        "--no-qr"
+      ],
       "port": 4077
     },
     {
       "name": "vpylab-drive-lab",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:drive-lab"],
+      "runtimeArgs": [
+        "run",
+        "dev:drive-lab"
+      ],
       "port": 4086,
       "cwd": "client"
     },
     {
       "name": "vpylab-deploy-preview",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview:deploy"],
+      "runtimeArgs": [
+        "run",
+        "preview:deploy"
+      ],
       "port": 4086,
       "cwd": "client"
+    },
+    {
+      "name": "vpylab-open",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_EDITION=open",
+        "VITE_GOOGLE_CLIENT_ID=729604847843-la2d7hlii9umkc00ubhnknbhlkse1if1.apps.googleusercontent.com",
+        "VITE_SUPABASE_URL=",
+        "VITE_SUPABASE_ANON_KEY=",
+        "VITE_API_URL=",
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "4086",
+        "--strictPort"
+      ],
+      "port": 4086,
+      "cwd": "client"
+    },
+    {
+      "name": "vpylab-classroom-drive",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_GOOGLE_CLIENT_ID=729604847843-la2d7hlii9umkc00ubhnknbhlkse1if1.apps.googleusercontent.com",
+        "npm",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "4086",
+        "--strictPort"
+      ],
+      "port": 4086,
+      "cwd": "client"
+    },
+    {
+      "name": "vpylab-pages-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "wrangler",
+        "pages",
+        "dev",
+        "client/dist",
+        "--port",
+        "4086",
+        "--persist-to",
+        "/private/tmp/vpylab-pages-dev-state"
+      ],
+      "port": 4086
     }
   ]
 }

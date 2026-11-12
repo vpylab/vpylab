@@ -23,6 +23,21 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 
 위 코드를 **만들기** 화면에 붙여 넣고 **실행** 버튼을 누르면 결과를 확인할 수 있습니다. 결과는 빛나는 빨간 구, 그 위의 글자, 도·미·솔 세 음으로 나타납니다. `음표`와 `색상` 같은 한글 이름은 VPyLab 확장 기능이며, 영어 이름(`play_note_and_wait`, `color.red`)도 같은 결과를 냅니다. 도형, 벡터, `label`은 공식 VPython API를 따릅니다.
 
+## 세 가지 방법으로 만들기
+
+로그인 없이 시작하고, 필요한 만큼만 계정을 연결합니다. 방향과 결정은 [docs/GOOGLE_FIRST_PLAN.md](docs/GOOGLE_FIRST_PLAN.md)에 있습니다.
+
+| 단계 | 필요한 것 | 할 수 있는 일 |
+|---|---|---|
+| 1. 혼자 만들기 | 없음 | 실행, 학습 자료, 공유 링크, **도구 → HTML 내려받기**·**파이썬 파일(.py) 내려받기**와 **파일 열기**. 작성하던 코드는 이 브라우저에 14일 동안 남습니다. |
+| 2. 저장 | 구글 계정 | **저장**을 누르면 학생 본인의 구글 드라이브 VPyLab 폴더에 저장하고 다른 기기에서 엽니다. |
+| 3. 팀 프로젝트 | GitHub 계정(선택, 13세 이상) | **팀 프로젝트**를 열어 둔 동안 저장이 GitHub 커밋이 됩니다. 팀원을 초대하고 기록을 남깁니다. |
+
+- 내려받은 HTML 파일은 혼자 실행되며(인터넷 필요) 코드를 품고 있어, **파일 열기**로 VPyLab에 다시 불러올 수 있습니다.
+- 구글 연결은 새로 고침해도 유지되고 탭을 닫으면 끊깁니다. 구글이 정한 약 1시간이 지난 뒤 저장하면 승인 창이 잠깐 열렸다 닫힌 뒤 저장이 이어집니다.
+- 공개판의 팀 프로젝트는 운영 서버 없이 브라우저가 GitHub와 직접 통신합니다. 배포에 GitHub OAuth 앱을 설정해야 켜집니다([설정 방법](docs/DEPLOY_TWO_EDITIONS.md)).
+- 수업용 판은 구글 클라이언트 ID를 설정하면 같은 흐름이 됩니다. 설정하기 전에는 예전처럼 계정 로그인과 GitHub 프로젝트에 저장합니다.
+
 ## 지금 상태
 
 - 공개판 만들기 화면의 저장과 Ctrl/Cmd+S는 학생 본인 구글 드라이브의 VPyLab 폴더에 저장합니다. 처음 한 번 구글 계정으로 로그인하고 드라이브 권한을 승인합니다. 도구 줄의 내 드라이브에서 저장한 파일을 다시 엽니다. 다른 기기에서 먼저 저장했으면 충돌을 알립니다. 도구 → HTML 내려받기도 그대로 사용할 수 있습니다.
@@ -39,8 +54,9 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 | 주소 | https://vpylab.pages.dev | https://vpylab.vercel.app |
 | 호스팅 | Cloudflare Pages(정적 파일 + 공유 주소 함수) | Vercel + Railway(Express 서버) |
 | 서버·데이터베이스 | 공유 주소용 Cloudflare D1(코드·제목만) | Supabase |
-| 로그인 | 없음 | 구글 또는 GitHub(Supabase Auth) |
-| 저장 | 학생 본인의 구글 드라이브, HTML 내려받기 | 프로젝트, 저장 이력, GitHub 동기화 |
+| 로그인 | 없음. 저장할 때 구글, 팀 프로젝트에서 GitHub를 브라우저에서 직접 연결 | 팀 프로젝트·갤러리·교사 도구에서 GitHub 또는 구글(Supabase Auth) |
+| 저장 | 학생 본인의 구글 드라이브, 파일 내려받기와 열기 | 구글 클라이언트 ID 설정 시 학생 본인의 구글 드라이브, 팀 프로젝트는 GitHub 저장소와 저장 이력 |
+| 팀 프로젝트 | GitHub 애드온(설정한 배포만) | 운영 서버 방식 |
 | 갤러리·팀·교사 도구 | 꺼짐 | 켜짐 |
 | 빌드 설정 | `VITE_EDITION=open` | 기본값(`classroom`) |
 
@@ -76,7 +92,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 
 ### 구글 드라이브 저장
 
-만들기 화면의 저장과 실험 페이지는 구글 로그인으로 openid email profile, drive.file 권한을 요청합니다. drive.file 권한으로는 이 앱이 만든 파일만 볼 수 있고 드라이브의 다른 파일은 볼 수 없습니다. 파일은 사용자 본인의 구글 드라이브 VPyLab 폴더에 저장되며 운영자는 접근할 수 없습니다. 구글 로그인 스크립트는 저장 창이나 내 드라이브 창을 열 때만 불러옵니다. 구글 접근 토큰은 페이지 메모리에만 있으며 새로 고침하면 사라집니다. 권한은 권한 철회 버튼이나 https://myaccount.google.com/connections에서 거둘 수 있습니다. 콘텐츠 보안 정책(CSP)은 만들기 화면에서 구글 로그인과 드라이브 API 주소만 더 허용합니다.
+만들기 화면의 저장과 실험 페이지는 구글 로그인으로 openid email profile, drive.file 권한을 요청합니다. drive.file 권한으로는 이 앱이 만든 파일만 볼 수 있고 드라이브의 다른 파일은 볼 수 없습니다. 파일은 사용자 본인의 구글 드라이브 VPyLab 폴더에 저장되며 운영자는 접근할 수 없습니다. 구글 로그인 스크립트는 저장 창이나 내 드라이브 창을 열 때만 불러옵니다. 구글 접근 토큰은 브라우저 탭의 저장 공간(sessionStorage)에 있어 새로 고침해도 유지되고, 탭을 닫거나 로그아웃하면 사라집니다. 권한은 권한 철회 버튼이나 https://myaccount.google.com/connections에서 거둘 수 있습니다. 콘텐츠 보안 정책(CSP)은 만들기 화면에서 구글 로그인과 드라이브 API 주소만 더 허용합니다.
 
 ### 수업용 판
 
@@ -104,6 +120,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 | 웹 글꼴(막혀도 시스템 글꼴로 표시) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
 | 파이썬 엔진 대체 경로, 내려받은 HTML 파일 | `cdn.jsdelivr.net`, `unpkg.com` |
 | 구글 드라이브 저장 | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
+| 팀 프로젝트(GitHub, 선택) | `github.com`, `api.github.com`, `*.github.io` |
 
 구글 드라이브 저장의 승인 창은 팝업으로 열립니다. `vpylab.pages.dev`의 팝업을 허용합니다.
 

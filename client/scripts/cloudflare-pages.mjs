@@ -52,19 +52,33 @@ const GOOGLE_SIGN_IN = {
   'connect-src': ['https://www.googleapis.com', 'https://oauth2.googleapis.com', 'https://accounts.google.com/gsi/'],
   'frame-src': ['https://accounts.google.com/gsi/'],
 };
-export function withGoogleSignIn(value) {
+/** CSP 지시문에 출처를 더합니다. 이미 있으면 그대로 두고, 'none'은 뺍니다. */
+function withSources(value, additions) {
   return value.split(';').map((directive) => {
     const parts = directive.trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return '';
-    const extra = GOOGLE_SIGN_IN[parts[0]];
+    const extra = additions[parts[0]];
     if (!extra) return parts.join(' ');
     const sources = parts.slice(1).filter((token) => token !== "'none'");
     for (const host of extra) if (!sources.includes(host)) sources.push(host);
     return [parts[0], ...sources].join(' ');
   }).filter(Boolean).join('; ');
 }
+export function withGoogleSignIn(value) {
+  return withSources(value, GOOGLE_SIGN_IN);
+}
 
-export function buildCloudflareConfig(vercel, { edition = 'classroom' } = {}) {
+/**
+ * 오픈소스 판의 GitHub 팀 프로젝트 애드온(client/src/github/)은 브라우저가 GitHub API를 직접 호출합니다.
+ * GitHub OAuth 클라이언트 ID(VITE_GITHUB_CLIENT_ID)를 넣어 빌드한 배포의 본 앱 CSP에만 api.github.com을 더합니다.
+ * 로그인 창은 새 창(github.com)이라 CSP 대상이 아니고, 토큰 교환은 같은 출처의 Pages 함수(/api/github/token)가 합니다.
+ */
+const GITHUB_API = { 'connect-src': ['https://api.github.com'] };
+export function withGitHubApi(value) {
+  return withSources(value, GITHUB_API);
+}
+
+export function buildCloudflareConfig(vercel, { edition = 'classroom', github = false } = {}) {
   const rules = (vercel.headers || []).flatMap((rule) => {
     const path = toCloudflarePath(rule.source);
     const pretty = path.endsWith('.html') && path !== '/index.html' ? [{ path: path.slice(0, -'.html'.length), headers: rule.headers }] : [];
@@ -88,6 +102,7 @@ export function buildCloudflareConfig(vercel, { edition = 'classroom' } = {}) {
       const isCsp = key.toLowerCase() === 'content-security-policy';
       let v = edition === 'open' && isCsp ? openEditionCsp(value) : value;
       if (edition === 'open' && isCsp && rule.path === '/*') v = withGoogleSignIn(v);
+      if (edition === 'open' && github && isCsp && rule.path === '/*') v = withGitHubApi(v);
       lines.push(`  ${key}: ${v}`);
     }
   }
@@ -123,14 +138,15 @@ function main() {
   if (existsSync(resolve(outDir, '404.html'))) {
     throw new Error('404.html이 있으면 Cloudflare가 SPA 대체를 하지 않습니다.');
   }
-  const { headers, redirects } = buildCloudflareConfig(vercel, { edition });
+  const github = Boolean((process.env.VITE_GITHUB_CLIENT_ID || '').trim());
+  const { headers, redirects } = buildCloudflareConfig(vercel, { edition, github });
   writeFileSync(resolve(outDir, '_headers'), headers);
   writeFileSync(resolve(outDir, '_redirects'), redirects);
   for (const dir of spaExcludedDirs(vercel)) {
     const target = resolve(outDir, dir);
     if (existsSync(target) && statSync(target).isDirectory()) writeFileSync(resolve(target, '404.html'), NOT_FOUND_HTML);
   }
-  console.log(`Cloudflare 설정을 만들었습니다: ${outDir}/_headers, _redirects (판: ${edition})`);
+  console.log(`Cloudflare 설정을 만들었습니다: ${outDir}/_headers, _redirects (판: ${edition}${github ? ', GitHub 애드온 포함' : ''})`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
