@@ -23,6 +23,21 @@ play_note_and_wait("G4", 0.5)
 
 Paste this into **Create** and press **Run**. A glowing red sphere and a label appear, and you hear C, E and G. `play_note_and_wait` is a VPyLab extension. Shapes, vectors, `label` and `color` follow the official VPython API.
 
+## Three ways to work
+
+You start without signing in and connect an account only when you need it. The decisions are in [docs/GOOGLE_FIRST_PLAN.md](docs/GOOGLE_FIRST_PLAN.md) (Korean).
+
+| Step | You need | What you can do |
+|---|---|---|
+| 1. On your own | Nothing | Run code, follow the lessons, make share links, **Tools → Download HTML** or **Download Python file (.py)**, and **Open file**. Code you were writing stays in this browser for 14 days. |
+| 2. Save | A Google account | **Save** stores the code in the `VPyLab` folder of the student's own Google Drive and opens it on another device. |
+| 3. Team project | A GitHub account (optional, age 13+) | While a **team project** is open, Save makes a GitHub commit. Invite teammates and keep a record. |
+
+- A downloaded HTML file runs by itself (it needs the internet) and carries the code, so **Open file** loads it back into VPyLab.
+- The Google connection survives a refresh and ends when the tab closes. Google limits a token to about one hour; when you save after that, the approval window opens and closes by itself and the save continues.
+- In the open edition, team projects talk to GitHub straight from the browser with no VPyLab server. A deployment turns them on by configuring a GitHub OAuth app ([how](docs/DEPLOY_TWO_EDITIONS.md), Korean).
+- The classroom edition follows the same flow once a Google client ID is configured. Until then it saves to the account and GitHub projects as before.
+
 ## Status
 
 VPyLab is in active development. In the open edition (vpylab.pages.dev):
@@ -43,7 +58,8 @@ The same code is built two ways. The `VITE_EDITION` build setting picks the edit
 | Hosting | Cloudflare Pages (static files + share-link functions) | Vercel + Railway (Express server) |
 | Server and database | Cloudflare D1 for share links only (code and title) | Supabase |
 | Login | None | Google or GitHub (Supabase Auth) |
-| Saving | The student's own Google Drive; HTML download | Projects, version history, GitHub sync |
+| Saving | The student's own Google Drive; download and open files | The student's own Google Drive once a Google client ID is configured; team projects use GitHub repositories and version history |
+| Team projects | GitHub add-on (deployments that configure it) | Through the classroom server |
 | Gallery, teams, teacher tools | Off | On |
 | Build setting | `VITE_EDITION=open` | default (`classroom`) |
 
@@ -86,7 +102,7 @@ Guides:
 - The Google sign-in script loads only when you open the save or My Drive window. The Content Security Policy of Create adds only the Google sign-in and Drive API origins; the test page talks only to Google and to itself.
 - It asks for `openid email profile` and `drive.file`. With `drive.file`, the app can see only the files it created, not the rest of your Drive.
 - Files go to a `VPyLab` folder in the student's own Google Drive. VPyLab maintainers cannot see them.
-- The Google access token stays in page memory and is gone after a reload. Unsaved drafts stay in the browser, per account. Drafts older than 14 days are removed the next time the save window is opened on that computer.
+- The Google access token is kept in the browser tab's storage (sessionStorage): it survives a reload and is gone when the tab closes or you sign out. Unsaved drafts stay in the browser, per account. Drafts older than 14 days are removed the next time the save window is opened on that computer.
 - To remove access, press **Revoke access** in the My Drive window or go to https://myaccount.google.com/connections. Signing out offers to delete this account's drafts from the browser (do this on shared computers).
 
 The classroom edition stores accounts and code in Supabase; see its in-app privacy page.
@@ -123,6 +139,7 @@ Testing VPyLab at another school: [docs/TESTERS.ko.md](docs/TESTERS.ko.md) (Kore
 | Web fonts (optional; the app falls back to system fonts) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
 | Python runtime fallback, and downloaded HTML files | `cdn.jsdelivr.net`, `unpkg.com` |
 | Saving to Google Drive | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
+| Team projects (GitHub, optional) | `github.com`, `api.github.com`, `*.github.io` |
 
 Allow pop-ups from `vpylab.pages.dev`; Google approval opens in a pop-up.
 

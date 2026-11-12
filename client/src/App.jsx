@@ -37,6 +37,8 @@ const Forge = lazyWithRetry(() => import('./pages/Forge'));
 const Guide = lazyWithRetry(() => import('./pages/Guide'));
 const Privacy = lazyWithRetry(() => import('./pages/Privacy'));
 const Embed = lazyWithRetry(() => import('./pages/Embed'));
+// GitHub 팀 프로젝트 애드온의 로그인 창(팝업)이 돌아오는 작은 화면입니다.
+const GitHubCallback = lazyWithRetry(() => import('./pages/GitHubCallback'));
 
 function AppContent() {
   const initialize = useAuthStore((s) => s.initialize);
@@ -91,6 +93,7 @@ function AppContent() {
           <Route path="/embed/:id" element={<Embed />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/github/callback" element={<GitHubCallback />} />
         </Routes>
       </Suspense>
     </>

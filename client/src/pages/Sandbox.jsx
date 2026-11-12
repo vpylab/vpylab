@@ -2,7 +2,9 @@ import { localizeLessonCode } from '../i18n/owned-content';
 import { getDefaultCode } from '../data/default-code';
 import { useUiText, getUiLocale } from "../i18n/ui-text";
 import { readPracticeDraft, writePracticeDraft } from '../utils/practice-drafts';
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { clearSandboxDraft, readSandboxDraft, writeSandboxDraft } from '../utils/sandbox-draft';
+import { CODE_FILE_REASON_TEXT, CodeFileError, codeFileBaseName, downloadPython, openInVpylabUrl, readCodeFile } from '../utils/code-file';
+import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
 import { Link, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
 import Header from '../components/layout/Header';
@@ -23,8 +25,10 @@ import { createShareLink, decodeCodeFromURL, loadSharedCode, SHARE_RUN_VIEW } fr
 import ShareLinkDialog from '../components/share/ShareLinkDialog';
 import DriveDialog from '../components/drive/DriveDialog';
 import VideoSaveDialog from '../components/drive/VideoSaveDialog';
-import { DRIVE_CLIENT_ID, useDriveStore } from '../drive/driveSession';
-import { OPEN_EDITION } from '../lib/api-base.js';
+import { DRIVE_CLIENT_ID, expiredDriveTabFile, storedDriveFileId, useDriveStore } from '../drive/driveSession';
+import { GITHUB_ADDON, SERVER_FEATURES } from '../lib/api-base.js';
+import { storedGitHubProject } from '../github/tab-session.js';
+import AddonBoundary from '../components/shared/AddonBoundary';
 import { isViewportFullscreen } from '../hooks/useFullscreen';
 import {
   shouldForceDetailed,
@@ -63,6 +67,11 @@ function getProjectRole(project, members, userId) {
   return members.find((member) => member.user_id === userId)?.role || project.my_role || null;
 }
 
+// GitHub 팀 프로젝트 애드온(오픈소스 판). 설정된 배포에서만, 만들기 화면이 뜬 뒤에 따로 불러옵니다.
+const GitHubAddon = GITHUB_ADDON ? lazy(() => import('../components/github/GitHubAddon.jsx')) : null;
+
+const isStarterCode = (value) => !value || value === DEFAULT_CODE || value === getDefaultCode('en');
+
 function waitForSaveTimeout(ms, message) {
   return new Promise((resolve) => {
     window.setTimeout(() => resolve({
@@ -77,14 +86,37 @@ function waitForSaveTimeout(ms, message) {
  * 3패널: 좌 에디터 | 우상 3D 뷰포트 | 우하 콘솔
  * 태블릿: 탭 전환 (에디터/3D 토글)
  */
-/** 오픈소스 판은 저장을 학생 본인의 구글 드라이브에 합니다(클라이언트 ID가 없는 배포는 예전 안내). */
-const DRIVE_EDITOR = OPEN_EDITION && Boolean(DRIVE_CLIENT_ID);
-// 작품 영상의 드라이브 저장은 두 판 모두에서 쓸 수 있습니다(구글 클라이언트 ID가 설정된 배포만).
-// 수업용 판의 코드 저장은 그대로 Supabase·GitHub에 둡니다.
+/**
+ * 저장 방식 (docs/GOOGLE_FIRST_PLAN.md)
+ *   - 로그인 없이: 실행, 링크 공유, 파일 내려받기·열기, 이 브라우저의 초안.
+ *   - 구글: 개인 코드는 학생 본인의 구글 드라이브에 저장합니다(두 판 모두, 구글 클라이언트 ID가 설정된 배포).
+ *   - GitHub: 팀 프로젝트를 열었을 때만 저장이 GitHub 커밋이 됩니다.
+ *     수업용 판은 운영 서버 방식(TEAM_PROJECTS), 오픈소스 판은 서버 없는 애드온(GITHUB_ADDON, components/github/GitHubAddon.jsx)입니다.
+ * 구글 클라이언트 ID가 없는 수업용 배포는 예전처럼 계정(Supabase)과 GitHub 프로젝트에 저장합니다.
+ */
+const DRIVE_EDITOR = Boolean(DRIVE_CLIENT_ID);
+/** 수업용 판의 팀 프로젝트(Supabase 로그인 + GitHub 저장소) */
+const TEAM_PROJECTS = SERVER_FEATURES;
+/** 예전 방식: 개인 코드도 운영 계정에 저장(자동 저장, 다른 이름으로 저장, 저장 이력) */
+const ACCOUNT_SAVE = SERVER_FEATURES && !DRIVE_EDITOR;
 const DRIVE_VIDEO = Boolean(DRIVE_CLIENT_ID);
 /** 예제·공유 코드처럼 다른 출처의 코드를 불러오면 드라이브 파일 연결을 끊어, 다음 저장이 그 파일을 덮어쓰지 않게 합니다. */
+/** GitHub 애드온이 준비되면 채웁니다({ open, hasProject, detach, isDirty }). 애드온이 없거나 불러오지 못하면 null입니다. */
+const githubControl = { current: null };
+/** 애드온이 준비되기 전에 다른 코드를 불러왔으면, 준비된 뒤 되살린 프로젝트 연결을 끊도록 표시해 둡니다. */
+let githubDetachPending = false;
+function detachGitHubSource() {
+  if (!GITHUB_ADDON) return;
+  if (githubControl.current) githubControl.current.detach();
+  else githubDetachPending = true;
+}
 function detachDriveSource() {
   if (DRIVE_EDITOR) useDriveStore.getState().detach();
+  detachGitHubSource();
+}
+/** 주소에 불러올 대상(공유·학습 자료·저장소 등)이 없는, 빈 만들기 화면으로 들어왔는지 */
+function isPlainEntry(location, sharedRouteId) {
+  return !sharedRouteId && !location.state && !location.search && !window.location.hash;
 }
 
 export default function Sandbox() {
@@ -100,10 +132,13 @@ export default function Sandbox() {
   const [activeTab, setActiveTab] = useState('editor');
   const [mobileMore, setMobileMore] = useState(false);
   const toolsButtonRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [shareMsg, setShareMsg] = useState('');
   const [shareDialog, setShareDialog] = useState(null); // { url, id, title, code } | null
   const [driveDialog, setDriveDialog] = useState(null); // 'save' | 'files' | null (오픈소스 판)
   const driveFile = useDriveStore((state) => state.file);
+  const [githubProject, setGithubProject] = useState(null); // 오픈소스 판 애드온에서 연 팀 프로젝트 { fullName, title } | null
+  const [githubFailed, setGithubFailed] = useState(false);
   const driveAccount = useDriveStore((state) => state.account);
   const [saveMsg, setSaveMsg] = useState('');
   const [showTeam, setShowTeam] = useState(false);
@@ -261,6 +296,10 @@ export default function Sandbox() {
           await restoreProjectContext();
           setTeamInitialAction('browse');
           setShowTeam(true);
+        } else if (DRIVE_EDITOR) {
+          // 개인 저장은 드라이브에 하므로 로그인은 팀 프로젝트를 위한 것입니다.
+          setTeamInitialAction('browse');
+          setShowTeam(true);
         } else {
           setShowProjectGate(true);
         }
@@ -288,6 +327,110 @@ export default function Sandbox() {
   // /s/:id 주소로 열면 공유 코드를 직접 불러옵니다. 주소창은 /s/이름 그대로 둡니다.
   const { id: sharedRouteId } = useParams();
   const loadedSharedRouteId = useRef(null);
+
+  // 자유 코딩 초안 되살리기: 빈 만들기 화면으로 들어왔고 이 브라우저에 남은 코드가 있으면 이어서 엽니다.
+  // 새로 고침 전에 드라이브 파일을 열어 두었으면 아래의 드라이브 연결 복구가 그 파일을 엽니다.
+  const entryHandled = useRef(false);
+  // 익명 자유 코딩 초안에서만 사용하는 기준 코드(로그아웃·연결 해제 직후의 코드). 이 코드와 같으면 초안을 남기지 않습니다.
+  const sandboxBaselineRef = useRef(null);
+  // 빈 만들기 화면으로 들어왔을 때만, 탭에 남은 팀 프로젝트를 편집기에 되살립니다.
+  const githubRestoreAllowed = useRef(isPlainEntry(location, sharedRouteId));
+  useEffect(() => {
+    if (entryHandled.current) return;
+    entryHandled.current = true;
+    if (!isPlainEntry(location, sharedRouteId)) return;
+    if (ACCOUNT_SAVE && useAuthStore.getState().user) return;
+    if (DRIVE_EDITOR && storedDriveFileId()) return;
+    if (GITHUB_ADDON && storedGitHubProject()) return;
+    const draft = readSandboxDraft();
+    if (!draft || isStarterCode(draft)) return;
+    updateCode(draft);
+    setOutputs([{ text: ui("이 브라우저에 남아 있던 코드를 이어서 열었습니다. 새로 시작하려면 도구 메뉴의 \"초기 코드로 돌아가기\"를 누르십시오."), type: 'log', id: Date.now() }]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 자유 코딩 초안 남기기: 불러온 원본에서 달라진 코드만 이 브라우저에 남깁니다(탭을 닫아도 이어서 할 수 있게).
+  // 학습 자료의 연습 코드(탭 단위 보관), 드라이브 파일, 팀 프로젝트, 계정 자동 저장을 쓰는 로그인 사용자는 각자의 저장 방식을 따릅니다.
+  useEffect(() => {
+    // 구글 드라이브에 로그인한 동안에는 계정별 드라이브 초안(driveSession.rememberDraft)이 맡습니다. 공용 컴퓨터에서 로그아웃한 뒤 코드가 남지 않게 합니다.
+    if (practiceContextRef.current || driveFile || driveAccount || activeProject || githubProject || (ACCOUNT_SAVE && user)) return undefined;
+    const timer = setTimeout(() => {
+      if (codeRef.current !== code) return;
+      if (code === initialCodeRef.current) { if (isStarterCode(code)) clearSandboxDraft(); return; }
+      // 로그아웃·연결 해제 직후의 코드는 남기지 않습니다(아래 sandboxBaselineRef). 그 뒤에 고친 내용부터 남깁니다.
+      if (code === sandboxBaselineRef.current) return;
+      sandboxBaselineRef.current = null;
+      writeSandboxDraft(code);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [code, driveFile, driveAccount, activeProject, githubProject, user]);
+  // 드라이브(로그인·파일)나 팀 프로젝트로 옮겨 가면 그 전의 자유 코딩 초안은 지웁니다(다음에 열 때 옛 코드가 나오지 않게).
+  useEffect(() => {
+    if (driveFile || driveAccount || activeProject || githubProject) clearSandboxDraft();
+  }, [driveFile, driveAccount, activeProject, githubProject]);
+  // 드라이브에서 로그아웃하거나 팀 프로젝트 연결을 끊은 직후의 코드는 이 브라우저에 익명 초안으로 남기지 않습니다.
+  // 그 시점의 코드를 익명 초안 전용 기준(sandboxBaselineRef)으로 삼아, 그 뒤에 새로 고친 내용만 초안이 됩니다
+  // (공용 컴퓨터에서 앞 학생의 코드가 넘어가지 않게). "초기 코드로 돌아가기"와 저장하지 않은 변경 판단의 기준(initialCodeRef)은 바꾸지 않습니다.
+  const previousSources = useRef({ driveAccount: null, githubProject: null });
+  useEffect(() => {
+    const previous = previousSources.current;
+    if ((previous.driveAccount && !driveAccount) || (previous.githubProject && !githubProject)) {
+      clearSandboxDraft();
+      sandboxBaselineRef.current = codeRef.current;
+    }
+    previousSources.current = { driveAccount, githubProject };
+  }, [driveAccount, githubProject]);
+
+  // 드라이브 연결 복구: 새로 고침한 뒤 이 탭에 남은 토큰으로 계정을 되살리고, 열어 두었던 파일을 다시 엽니다.
+  const driveResumed = useRef(false);
+  useEffect(() => {
+    if (!DRIVE_EDITOR || driveResumed.current) return;
+    driveResumed.current = true;
+    const plain = isPlainEntry(location, sharedRouteId);
+    (async () => {
+      const drive = useDriveStore.getState();
+      // 다른 화면에 다녀온 경우(새로 고침 아님)에는 스토어에 계정과 연 파일이 그대로 있습니다. 편집기는 새로 그려져 기본 코드이므로
+      // 그 파일을 다시 읽어 넣습니다. 그대로 두면 "저장"이 기본 코드로 드라이브 파일을 덮어씁니다.
+      const stillOpen = drive.account && drive.file ? drive.file.id : null;
+      const expiredFile = !stillOpen && plain && expiredDriveTabFile();
+      const resumed = stillOpen ? { status: 'resumed', fileId: stillOpen } : await drive.resume();
+      if (resumed.status !== 'resumed') {
+        // 드라이브 파일을 열어 둔 채 연결이 만료된 뒤 새로 고친 경우: 저장하지 않은 변경은 계정별 초안에 남아 있습니다.
+        if (expiredFile) addOutput(ui("구글 드라이브 연결이 만료되어 열어 두었던 파일을 다시 열지 못했습니다. \"내 드라이브\"에서 로그인하고 파일을 열면 저장하지 않은 변경을 되살릴 수 있습니다."), 'warning');
+        return;
+      }
+      if (!resumed.fileId) {
+        // 계정만 되살아난 경우: 파일로 만들지 않은 새 코드의 초안이 있으면 이어서 엽니다.
+        const draft = plain && codeRef.current === initialCodeRef.current ? useDriveStore.getState().latestNewDraft() : null;
+        if (draft?.code && !isStarterCode(draft.code) && !(GITHUB_ADDON && storedGitHubProject())) {
+          practiceContextRef.current = null;
+          updateCode(draft.code);
+          setOutputs([{ text: ui("저장하지 않은 코드를 이 브라우저의 초안에서 이어서 열었습니다. 새로 시작하려면 도구 메뉴의 \"초기 코드로 돌아가기\"를 누르십시오."), type: 'log', id: Date.now() }]);
+        }
+        return;
+      }
+      // 팀 프로젝트를 열어 두었던 탭이면 그 프로젝트를 되살리는 쪽이 우선입니다(드라이브 파일과 동시에 열지 않음).
+      if (GITHUB_ADDON && storedGitHubProject()) { if (stillOpen) useDriveStore.getState().detach(); return; }
+      // 다른 코드(공유 링크·학습 자료 등)로 들어온 화면은 그 코드를 불러올 때 파일 연결을 끊습니다. 편집을 시작했으면 덮어쓰지 않습니다.
+      if (!plain || codeRef.current !== initialCodeRef.current) return;
+      if (!stillOpen && useDriveStore.getState().file) return;
+      const opened = await useDriveStore.getState().openFile(resumed.fileId);
+      if (opened.status !== 'opened' || codeRef.current !== initialCodeRef.current) return;
+      let next = opened.code;
+      if (opened.draft) {
+        // 새로 고침 직전까지 편집하던 내용을 되살립니다. 그사이 드라이브가 바뀌었으면 저장할 때 충돌로 알립니다.
+        next = opened.draft.code;
+        useDriveStore.getState().adoptDraft(opened.draft);
+      }
+      practiceContextRef.current = null;
+      updateCode(next);
+      homeDraftTitle.current = null; initialCodeRef.current = opened.code;
+      setOutputs([{ text: opened.draft
+        ? ui`구글 드라이브의 "${opened.name || ''}"을(를) 다시 열고, 저장하지 않은 변경을 이 브라우저의 초안에서 되살렸습니다.`
+        : ui`구글 드라이브의 "${opened.name || ''}"을(를) 다시 열었습니다.`, type: 'log', id: Date.now() }]);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!sharedRouteId || loadedSharedRouteId.current === sharedRouteId) return undefined;
     loadedSharedRouteId.current = sharedRouteId;
@@ -402,6 +545,8 @@ export default function Sandbox() {
   //  실제 갱신 없이 'saved' 표시되는 문제 방지)
   useEffect(() => {
     if (restoringRevision) return;
+    // 개인 코드를 구글 드라이브에 저장하는 배포에서는 운영 계정에 자동 저장하지 않습니다.
+    if (!ACCOUNT_SAVE) return;
     if (!user || !code || (code === DEFAULT_CODE || code === getDefaultCode("en"))) return;
     if (activeProject) return;
     // 로드 중일 때만 차단 — 'error' 상태에서 자동 저장이 영구 차단되지 않도록
@@ -449,12 +594,15 @@ export default function Sandbox() {
       || !!searchParams.get('showcase')
       || !!repoParam
       || window.location.hash.startsWith('#code=')
-      || window.location.hash.startsWith('#b64=');
+      || window.location.hash.startsWith('#b64=')
+      || !!sharedRouteId;
     if (fromExternal) {
       useProjectStore.getState().closeProject();
       useCodeStore.getState().setCurrentCodeId(null);
+      // 불러오기가 늦거나 실패해도, 열어 둔 드라이브 파일·팀 프로젝트에 다른 코드가 저장되지 않게 먼저 연결을 끊습니다.
+      detachDriveSource();
     }
-  }, [location.state, repoParam, searchParams]);
+  }, [location.state, repoParam, searchParams, sharedRouteId]);
 
   useEffect(() => {
     if (!mobileMore) return;
@@ -787,6 +935,8 @@ export default function Sandbox() {
     stopAllSounds();
     stopExecution();
     if (sceneRef.current) clearScene(sceneRef.current);
+    // 이 브라우저에 남긴 자유 코딩 초안도 지웁니다(공용 컴퓨터에서 다음 사람에게 남지 않게).
+    clearSandboxDraft();
     updateCode(initialCodeRef.current || getDefaultCode(locale));
     setOutputs([]);
   };
@@ -901,7 +1051,7 @@ export default function Sandbox() {
 
   // 공유 카드 제목: 프로젝트 제목 → 코드 첫 줄 주석 → 기본 문구
   const shareTitle = () => {
-    const projectTitle = activeProject?.title?.trim();
+    const projectTitle = (activeProject?.title || githubProject?.title || '').trim();
     if (projectTitle) return projectTitle.slice(0, 80);
     if(homeDraftTitle.current)return homeDraftTitle.current;
     const firstComment = String(codeRef.current || '').split('\n').map((line) => line.trim()).find((line) => line.startsWith('#'));
@@ -975,17 +1125,56 @@ export default function Sandbox() {
   useEffect(() => () => recordingRef.current?.cancel(), []);
 
   const handleExport = async () => {
+    // 내려받은 HTML은 혼자 실행되고, 코드를 품고 있어 "파일 열기"로 VPyLab에 다시 불러올 수 있습니다.
     const { generateStandaloneHTML, downloadHTML } = await import('../utils/export-html');
-    const html = generateStandaloneHTML(codeRef.current, 'My VPyLab Project');
-    // 파일명: 깃헙아이디_파일이름_날짜시간.html
-    const githubId = user?.user_metadata?.user_name
-      || user?.user_metadata?.preferred_username
-      || user?.email?.split('@')[0]
-      || 'guest';
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 16).replace(/[-:T]/g, '').slice(0, 12); // 202604141605
-    const filename = `${githubId}_vpylab_${dateStr}.html`;
-    downloadHTML(html, filename);
+    const title = shareTitle();
+    const html = generateStandaloneHTML(codeRef.current, title, { openInVpylabUrl: openInVpylabUrl(codeRef.current) });
+    downloadHTML(html, `${codeFileBaseName(title)}.html`);
+    addOutput(ui("HTML 파일을 내려받았습니다. 도구 메뉴의 \"파일 열기\"로 이 파일을 다시 불러올 수 있습니다."), 'success');
+  };
+
+  const openGitHubProjects = () => {
+    if (githubControl.current) { githubControl.current.open('projects'); return; }
+    addOutput(githubFailed
+      ? ui("팀 프로젝트 기능을 불러오지 못했습니다. 실행과 저장은 그대로 사용할 수 있으며, 새로 고침한 뒤 다시 시도하십시오.")
+      : ui("팀 프로젝트 기능을 불러오는 중입니다. 잠시 뒤 다시 누르십시오."), githubFailed ? 'error' : 'log');
+  };
+
+  const handleDownloadPython = () => {
+    downloadPython(codeRef.current, `${codeFileBaseName(shareTitle())}.py`);
+  };
+
+  /** 고른 파일(.py 또는 VPyLab이 내보낸 .html)의 코드를 편집기로 불러옵니다. */
+  const openCodeFile = async (file) => {
+    if (!file) return;
+    let loaded;
+    try {
+      loaded = await readCodeFile(file);
+    } catch (error) {
+      addOutput(ui(CODE_FILE_REASON_TEXT[error instanceof CodeFileError ? error.reason : 'read']), 'error');
+      return;
+    }
+    const unsaved = codeRef.current !== initialCodeRef.current || (DRIVE_EDITOR && useDriveStore.getState().isDirty(codeRef.current)) || Boolean(githubControl.current?.isDirty(codeRef.current));
+    if (unsaved && !window.confirm(ui("편집기에 저장하지 않은 변경이 있고, 파일을 열면 이 변경은 사라집니다. 계속할까요?"))) return;
+    stopAllSounds();
+    stopExecution();
+    if (sceneRef.current) clearScene(sceneRef.current);
+    clearRegistry();
+    setOutputs([]);
+    setActiveTab('editor');
+    practiceContextRef.current = null;
+    // 파일에서 연 코드는 열어 둔 드라이브 파일이나 팀 프로젝트와 별개입니다(저장이 그쪽을 덮어쓰지 않게 연결을 끊음).
+    detachDriveSource();
+    if (TEAM_PROJECTS) { useProjectStore.getState().closeProject(); useCodeStore.getState().setCurrentCodeId(null); }
+    updateCode(loaded.code);
+    homeDraftTitle.current = loaded.title || null; initialCodeRef.current = loaded.code;
+    addOutput(ui`파일 "${file.name}"의 코드를 열었습니다.`, 'success');
+  };
+  const handleFileDrop = (event) => {
+    if (!Array.from(event.dataTransfer?.types || []).includes('Files')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.type === 'drop') openCodeFile(event.dataTransfer.files?.[0]);
   };
 
   const refreshPublishThumbnail = useCallback(async () => {
@@ -1027,7 +1216,9 @@ export default function Sandbox() {
   };
 
   const handleSave = async () => {
-    if (DRIVE_EDITOR) { await handleDriveSave(); return; }
+    // 팀 프로젝트를 열어 둔 동안에는 저장이 GitHub 커밋입니다. 그 밖의 개인 코드는 구글 드라이브에 저장합니다.
+    if (GITHUB_ADDON && githubControl.current?.hasProject()) { githubControl.current.open('commit'); return; }
+    if (DRIVE_EDITOR && !(TEAM_PROJECTS && useProjectStore.getState().activeProject)) { await handleDriveSave(); return; }
     if (!user) {
       useAuthStore.getState().setAuthModalOpen(true);
       return;
@@ -1333,8 +1524,63 @@ export default function Sandbox() {
   }
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg-primary)' }}>
+    <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg-primary)' }} onDragOverCapture={handleFileDrop} onDropCapture={handleFileDrop}>
       <Header />
+      <input ref={fileInputRef} type="file" accept=".py,.html,.htm,text/x-python,text/html" hidden aria-hidden="true" tabIndex={-1} data-testid="code-file-input"
+        onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; openCodeFile(file); }} />
+      {GitHubAddon && !githubFailed && (
+        <AddonBoundary onError={() => { githubControl.current = null; setGithubFailed(true); setGithubProject(null); }}>
+          <Suspense fallback={null}>
+            <GitHubAddon
+              controlRef={githubControl}
+              code={code}
+              getCode={() => codeRef.current}
+              defaultTitle={shareTitle()}
+              shouldRestore={() => githubRestoreAllowed.current && !githubDetachPending && codeRef.current === initialCodeRef.current}
+              onReady={() => { githubDetachPending = false; }}
+              onProjectChange={(next) => {
+                // 팀 프로젝트를 여는 순간부터 저장은 GitHub로 갑니다. 열어 둔 드라이브 파일과 동시에 연결해 두지 않습니다(빈 저장소 포함).
+                if (next && DRIVE_EDITOR) useDriveStore.getState().detach();
+                setGithubProject(next);
+              }}
+              onRestore={({ code: restored, baseline, title, restoredDraft }) => {
+                // 새로 고침 뒤: 그사이 편집을 시작했으면 덮어쓰지 않습니다. 이때 프로젝트 연결도 끊어, 저장이 지금 코드를 팀 저장소에 올리지 않게 합니다.
+                if (codeRef.current !== initialCodeRef.current) {
+                  githubControl.current?.detach();
+                  addOutput(ui`편집을 시작한 뒤라 팀 프로젝트 "${title || ''}"을(를) 다시 열지 않았습니다. "팀 프로젝트" 버튼에서 다시 열 수 있습니다.`, 'warning');
+                  return;
+                }
+                practiceContextRef.current = null;
+                if (DRIVE_EDITOR) useDriveStore.getState().detach();
+                updateCode(restored);
+                homeDraftTitle.current = null; initialCodeRef.current = baseline;
+                setOutputs([{ text: restoredDraft
+                  ? ui`팀 프로젝트 "${title || ''}"을(를) 다시 열고, 저장하지 않은 변경을 되살렸습니다.`
+                  : ui`팀 프로젝트 "${title || ''}"을(를) 다시 열었습니다.`, type: 'log', id: Date.now() }]);
+              }}
+              onLoaded={(loaded, title) => {
+                stopAllSounds();
+                stopExecution();
+                if (sceneRef.current) clearScene(sceneRef.current);
+                clearRegistry();
+                setOutputs([]);
+                setActiveTab('editor');
+                practiceContextRef.current = null;
+                // 팀 프로젝트의 코드는 열어 둔 드라이브 파일과 별개입니다(드라이브 저장이 그 파일을 덮어쓰지 않게 연결을 끊음).
+                if (DRIVE_EDITOR) useDriveStore.getState().detach();
+                updateCode(loaded);
+                homeDraftTitle.current = null; initialCodeRef.current = loaded;
+                addOutput(ui`팀 프로젝트 "${title || ''}"의 코드를 열었습니다.`, 'success');
+              }}
+              onSaved={() => {
+                initialCodeRef.current = codeRef.current;
+                setSaveMsg(ui("저장됨"));
+                setTimeout(() => setSaveMsg(''), 2000);
+              }}
+            />
+          </Suspense>
+        </AddonBoundary>
+      )}
       {shareDialog && (
         <ShareLinkDialog url={shareDialog.url} shareId={shareDialog.id} title={shareDialog.title} code={shareDialog.code} onClose={() => setShareDialog(null)} />
       )}
@@ -1359,6 +1605,7 @@ export default function Sandbox() {
             setOutputs([]);
             setActiveTab('editor');
             practiceContextRef.current = null;
+            detachGitHubSource();
             updateCode(loaded);
             homeDraftTitle.current = null; initialCodeRef.current = useDriveStore.getState().file?.savedCode ?? loaded;
             addOutput(ui`구글 드라이브에서 "${name || ''}"을(를) 열었습니다.`, 'success');
@@ -1366,11 +1613,13 @@ export default function Sandbox() {
           }}
           onRestoreNew={(restored) => {
             practiceContextRef.current = null;
+            detachGitHubSource();
             updateCode(restored);
             setDriveDialog(null);
           }}
           onNewCode={() => {
             practiceContextRef.current = null;
+            detachGitHubSource();
             const starter = getDefaultCode(locale);
             updateCode(starter);
             homeDraftTitle.current = null; initialCodeRef.current = starter;
@@ -1404,9 +1653,9 @@ export default function Sandbox() {
         {(isRunning||audio.playing) && <button onClick={handleStop} className="toolbar-btn --stop">{t('editor.stop')}</button>}
         {recordingSeconds !== null && <button onClick={handleStopRecording} className="toolbar-btn" aria-live="polite" style={{ color: 'var(--color-error)' }}>● {ui`녹화 끝내기 (${recordingSeconds}초)`}</button>}
         <button onClick={handleSave} disabled={!activeProjectCanEdit} className="toolbar-btn" title={ui("현재 코드 저장 (Ctrl/Cmd+S)")}>{activeProjectRole === 'viewer' ? ui("보기 전용") : (saveMsg || ui("저장"))}</button>
-        {DRIVE_EDITOR
-          ? <button onClick={() => setDriveDialog('files')} className="toolbar-btn max-w-36 truncate" title={driveFile?.name || ui("내 구글 드라이브")} data-testid="drive-files-button">{driveFile ? driveFile.name : ui("내 드라이브")}</button>
-          : <button onClick={() => { setTeamInitialAction('browse'); setShowTeam(true); }} className="toolbar-btn max-w-36 truncate" title={activeProject?.title || ui("프로젝트")}>{activeProject ? activeProject.title : ui("프로젝트")}</button>}
+        {DRIVE_EDITOR && <button onClick={() => setDriveDialog('files')} className="toolbar-btn max-w-36 truncate" title={driveFile?.name || ui("내 구글 드라이브")} data-testid="drive-files-button">{driveFile ? driveFile.name : ui("내 드라이브")}</button>}
+        {GITHUB_ADDON && <button onClick={openGitHubProjects} className="toolbar-btn max-w-36 truncate" title={githubProject?.title || ui("GitHub 팀 프로젝트")} data-testid="github-project-button">{githubProject ? githubProject.title : ui("팀 프로젝트")}</button>}
+        {!GITHUB_ADDON && (TEAM_PROJECTS || !DRIVE_EDITOR) && <button onClick={() => { setTeamInitialAction('browse'); setShowTeam(true); }} className="toolbar-btn max-w-36 truncate" title={activeProject?.title || (DRIVE_EDITOR ? ui("GitHub 팀 프로젝트") : ui("프로젝트"))} data-testid="team-project-button">{activeProject ? activeProject.title : DRIVE_EDITOR ? ui("팀 프로젝트") : ui("프로젝트")}</button>}
         <div className="relative">
           <button ref={toolsButtonRef} onClick={() => setMobileMore(previous => !previous)} className="toolbar-btn" aria-label={ui("실습 도구")} aria-expanded={mobileMore}>{ui("도구")}<span aria-hidden="true">⌄</span></button>
           {mobileMore && <>
@@ -1416,12 +1665,14 @@ export default function Sandbox() {
                 { label: ui("현재 프로젝트를 내 메인으로 설정"), action: () => setHomePin({code:codeRef.current,title:shareTitle(),thumbnail:lastStartedCode.current===codeRef.current?captureThumbnail(sceneRef.current?._renderer?.domElement,600,.7):null,userId:user?.id}) },
                 { label: ui("초기 코드로 돌아가기"), action: handleReset },
                 { label: shareMsg || t('editor.share'), action: handleShare },
+                { label: ui("파일 열기 (.py, .html)"), action: () => fileInputRef.current?.click() },
                 { label: ui("HTML 내려받기"), action: handleExport },
+                { label: ui("파이썬 파일(.py) 내려받기"), action: handleDownloadPython },
                 ...(recordingSeconds === null ? [{ label: ui`영상으로 저장 (최대 ${MAX_RECORDING_SECONDS}초)`, action: handleStartRecording }] : []),
-                { label: t('code.saveAs') || ui("다른 이름으로 저장"), action: handleSaveAs },
-                { label: ui("저장 이력"), action: handleOpenHistory },
+                ...(ACCOUNT_SAVE ? [{ label: t('code.saveAs') || ui("다른 이름으로 저장"), action: handleSaveAs }] : []),
+                ...(ACCOUNT_SAVE || (TEAM_PROJECTS && activeProject) ? [{ label: ui("저장 이력"), action: handleOpenHistory }] : []),
                 { label: t('editor.examples'), action: () => setShowExamples(true) },
-                { label: t('gallery.publish'), action: openPublishModal },
+                ...(SERVER_FEATURES ? [{ label: t('gallery.publish'), action: openPublishModal }] : []),
                 ...(editMode ? [{ label: ui("작품 업데이트"), action: handleUpdate }] : []),
                 ...(isTeacher() ? [{ label: t('codeShare.sendToStudents'), action: () => setSendModalOpen(true) }] : []),
                 ...(isTeacher() && sharedCodes.length ? [{ label: t('codeShare.clearAll'), action: () => { if (window.confirm(t('codeShare.clearConfirm'))) clearCodes(selectedClassId); } }] : []),

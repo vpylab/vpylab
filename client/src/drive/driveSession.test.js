@@ -1,15 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFakeGoogle, memoryStorage } from '../drive-lab/fake-google.js';
-import { configureDrive, useDriveStore } from './driveSession.js';
+import { DRIVE_TAB_KEY, configureDrive, expiredDriveTabFile, hasStoredDriveSession, storedDriveFileId, useDriveStore } from './driveSession.js';
+import { TOKEN_STORAGE_KEY } from '../drive-lab/google-auth.js';
 
 let google;
 let storage;
+let tab;
+let clock;
 const store = () => useDriveStore.getState();
 
 async function signedIn(accounts) {
   google = createFakeGoogle(accounts ? { accounts } : undefined);
   storage = memoryStorage();
-  configureDrive({ clientId: 'test-client', gis: google.gis, fetchImpl: google.fetchImpl, storage });
+  tab = memoryStorage();
+  clock = 1_000_000;
+  configureDrive({ clientId: 'test-client', gis: google.gis, fetchImpl: google.fetchImpl, storage, tabStorage: tab, now: () => clock });
   expect(await store().prepare()).toBe(true);
   expect((await store().signIn()).status).toBe('ok');
 }
@@ -333,5 +338,217 @@ describe('알고 있는 구글 계정으로 승인', () => {
     await store().signOut();
     await store().signIn();
     expect(google.state.requests[1]).toEqual({ prompt: 'select_account' });
+  });
+});
+
+describe('드라이브 연결 유지', () => {
+  beforeEach(() => { useDriveStore.setState({ file: null }); });
+
+  /** 같은 탭을 새로 고친 상황: 탭 저장소는 그대로이고 스토어와 구글 스크립트는 새로 시작합니다. */
+  const reload = () => configureDrive({ clientId: 'test-client', gis: google.gis, fetchImpl: google.fetchImpl, storage, tabStorage: tab, now: () => clock });
+
+  it('토큰이 만료된 뒤 저장하면 그 호출 안에서 같은 계정으로 다시 승인받아 저장한다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '연장.py' });
+    const id = store().file.id;
+    const before = google.state.requests.length;
+
+    clock += 3_600_000; // 1시간 뒤
+    expect((await store().save('v2')).status).toBe('saved');
+    expect(google.state.requests).toHaveLength(before + 1);
+    expect(google.state.requests.at(-1)).toEqual({ prompt: '', login_hint: 'a@school.example' });
+    expect(google.state.files.get(id).content).toBe('v2');
+    expect(store().needsReauth).toBe(false);
+
+    // 토큰이 유효한 동안에는 다시 승인받지 않습니다.
+    await store().save('v3');
+    expect(google.state.requests).toHaveLength(before + 1);
+  });
+
+  it('만료 뒤 파일 열기도 다시 승인받아 이어서 연다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '열기.py' });
+    const id = store().file.id;
+    clock += 3_600_000;
+    expect(await store().openFile(id)).toMatchObject({ status: 'opened', code: 'v1' });
+  });
+
+  it('다시 승인할 때 다른 계정이 승인되면 그 계정에 저장하지 않고 재승인을 안내한다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '계정.py' });
+    const id = store().file.id;
+    clock += 3_600_000;
+    google.state.accountQueue.push({ sub: 'subB', email: 'b@school.example' });
+
+    expect(await store().save('v2')).toEqual({ status: 'error', reason: 'auth' });
+    expect(store().needsReauth).toBe(true);
+    expect(store().account.email).toBe('a@school.example');
+    expect(google.state.files.get(id).content).toBe('v1');
+    expect([...google.state.files.values()].filter((f) => f.owner === 'subB' && f.name.endsWith('.py'))).toEqual([]);
+    expect(tab.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+  });
+
+  it('승인 창을 열지 못하면 초안을 남기고 예전처럼 재승인을 안내한다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '막힘.py' });
+    clock += 3_600_000;
+    const original = google.gis.accounts.oauth2.initTokenClient;
+    // 팝업이 막힌 상황: 승인 요청이 오류로 끝납니다.
+    reload();
+    google.gis.accounts.oauth2.initTokenClient = (config) => ({ requestAccessToken: () => queueMicrotask(() => config.error_callback({ type: 'popup_failed_to_open' })) });
+    await store().prepare();
+    useDriveStore.setState({ account: { sub: 'subA', email: 'a@school.example', name: '' }, file: { id: 'f1', name: '막힘.py', version: '1', headRevisionId: 'r', savedCode: 'v1' } });
+    expect(await store().save('v2')).toEqual({ status: 'error', reason: 'auth' });
+    expect(store().needsReauth).toBe(true);
+    google.gis.accounts.oauth2.initTokenClient = original;
+  });
+
+  it('새로 고침하면 남은 토큰으로 계정을 되살리고, 열어 둔 파일을 알려 준다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '복구.py' });
+    const id = store().file.id;
+    expect(JSON.parse(tab.getItem(DRIVE_TAB_KEY))).toEqual({ fileId: id });
+    const requests = google.state.requests.length;
+
+    reload();
+    tab.setItem(DRIVE_TAB_KEY, JSON.stringify({ fileId: id })); // reload()가 스토어를 비우며 지운 표식을 새로 고침 직전 값으로 되돌림
+    expect(store().account).toBeNull();
+    expect(hasStoredDriveSession()).toBe(true);
+    expect(storedDriveFileId()).toBe(id);
+
+    expect(await store().resume()).toEqual({ status: 'resumed', fileId: id });
+    expect(store().account.email).toBe('a@school.example');
+    expect(google.state.requests).toHaveLength(requests); // 승인 창을 다시 열지 않음
+    expect(await store().openFile(id)).toMatchObject({ status: 'opened', code: 'v1' });
+    expect((await store().save('v2')).status).toBe('saved');
+  });
+
+  it('남은 토큰이 없거나 만료됐으면 되살리지 않고 구글 스크립트도 준비하지 않는다', async () => {
+    await signedIn();
+    reload();
+    clock += 3_600_000;
+    expect(hasStoredDriveSession()).toBe(false);
+    expect(await store().resume()).toEqual({ status: 'none' });
+    expect(store().ready).toBe(false);
+    expect(store().account).toBeNull();
+  });
+
+  it('철회된 토큰은 버리고 되살리지 않는다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '철회.py' });
+    reload();
+    revokeTokens();
+    expect(await store().resume()).toEqual({ status: 'none' });
+    expect(store().account).toBeNull();
+    expect(tab.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+    expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+  });
+
+  it('파일을 열어 둔 채 토큰이 만료된 뒤 새로 고치면 한 번만 알리고 표식을 지운다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '만료표식.py' });
+    const id = store().file.id;
+    expect(expiredDriveTabFile()).toBe(false); // 토큰이 유효한 동안에는 해당 없음
+    reload();
+    tab.setItem(DRIVE_TAB_KEY, JSON.stringify({ fileId: id }));
+    clock += 3_600_000;
+    expect(storedDriveFileId()).toBeNull();
+    expect(expiredDriveTabFile()).toBe(true);
+    expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+    expect(expiredDriveTabFile()).toBe(false);
+  });
+
+  it('다시 승인하면서 드라이브 권한을 빼면 저장을 시도하지 않고 권한 안내를 남긴다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '권한.py' });
+    const id = store().file.id;
+    clock += 3_600_000;
+    // 다음 승인 요청은 드라이브 권한 없이 돌아옵니다(승인 화면에서 체크 상자를 비운 경우).
+    const original = google.gis.accounts.oauth2.initTokenClient;
+    reload();
+    google.gis.accounts.oauth2.initTokenClient = (config) => ({
+      requestAccessToken: () => {
+        const token = 'tok-noscope';
+        google.state.tokens.set(token, { sub: 'subA', email: 'a@school.example' });
+        queueMicrotask(() => config.callback({ access_token: token, expires_in: 3599, scope: 'openid email profile' }));
+      },
+    });
+    await store().prepare();
+    useDriveStore.setState({ account: { sub: 'subA', email: 'a@school.example', name: '' }, file: { id, name: '권한.py', version: '1', headRevisionId: 'r', savedCode: 'v1' } });
+    expect(await store().save('v2')).toEqual({ status: 'error', reason: 'scope' });
+    expect(store().missingScope).toBe(true);
+    expect(store().error).toEqual({ reason: 'scope' });
+    expect(store().busy).toBe('');
+    expect(google.state.files.get(id).content).toBe('v1');
+    google.gis.accounts.oauth2.initTokenClient = original;
+  });
+
+  it('드라이브가 version 숫자만 올린 뒤 초안을 되살려 저장해도 충돌로 보지 않는다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '버전숫자.py' });
+    const id = store().file.id;
+    store().rememberDraft('v1 + 편집');
+    // 실제 드라이브처럼 내용은 그대로 두고 version 숫자만 올립니다.
+    const file = google.state.files.get(id);
+    file.version = String(Number(file.version) + 2);
+
+    const reopened = await store().openFile(id);
+    expect(reopened.draft.code).toBe('v1 + 편집');
+    store().adoptDraft(reopened.draft);
+    expect(store().file.savedCode).toBe('v1');
+    expect((await store().save('v1 + 편집')).status).toBe('saved');
+    expect(google.state.files.get(id).content).toBe('v1 + 편집');
+  });
+
+  it('로그아웃하면 탭 저장소의 토큰과 파일 표식을 지운다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '로그아웃.py' });
+    expect(tab.getItem(TOKEN_STORAGE_KEY)).not.toBeNull();
+    await store().signOut();
+    expect(tab.getItem(TOKEN_STORAGE_KEY)).toBeNull();
+    expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+    expect(hasStoredDriveSession()).toBe(false);
+  });
+
+  it('연결을 끊고 새 코드로 시작하면 파일 표식만 지운다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '새코드.py' });
+    store().detach();
+    expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+    expect(tab.getItem(TOKEN_STORAGE_KEY)).not.toBeNull();
+  });
+
+  it('새로 고침 직후(스토어에 파일이 없을 때) 연결을 끊어도 탭의 파일 표식을 지운다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '표식.py' });
+    const id = store().file.id;
+    reload();
+    tab.setItem(DRIVE_TAB_KEY, JSON.stringify({ fileId: id }));
+    expect(store().file).toBeNull();
+    store().detach(); // 다른 코드(공유 링크·팀 프로젝트)를 불러오며 끊는 경우
+    expect(tab.getItem(DRIVE_TAB_KEY)).toBeNull();
+    expect(storedDriveFileId()).toBeNull();
+  });
+
+  it('새 파일로 저장하려다 다시 승인에 실패하면 열어 둔 파일 정보를 지우지 않는다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '유지.py' });
+    const id = store().file.id;
+    clock += 3_600_000;
+    google.state.accountQueue.push({ sub: 'subB', email: 'b@school.example' }); // 다른 계정이 승인됨 → 다시 승인 실패
+    const result = await store().saveAsNew('v2', '유지.py');
+    expect(result.status).toBe('error');
+    expect(store().file?.id).toBe(id);
+    expect([...google.state.files.values()].filter((f) => f.name?.startsWith('유지') && f.name.endsWith('.py'))).toHaveLength(1);
+  });
+
+  it('탭 저장소를 사용할 수 없어도 로그인과 저장이 된다', async () => {
+    google = createFakeGoogle();
+    const broken = { getItem() { throw new Error('막힘'); }, setItem() { throw new Error('막힘'); }, removeItem() { throw new Error('막힘'); } };
+    configureDrive({ clientId: 'test-client', gis: google.gis, fetchImpl: google.fetchImpl, storage: memoryStorage(), tabStorage: broken, now: null });
+    expect(await store().prepare()).toBe(true);
+    expect((await store().signIn()).status).toBe('ok');
+    expect((await store().save('v1', { name: 'a.py' })).status).toBe('created');
+    expect(hasStoredDriveSession()).toBe(false);
   });
 });

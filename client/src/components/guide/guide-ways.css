@@ -1,0 +1,64 @@
+/* 사용 안내 "세 가지 방법으로 만들기". 색·모서리·글꼴은 index.css의 테마 변수를 따릅니다(DESIGN.md: 카드 모서리 0, 원형은 아바타·번호만). */
+.guide-ways{font-size:.875rem;line-height:1.625;color:var(--color-text-secondary);min-width:0}
+.guide-ways-lead{margin:0 0 1rem}
+
+/* 캐릭터와 말풍선 */
+.guide-say{display:flex;align-items:flex-start;gap:.75rem;min-width:0}
+.guide-mong{flex:none;display:grid;place-items:center;width:var(--mong-size,72px);height:var(--mong-size,72px);border-radius:var(--radius-full);background:var(--mong-tone,#f3f4f6);overflow:hidden}
+.guide-mong img{width:84%;height:84%;object-fit:contain;transition:transform .2s cubic-bezier(.4,0,.2,1)}
+.guide-say:hover .guide-mong img{transform:translateY(-2px)}
+.guide-say-bubble{position:relative;flex:1;min-width:0;margin:.25rem 0 0;padding:.6rem .85rem;border:1px solid var(--color-border);background:var(--color-bg-primary);color:var(--color-text-primary);overflow-wrap:anywhere}
+.guide-say-bubble::before{content:'';position:absolute;left:-6px;top:1rem;width:10px;height:10px;background:var(--color-bg-primary);border-left:1px solid var(--color-border);border-bottom:1px solid var(--color-border);transform:rotate(45deg)}
+.guide-say-name{display:block;font-size:.75rem;font-weight:600;color:var(--color-text-muted)}
+
+/* 1 → 2 → 3으로 이어지는 단계: 왼쪽 세로선에 번호를 올립니다 */
+.guide-ways-steps{list-style:none;margin:1.5rem 0 0;padding:0}
+.guide-way{position:relative;padding:0 0 1.5rem 3rem}
+.guide-way::before{content:'';position:absolute;left:calc(1rem - .5px);top:2rem;bottom:0;width:1px;background:var(--color-border)}
+.guide-way:last-child{padding-bottom:0}
+.guide-way:last-child::before{display:none}
+.guide-way-number{position:absolute;left:0;top:0;display:grid;place-items:center;width:2rem;height:2rem;border:2px solid var(--color-accent);border-radius:var(--radius-full);background:var(--color-bg-primary);color:var(--color-accent);font-family:var(--font-display);font-size:.95rem;font-weight:700;line-height:1}
+.guide-way-card{min-width:0;padding:1.25rem;border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-bg-panel)}
+.guide-way-when{margin:0 0 .15rem;font-size:.75rem;font-weight:600;color:var(--color-accent)}
+.guide-way-head{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .75rem}
+.guide-way-head h3{margin:0;font-family:var(--font-display);font-size:1.125rem;font-weight:700;line-height:1.4;color:var(--color-text-primary)}
+.guide-way-tag{padding:.05rem .5rem;border:1px solid var(--color-border);font-size:.75rem;color:var(--color-text-muted);white-space:nowrap}
+.guide-way-lead{margin:.6rem 0 0}
+.guide-way-notice{margin:.75rem 0 0;padding:.5rem .75rem;border-left:3px solid var(--color-warning);background:var(--color-bg-secondary);color:var(--color-text-primary);font-size:.8125rem}
+.guide-way-card>.guide-say{margin-top:1rem}
+.guide-way-list{list-style:disc;margin:1rem 0 0;padding-left:1.25rem}
+.guide-way-list li+li{margin-top:.5rem}
+
+/* 누르는 곳: 만들기 화면의 버튼 이름 */
+.guide-way-where{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin:1rem 0 0;padding-top:.9rem;border-top:1px solid var(--color-border);font-size:.75rem}
+.guide-way-where-label{margin-right:.25rem;font-weight:600;color:var(--color-text-muted)}
+.guide-way-where-group{display:contents}
+.guide-way-arrow{color:var(--color-text-muted)}
+.guide-way-key{display:inline-block;max-width:100%;padding:.2rem .55rem;border:1px solid var(--color-border);background:var(--color-bg-secondary);color:var(--color-text-primary);font-weight:500;text-decoration:none}
+a.guide-way-key{border-color:var(--color-accent);background:transparent;color:var(--color-accent)}
+a.guide-way-key:hover{background:var(--color-accent-bg)}
+.guide-ways a:focus-visible{outline:2px solid var(--color-accent);outline-offset:3px}
+
+.guide-way-tips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem 1rem;margin-top:1rem}
+.guide-way-more{margin:1rem 0 0;font-size:.8125rem}
+.guide-way-more a{color:var(--color-accent)}
+
+/* 자세한 순서: 저장 창·팀 프로젝트 창과 같은 안내(components/help)를 펼쳐 보는 곳. 안내를 불러오기 전에는 비어 있어 보이지 않습니다. */
+.guide-way-help:empty{display:none}
+.guide-way-help{margin:1rem 0 0;padding-top:.9rem;border-top:1px solid var(--color-border)}
+
+@media(max-width:640px){
+  .guide-way-tips{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:480px){
+  .guide-way{padding-left:2.25rem}
+  .guide-way::before{left:calc(.8125rem - .5px);top:1.625rem}
+  .guide-way-number{width:1.625rem;height:1.625rem;font-size:.8rem}
+  .guide-way-card{padding:.9rem}
+  .guide-say{gap:.6rem}
+  .guide-way-card .guide-mong{width:52px;height:52px}
+}
+@media(prefers-reduced-motion:reduce){
+  .guide-mong img{transition:none}
+  .guide-say:hover .guide-mong img{transform:none}
+}

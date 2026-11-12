@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUiText } from '../../i18n/ui-text';
 import { DRIVE_REASON_TEXT, useDriveStore } from '../../drive/driveSession';
+import { markHelpDone } from '../help/help-memory';
+import HelpSlot from '../help/HelpSlot';
 
 const GOOGLE_LOGOUT_URL = 'https://accounts.google.com/Logout';
 
@@ -10,6 +12,8 @@ const GOOGLE_LOGOUT_URL = 'https://accounts.google.com/Logout';
  *   mode='save': 로그인 → (처음이면) 파일 이름 → 저장. 충돌·만료·권한 문제도 여기서 안내합니다.
  *   mode='files': 로그인 → VPyLab 폴더의 파일 목록 → 열기, 새 코드로 시작, 로그아웃.
  * 문구: docs/reference/solar/drive-editor-261109-solar.md
+ * 그 자리 안내(HelpSlot): 학생이 구글 창·팝업 차단·충돌을 만나는 상태마다 할 일을 알려 주는 애드온입니다.
+ *   안내가 없거나 실패해도 이 창의 저장·열기 동작은 그대로입니다(components/help/HelpSlot.jsx).
  */
 export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoaded, onNewCode, onRestoreNew, isDirty, onClose }) {
   const ui = useUiText();
@@ -40,6 +44,9 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
     listedFor.current = account.sub;
     store().listFiles();
   }, [account, missingScope, store]);
+
+  // 로그인과 권한 승인을 한 번 마친 브라우저에서는 다음부터 로그인 순서 안내를 접어 둡니다.
+  useEffect(() => { if (account && !missingScope) markHelpDone('drive-signin'); }, [account, missingScope]);
 
   const saving = busy === 'save';
   // 목록을 읽는 동안에도 충돌 해결·재승인·저장은 누를 수 있게 합니다(목록은 배경에서 읽음).
@@ -125,7 +132,12 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
   const primary = { backgroundColor: 'var(--color-accent)', color: 'var(--color-text-on-accent, #fff)', borderColor: 'var(--color-accent)' };
   const reason = error?.reason;
   const showError = reason && !(reason === 'auth' && needsReauth) && !(reason === 'scope' && missingScope) && !(reason === 'folderTrashed' && folderTrashed);
+  // 안내용: 브라우저가 구글 창을 막았는지(스토어는 이 경우를 따로 구분하지 않아 안내 문구로 알아봅니다), 구글 저장을 사용할 수 없는지.
+  const popupBlocked = reason === 'auth' && /팝업 차단/.test(error?.detail || '');
+  const driveUnavailable = ['policy', 'forbidden', 'storageFull', 'network'].includes(reason);
 
+  // help: 지금 상태에서 학생이 할 일을 알려 주는 안내. 오류·알림 문구가 가려지지 않게 그 아래에 그립니다.
+  let help = null;
   let body;
   if (!ready) {
     body = (
@@ -133,6 +145,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         {preparing || !error ? ui("구글 로그인을 준비하고 있습니다…") : ui(DRIVE_REASON_TEXT.gis)}
       </p>
     );
+    if (!preparing && error) help = <HelpSlot topic="keep-file" />;
   } else if (!account) {
     body = (
       <>
@@ -144,6 +157,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         </button>
       </>
     );
+    help = <HelpSlot topic="drive-signin" waiting={busy === 'signin'} popupBlocked={popupBlocked} />;
   } else if (missingScope) {
     body = (
       <>
@@ -151,6 +165,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         <button type="button" className={button} style={primary} disabled={working} onClick={() => signIn({ again: true, consent: true })}>{ui("드라이브 권한 다시 요청")}</button>
       </>
     );
+    help = <HelpSlot topic="drive-scope" popupBlocked={popupBlocked} />;
   } else if (needsReauth) {
     body = (
       <>
@@ -158,6 +173,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         <button type="button" className={button} style={primary} disabled={working} onClick={() => signIn({ again: true })} data-testid="drive-reauth">{ui("다시 승인")}</button>
       </>
     );
+    help = <HelpSlot topic="drive-reauth" popupBlocked={popupBlocked} />;
   } else if (folderTrashed) {
     body = (
       <>
@@ -178,6 +194,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         </div>
       </>
     );
+    help = <HelpSlot topic="drive-conflict" />;
   } else if (mode === 'save' && !file) {
     body = (
       <form onSubmit={submitName} className="flex flex-col gap-2" data-testid="drive-name-form">
@@ -242,6 +259,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         </div>
       </>
     );
+    help = <HelpSlot topic="leaving" />;
   }
 
   return createPortal(
@@ -250,8 +268,8 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         role="dialog"
         aria-modal="true"
         aria-label={mode === 'save' ? ui("구글 드라이브에 저장") : ui("내 구글 드라이브")}
-        className="rounded-2xl w-full flex flex-col gap-3"
-        style={{ maxWidth: 480, backgroundColor: 'var(--color-bg-panel)', color: 'var(--color-text-primary)', padding: 20, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.25))' }}
+        className="rounded-2xl w-full flex flex-col gap-3 overflow-auto"
+        style={{ maxWidth: 480, maxHeight: '90vh', backgroundColor: 'var(--color-bg-panel)', color: 'var(--color-text-primary)', padding: 20, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.25))' }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -282,6 +300,8 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
             {!account && <a href={GOOGLE_LOGOUT_URL} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)' }}>{ui("공용 컴퓨터에서는 구글 계정에서도 로그아웃하십시오.")}</a>}
           </p>
         )}
+        {help}
+        {showError && driveUnavailable && <HelpSlot topic="keep-file" />}
       </div>
     </div>,
     document.body,

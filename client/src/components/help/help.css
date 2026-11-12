@@ -1,0 +1,117 @@
+/* 그 자리 안내(components/help). 색·글꼴은 index.css의 테마 변수를 따르고, 모든 이름은 vh-로 시작합니다.
+   VPyLab 화면은 모서리가 각지고(DESIGN.md), 그림 속 다른 서비스의 창과 버튼은 둥글게 그려 우리 화면과 구분합니다. */
+.vh-help{display:flex;flex-direction:column;gap:.5rem;min-width:0;margin:0;font-size:.8125rem;line-height:1.55;color:var(--color-text-secondary);overflow-wrap:anywhere}
+.vh-help[data-tone="now"]{padding:.65rem .75rem;border-left:3px solid var(--color-accent);background:var(--color-accent-bg)}
+.vh-help[data-tone="card"]{margin-top:1.5rem;padding:1.25rem;border:1px solid var(--color-border);background:var(--color-bg-panel)}
+.vh-card-title{margin:0;font-family:var(--font-display);font-size:1.125rem;font-weight:700;line-height:1.4;color:var(--color-text-primary)}
+.vh-text{margin:0}
+.vh-list{margin:0;padding-left:1.1rem;list-style:disc}
+.vh-list li+li{margin-top:.3rem}
+
+/* 지금 해야 할 일 */
+.vh-now{display:flex;align-items:center;gap:.5rem;margin:0;font-weight:700;color:var(--color-text-primary)}
+.vh-now-dot{flex:none;width:.55rem;height:.55rem;border-radius:9999px;background:var(--color-accent);animation:vh-blink 1.4s ease-in-out infinite}
+
+/* 펼치기 */
+.vh-more{min-width:0}
+.vh-more-toggle{display:inline-flex;align-items:center;gap:.4rem;max-width:100%;margin:0;padding:.2rem 0;border:0;background:transparent;color:var(--color-accent);font:inherit;font-weight:600;text-align:left;cursor:pointer}
+.vh-more-toggle:hover{text-decoration:underline}
+.vh-more-toggle:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+.vh-more-caret{flex:none;width:0;height:0;border-left:.4rem solid currentColor;border-top:.28rem solid transparent;border-bottom:.28rem solid transparent;transition:transform .15s ease}
+.vh-more[data-open="true"]>.vh-more-toggle .vh-more-caret{transform:rotate(90deg)}
+.vh-more-body{display:flex;flex-direction:column;gap:.55rem;min-width:0;margin-top:.35rem;padding:.1rem 0 .2rem .8rem;border-left:1px solid var(--color-border)}
+
+/* 번호 순서 */
+.vh-steps{display:flex;flex-direction:column;gap:.55rem;margin:0;padding:0;list-style:none;counter-reset:vh-step}
+.vh-steps>li{position:relative;min-width:0;padding-left:1.85rem;counter-increment:vh-step}
+.vh-steps>li::before{content:counter(vh-step);position:absolute;left:0;top:.05rem;display:grid;place-items:center;width:1.3rem;height:1.3rem;border:1.5px solid var(--color-accent);border-radius:9999px;background:var(--color-bg-panel);color:var(--color-accent);font-size:.6875rem;font-weight:700;line-height:1}
+.vh-step-text{display:block;color:var(--color-text-primary)}
+
+/* 캐릭터의 한마디 */
+.vh-say{display:flex;align-items:flex-start;gap:.6rem;min-width:0}
+.vh-mong{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:9999px;background:var(--vh-mong-tone,#f3f4f6);overflow:hidden}
+.vh-mong img{width:84%;height:84%;object-fit:contain}
+.vh-say-bubble{position:relative;flex:1;min-width:0;margin:.1rem 0 0;padding:.45rem .7rem;border:1px solid var(--color-border);background:var(--color-bg-primary);color:var(--color-text-primary)}
+.vh-say .vh-say-bubble::before{content:'';position:absolute;left:-5px;top:.8rem;width:8px;height:8px;background:var(--color-bg-primary);border-left:1px solid var(--color-border);border-bottom:1px solid var(--color-border);transform:rotate(45deg)}
+.vh-say-name{display:block;font-size:.6875rem;font-weight:600;color:var(--color-text-muted)}
+
+/* VPyLab 버튼 견본(누를 수 없음) */
+.vh-btn{display:inline-flex;align-items:center;gap:.3rem;max-width:100%;padding:.2rem .6rem;border:1px solid var(--color-border);background:var(--color-bg-panel);color:var(--color-text-primary);font-size:.75rem;font-weight:500;line-height:1.5;cursor:default}
+.vh-choices{display:flex;flex-direction:column;gap:.65rem;margin:0}
+.vh-choice{min-width:0}
+.vh-choice dt{margin:0 0 .25rem}
+.vh-choice dd{margin:0}
+
+/* 그림: 창 모양 */
+.vh-sketch{min-width:0;max-width:24rem;margin:.5rem 0 0}
+.vh-win{display:block;border:1.5px solid var(--color-text-muted);border-radius:8px;background:var(--color-bg-primary);overflow:hidden}
+.vh-win-bar{display:flex;align-items:center;gap:.5rem;padding:.3rem .6rem;border-bottom:1px solid var(--color-border);background:var(--color-bg-tertiary)}
+.vh-win-dots{flex:none;width:.4rem;height:.4rem;margin-right:1rem;border-radius:9999px;background:var(--color-text-muted);box-shadow:.6rem 0 0 var(--color-text-muted),1.2rem 0 0 var(--color-text-muted);opacity:.55}
+.vh-win-title{min-width:0;font-size:.6875rem;font-weight:700;color:var(--color-text-primary)}
+.vh-win-body{display:flex;flex-direction:column;align-items:stretch;gap:.6rem;padding:.7rem}
+.vh-blank{display:block;height:.5rem;max-width:100%;border-radius:3px;background:var(--color-bg-tertiary)}
+.vh-sketch-note{margin-top:.35rem;font-size:.6875rem;line-height:1.5;color:var(--color-text-muted)}
+
+/* 눌러야 할 곳과 꼬리표 */
+.vh-target{display:flex;flex-direction:column;align-items:flex-start;gap:.45rem;min-width:0;max-width:100%}
+.vh-target[data-side="right"]{flex-direction:row;flex-wrap:wrap;align-items:center;gap:.3rem .6rem}
+.vh-target-ring{display:block;max-width:100%;border-radius:6px;outline:2px solid var(--color-accent);outline-offset:2px;animation:vh-pulse 1.8s ease-in-out infinite}
+.vh-tag{position:relative;display:inline-flex;align-items:center;gap:.3rem;padding:.12rem .5rem;border-radius:3px;background:var(--color-text-primary);color:var(--color-bg-panel);font-size:.6875rem;font-weight:700;line-height:1.5}
+.vh-tag::before{content:'';position:absolute;left:.7rem;top:-.3rem;border-left:.3rem solid transparent;border-right:.3rem solid transparent;border-bottom:.3rem solid var(--color-text-primary)}
+.vh-target[data-side="right"]>.vh-tag::before{left:-.3rem;top:50%;margin-top:-.3rem;border-top:.3rem solid transparent;border-bottom:.3rem solid transparent;border-right:.3rem solid var(--color-text-primary);border-left:0}
+.vh-tag-order{display:grid;place-items:center;width:1rem;height:1rem;border-radius:9999px;background:var(--color-bg-panel);color:var(--color-text-primary);font-size:.625rem;line-height:1}
+
+/* 구글 창·브라우저 창·GitHub 창의 부품 */
+.vh-account,.vh-check-row,.vh-radio-row,.vh-scope-row{display:flex;align-items:center;gap:.5rem;min-width:0;padding:.35rem .5rem;border:1px solid var(--color-border);border-radius:6px;background:var(--color-bg-panel);color:var(--color-text-primary);font-size:.75rem;line-height:1.4}
+.vh-account{min-width:11rem}
+.vh-account[data-dim="true"]{align-self:flex-start;opacity:.55}
+.vh-avatar{flex:none;width:1.4rem;height:1.4rem;border-radius:9999px;background:var(--color-bg-tertiary)}
+.vh-account-lines{display:flex;flex-direction:column;gap:.25rem;flex:1;min-width:0}
+.vh-account-name{font-weight:600}
+.vh-checkbox{flex:none;width:.95rem;height:.95rem;border:2px solid var(--color-text-muted);border-radius:3px;background:var(--color-bg-panel)}
+.vh-radio{flex:none;width:.9rem;height:.9rem;border:2px solid var(--color-text-muted);border-radius:9999px;background:var(--color-bg-panel)}
+.vh-radio[data-on="true"]{border-color:var(--color-accent);box-shadow:inset 0 0 0 2.5px var(--color-bg-panel);background:var(--color-accent)}
+.vh-radio-row{border-color:transparent}
+.vh-radio-row .vh-blank{flex:none}
+.vh-check-text{min-width:0}
+.vh-scope-icon{flex:none;width:.9rem;height:.9rem;border-radius:3px;background:var(--color-bg-tertiary)}
+.vh-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:.6rem}
+.vh-actions .vh-target{align-items:flex-end}
+.vh-actions .vh-tag::before{left:auto;right:.7rem}
+.vh-ext-btn{display:inline-flex;align-items:center;padding:.28rem .8rem;border:1px solid transparent;border-radius:6px;font-size:.75rem;font-weight:600;line-height:1.4}
+.vh-ext-btn[data-kind="blue"]{background:#1a56db;color:#fff}
+.vh-ext-btn[data-kind="green"]{background:#1a7f37;color:#fff}
+.vh-ext-btn[data-kind="plain"]{border-color:var(--color-border);background:var(--color-bg-panel)}
+.vh-ext-btn .vh-blank{width:2.2em}
+.vh-address{display:flex;align-items:flex-start;gap:.5rem}
+.vh-address-bar{display:block;flex:1;min-width:0;margin-top:.1rem;padding:.4rem .7rem;border-radius:9999px;background:var(--color-bg-tertiary)}
+.vh-address-bar .vh-blank{background:var(--color-text-muted);opacity:.4}
+.vh-address .vh-target{flex:none;align-items:flex-end}
+.vh-address .vh-tag::before{left:auto;right:.45rem}
+.vh-popup-icon{position:relative;display:block;width:1.25rem;height:1rem;margin:.15rem;border:2px solid var(--color-text-primary);border-radius:3px}
+.vh-popup-icon::before{content:'';position:absolute;left:0;right:0;top:0;height:.2rem;background:var(--color-text-primary)}
+.vh-popup-icon::after{content:'';position:absolute;right:-.3rem;bottom:-.3rem;width:.5rem;height:.5rem;border-radius:9999px;background:var(--color-error);border:1.5px solid var(--color-bg-primary)}
+.vh-bubble{display:flex;flex-direction:column;gap:.5rem;align-self:flex-end;width:min(100%,16rem);padding:.6rem;border:1px solid var(--color-border);border-radius:8px;background:var(--color-bg-panel);box-shadow:var(--shadow-md)}
+
+/* VPyLab 만들기 화면의 버튼 줄과 도구 메뉴 */
+.vh-toolbar{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-start;gap:.4rem}
+.vh-toolbar .vh-btn{min-height:1.6rem}
+.vh-toolbar .vh-target{align-items:flex-end}
+.vh-toolbar .vh-tag::before{left:auto;right:.7rem}
+.vh-toolbar .vh-target-ring,.vh-menu .vh-target-ring{border-radius:0}
+.vh-menu{display:flex;flex-direction:column;gap:.15rem;align-self:flex-end;width:min(100%,19rem);padding:.3rem;border:1px solid var(--color-border);background:var(--color-bg-panel);box-shadow:var(--shadow-md)}
+.vh-menu-row{display:block;padding:.3rem .55rem;color:var(--color-text-primary);font-size:.72rem;line-height:1.4}
+.vh-menu .vh-target{padding:.15rem}
+
+@keyframes vh-pulse{0%,100%{box-shadow:0 0 0 0 var(--color-accent-bg)}50%{box-shadow:0 0 0 6px var(--color-accent-bg)}}
+@keyframes vh-blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+@media(max-width:480px){
+  .vh-win-body{padding:.55rem}
+  .vh-account{min-width:0}
+  .vh-more-body{padding-left:.6rem}
+}
+@media(prefers-reduced-motion:reduce){
+  .vh-target-ring,.vh-now-dot{animation:none}
+  .vh-more-caret{transition:none}
+}
