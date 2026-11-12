@@ -54,7 +54,7 @@ Actions 탭에서 "Deploy"를 직접 실행할 수도 있습니다. 이 워크�
 
 | 종류 | 이름 | 값 |
 |---|---|---|
-| 비밀값(Secret) | `CLOUDFLARE_API_TOKEN` | Cloudflare API 토큰. 권한은 `Account · Cloudflare Pages · Edit`만 줍니다 |
+| 비밀값(Secret) | `CLOUDFLARE_API_TOKEN` | Cloudflare API 토큰. 운영 토큰의 권한은 `Account · Cloudflare Pages · Edit`와 `Account · D1 · Read` 두 가지입니다(2026-11-09 설정). D1 Read 없이도 배포되는지는 확인하지 않았습니다 |
 | 변수(Variable) | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
 | 변수 | `VITE_GOOGLE_CLIENT_ID` | 구글 OAuth 웹 클라이언트 ID |
 | 변수(선택) | `VITE_GITHUB_CLIENT_ID` | GitHub OAuth 앱의 클라이언트 ID |

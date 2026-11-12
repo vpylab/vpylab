@@ -1,7 +1,7 @@
 # 자동 배포: main의 CI가 모두 통과하면 vpylab.pages.dev(Cloudflare Pages)에 올립니다.
 #
 # 필요한 설정(저장소 Settings → Secrets and variables → Actions)
-#   - 비밀값 CLOUDFLARE_API_TOKEN: Cloudflare "Cloudflare Pages: Edit" 권한만 준 API 토큰
+#   - 비밀값 CLOUDFLARE_API_TOKEN: Cloudflare API 토큰. 운영 토큰의 권한은 "Cloudflare Pages: Edit"와 "D1: Read"입니다(docs/DEPLOY.md).
 #   - 변수 CLOUDFLARE_ACCOUNT_ID: Cloudflare 계정 ID(공개해도 되는 값)
 #   - 변수 VITE_GOOGLE_CLIENT_ID: 구글 드라이브 저장용 구글 OAuth 클라이언트 ID(공개해도 되는 값)
 #   - 변수 VITE_GITHUB_CLIENT_ID(선택): GitHub 팀 프로젝트 애드온용 GitHub OAuth 앱의 클라이언트 ID(공개해도 되는 값).
