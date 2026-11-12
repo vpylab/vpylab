@@ -171,7 +171,8 @@ export const useDriveStore = create((set, get) => {
     if (!account || !store) return;
     const key = ownKey(file?.id);
     if (file && code === file.savedCode) clearDraft(store, scopeOf(account.sub), key);
-    else saveDraft(store, scopeOf(account.sub), key, { code, baseVersion: file?.version ?? null, name: file?.name ?? null });
+    // baseRevision: 드라이브는 내용이 그대로여도 version 숫자를 올리므로, 초안의 기준은 내용 버전(headRevisionId)으로 남깁니다.
+    else saveDraft(store, scopeOf(account.sub), key, { code, baseVersion: file?.version ?? null, baseRevision: file?.headRevisionId ?? null, name: file?.name ?? null });
   }
 
   /** 이 탭의 초안과, 방금 저장한 내용과 같은 초안(다른 탭 것 포함)을 지웁니다. 다른 내용의 초안은 남깁니다. */
@@ -406,7 +407,12 @@ export const useDriveStore = create((set, get) => {
     adoptDraft(draft) {
       const { file } = get();
       if (!file || !draft) return;
-      if (draft.baseVersion != null && String(draft.baseVersion) !== String(file.version)) {
+      // 내용 버전을 아는 초안은 그것으로 비교합니다. 저장 몇 초 뒤 version 숫자만 오르는 것을 "드라이브가 바뀜"으로 보지 않습니다
+      // (실제 계정 확인 2026-11-12: 저장 → 편집 → 새로 고침 → 저장에서 가짜 충돌이 표시됨).
+      const sameBase = draft.baseRevision && file.headRevisionId
+        ? draft.baseRevision === file.headRevisionId
+        : draft.baseVersion == null || String(draft.baseVersion) === String(file.version);
+      if (!sameBase) {
         set({ file: { ...file, version: String(draft.baseVersion), savedCode: null } });
       }
     },

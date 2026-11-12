@@ -483,6 +483,23 @@ describe('드라이브 연결 유지', () => {
     google.gis.accounts.oauth2.initTokenClient = original;
   });
 
+  it('드라이브가 version 숫자만 올린 뒤 초안을 되살려 저장해도 충돌로 보지 않는다', async () => {
+    await signedIn();
+    await store().save('v1', { name: '버전숫자.py' });
+    const id = store().file.id;
+    store().rememberDraft('v1 + 편집');
+    // 실제 드라이브처럼 내용은 그대로 두고 version 숫자만 올립니다.
+    const file = google.state.files.get(id);
+    file.version = String(Number(file.version) + 2);
+
+    const reopened = await store().openFile(id);
+    expect(reopened.draft.code).toBe('v1 + 편집');
+    store().adoptDraft(reopened.draft);
+    expect(store().file.savedCode).toBe('v1');
+    expect((await store().save('v1 + 편집')).status).toBe('saved');
+    expect(google.state.files.get(id).content).toBe('v1 + 편집');
+  });
+
   it('로그아웃하면 탭 저장소의 토큰과 파일 표식을 지운다', async () => {
     await signedIn();
     await store().save('v1', { name: '로그아웃.py' });
