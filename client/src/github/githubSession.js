@@ -127,7 +127,6 @@ let deps = {
 };
 let token = null;
 let grantedScope = '';
-let api = null;
 let pendingLogin = null;
 /** 결과를 모르는 내 저장 시도(시간 초과·연결 끊김)의 코드. 다음 저장의 충돌 판정에서 내 저장으로 인정합니다. */
 let attemptedCodes = [];
@@ -150,7 +149,6 @@ export function configureGitHub(next = {}) {
   pendingLogin = null;
   token = null;
   grantedScope = '';
-  api = null;
   attemptedCodes = [];
   pagesBlocked.clear();
   sessionEpoch += 1;
@@ -172,15 +170,18 @@ function originOf() {
   return deps.origin || globalThis.location?.origin || '';
 }
 
+/**
+ * GitHub API 묶음. 동작 하나(저장, 만들기 등)는 요청을 여러 번 보냅니다. 그 도중에 다른 계정으로 바뀌면
+ * 남은 요청이 새 계정의 토큰으로 나가지 않게, 부른 때의 계정(sessionEpoch)에서만 토큰을 내줍니다.
+ * 같은 계정으로 다시 연결한 경우(sessionEpoch 그대로)에는 새 토큰으로 이어서 진행합니다.
+ */
 function client() {
-  if (!api) {
-    api = createGitHubApi({
-      getToken: () => token,
-      ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
-      ...(deps.apiOptions || {}),
-    });
-  }
-  return api;
+  const session = sessionEpoch;
+  return createGitHubApi({
+    getToken: () => (session === sessionEpoch ? token : null),
+    ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+    ...(deps.apiOptions || {}),
+  });
 }
 
 function readSession() {
@@ -478,11 +479,13 @@ export const useGitHubStore = create((set, get) => {
       if (blocked) return blocked;
       const session = sessionEpoch;
       const epoch = authEpoch;
+      const seq = ++openSeq;
       set({ busy: 'create', error: null });
       try {
         const { openUrl, html } = await pageParts(code);
         const result = await client().createProject({ title, code, html, repoName, openUrl });
-        if (session !== sessionEpoch) return { status: 'stale' };
+        // 만드는 사이 다른 코드를 열어 연결을 끊었으면(detach) 편집기에 붙이지 않습니다. 저장소는 GitHub에 만들어져 프로젝트 목록에 나타납니다.
+        if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
         const project = { ...result.project, headSha: result.headSha, savedCode: code };
         attemptedCodes = [];
         if (result.pagesWarning && result.pagesWarning !== 'pending') pagesBlocked.add(project.fullName);
@@ -501,7 +504,7 @@ export const useGitHubStore = create((set, get) => {
         persist();
         return { status: 'created', project, headSha: result.headSha, ...(result.pagesWarning ? { pagesWarning: result.pagesWarning } : {}) };
       } catch (error) {
-        if (session !== sessionEpoch) return { status: 'stale' };
+        if (seq !== openSeq || session !== sessionEpoch) return { status: 'stale' };
         return fail(error, epoch);
       }
     },
@@ -612,8 +615,13 @@ export const useGitHubStore = create((set, get) => {
 
     /** 프로젝트와 연결을 끊습니다. 편집기 내용과 GitHub 저장소는 그대로입니다. */
     detach() {
+      // 진행 중인 열기·만들기의 결과가 뒤늦게 프로젝트를 다시 붙이지 않게 합니다(그 동작들은 openSeq로 최신 요청만 반영합니다).
+      openSeq += 1;
       attemptedCodes = [];
-      set({ project: null, conflict: null, collaborators: [], pending: [], commits: [], pagesWarning: '', lastCommitUrl: '' });
+      set((s) => ({
+        busy: s.busy === 'open' || s.busy === 'create' ? '' : s.busy,
+        project: null, conflict: null, collaborators: [], pending: [], commits: [], pagesWarning: '', lastCommitUrl: '',
+      }));
       persist();
     },
 
@@ -758,14 +766,16 @@ export const useGitHubStore = create((set, get) => {
       }
     },
 
-    /** 갤러리의 스타(좋아요): 내가 눌렀는지 읽습니다. 연결이 없으면 disconnected. 이 창의 진행 표시(busy)와 오류는 건드리지 않습니다. */
+    /** 갤러리의 스타(좋아요): 내가 눌렀는지와 지금의 스타 수({ starred, stars })를 읽습니다. 연결이 없으면 disconnected. 이 창의 진행 표시(busy)와 오류는 건드리지 않습니다. */
     async starStatus(fullName) {
       if (!get().account || !token) return { status: 'disconnected' };
       const session = sessionEpoch;
       const epoch = authEpoch;
       try {
-        const starred = await client().isStarred(fullName);
-        return session === sessionEpoch ? { status: 'ok', starred } : { status: 'stale' };
+        const api = client();
+        // 목록 파일의 스타 수는 마지막 갱신 때의 값입니다. 지금 값을 함께 읽고, 읽지 못하면 stars는 null입니다.
+        const [starred, stars] = await Promise.all([api.isStarred(fullName), api.starCount(fullName).catch(() => null)]);
+        return session === sessionEpoch ? { status: 'ok', starred, stars } : { status: 'stale' };
       } catch (error) {
         if (session !== sessionEpoch) return { status: 'stale' };
         if (isAuthError(error)) { loseAuth(epoch); return { status: 'disconnected' }; }

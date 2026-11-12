@@ -991,6 +991,13 @@ export function createGitHubApi({
       }
     },
 
+    /** 저장소의 지금 스타 수. 읽지 못하면 오류를 던집니다. */
+    async starCount(fullName) {
+      const { owner, repo } = parse(fullName);
+      const info = await request(`/repos/${owner}/${repo}`);
+      return Number.isSafeInteger(info.stargazers_count) && info.stargazers_count >= 0 ? info.stargazers_count : null;
+    },
+
     /** 스타를 누르거나 취소합니다. 공개 저장소의 스타에는 public_repo 권한이 필요합니다(GitHub 문서 "Scopes for OAuth apps"). */
     async setStarred(fullName, starred) {
       const { owner, repo } = parse(fullName);

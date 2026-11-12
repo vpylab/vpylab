@@ -78,6 +78,18 @@ export default function GitHubAddon({ controlRef, code, getCode, defaultTitle, g
     return () => clearTimeout(timer);
   }, [code, project]);
 
+  // 편집한 지 0.8초 안에 다른 화면으로 가도 초안이 남게, 화면을 떠날 때 한 번 더 남깁니다.
+  const latest = useRef({ code, project });
+  useEffect(() => { latest.current = { code, project }; }, [code, project]);
+  useEffect(() => () => {
+    const { code: lastCode, project: lastProject } = latest.current;
+    // 그사이 연결을 끊었거나 다른 프로젝트를 열었으면 건드리지 않습니다.
+    if (!lastProject || useGitHubStore.getState().project?.fullName !== lastProject.fullName) return;
+    if (lastProject.savedCode == null) return; // 저장된 코드를 아직 읽지 못했습니다. 비교할 기준이 없습니다.
+    if (lastCode !== lastProject.savedCode) writeProjectDraft(lastProject.fullName, lastCode);
+    else clearProjectDraft();
+  }, []);
+
   // 저장하지 않은 팀 프로젝트 변경이 있으면 떠나기 전에 묻습니다.
   useEffect(() => {
     const warn = (event) => {

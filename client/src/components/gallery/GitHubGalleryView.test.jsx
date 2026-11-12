@@ -38,7 +38,8 @@ function renderView(props) {
 
 beforeEach(() => {
   github = createFakeGitHub({ tokens: { 'token-bo': 'bo' } });
-  github.createRepo('ada', 'solar', { description: '태양계', topics: ['vpylab-project', 'vpylab-gallery'], files: { 'main.py': 'sphere()' } });
+  // 저장소의 지금 스타 수는 2개입니다(목록 파일의 수와 같은 경우).
+  github.createRepo('ada', 'solar', { description: '태양계', topics: ['vpylab-project', 'vpylab-gallery'], files: { 'main.py': 'sphere()' } }).stars = 2;
   configure();
   act(() => useAppStore.getState().setLocale('ko'));
 });
@@ -171,6 +172,28 @@ describe('갤러리의 스타', () => {
     expect(within(dialog).getByLabelText('스타 2개')).toBeInTheDocument();
     expect(github.state.starred.size).toBe(0);
     expect(within(dialog).queryByTestId('gallery-star-hint')).toBeNull();
+  });
+
+  it('목록 파일의 수가 오래됐으면 지금의 수를 보이고, 창을 다시 열어 취소해도 수가 어긋나지 않는다', async () => {
+    await useGitHubStore.getState().connect();
+    // 목록 파일에는 2개로 적혀 있지만, 그 뒤 내가 눌러 지금은 3개입니다.
+    github.state.starred.add('bo ada/solar');
+    const dialog = await open();
+    const button = await within(dialog).findByTestId('gallery-star-button');
+    await waitFor(() => expect(button).toHaveTextContent('스타 취소'));
+    expect(within(dialog).getByLabelText('스타 3개')).toBeInTheDocument();
+    fireEvent.click(button);
+    await waitFor(() => expect(button).toHaveTextContent('스타 누르기'));
+    expect(within(dialog).getByLabelText('스타 2개')).toBeInTheDocument();
+  });
+
+  it('연결이 만료된 탭에서 누르면 반영하지 못했다고 알린다', async () => {
+    await useGitHubStore.getState().connect();
+    const dialog = await open();
+    const button = await within(dialog).findByTestId('gallery-star-button');
+    github.revoke('token-bo');
+    fireEvent.click(button);
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('스타를 반영하지 못했습니다.');
   });
 
   it('스타를 반영하지 못하면 이 창 안에서 알리고 수는 그대로 둔다', async () => {

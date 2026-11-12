@@ -81,6 +81,18 @@ describe('팀 프로젝트 창의 갤러리 구역', () => {
     await waitFor(() => expect(github.repo(fullName).topics.has(GALLERY_TOPIC)).toBe(true));
   });
 
+  it('그림이 있는데 GitHub에 저장하지 못하면 다시 누르라고 안내한다', async () => {
+    const fullName = await connectedWithProject();
+    await store().setGalleryListing(true);
+    renderDialog({ getThumbnail: () => JPEG });
+    github.failNext({ method: 'PUT', test: /contents\/thumbnail\.jpg$/, status: 500, times: 9 });
+    fireEvent.click(await screen.findByTestId('github-gallery-thumbnail'));
+    const notice = await screen.findByTestId('github-notice');
+    expect(notice).toHaveTextContent('미리보기 그림은 GitHub에 저장하지 못했습니다.');
+    expect(notice).toHaveTextContent('"미리보기 그림 새로 올리기"를 누르면 다시 저장할 수 있습니다.');
+    expect(github.file(fullName, 'thumbnail.jpg')).toBeUndefined();
+  });
+
   it('미리보기 그림 새로 올리기와 갤러리에서 내리기', async () => {
     const fullName = await connectedWithProject();
     await store().setGalleryListing(true);

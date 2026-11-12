@@ -485,7 +485,8 @@ export default function Sandbox() {
         pendingPlayRef.current = null;
         setOutputs([{ text: ui`${repoParam} 프로젝트 코드를 불러오는 중입니다.`, type: 'log', id: Date.now() }]);
         try {
-          const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/main.py`);
+          // HEAD는 저장소의 기본 브랜치입니다. 계정 설정에 따라 기본 브랜치가 main이 아닐 수 있습니다.
+          const response = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/main.py`);
           if (!response.ok) throw new Error(ui`GitHub main.py 로드 실패 (${response.status})`);
           const repoCode = await response.text();
           updateCode(repoCode);

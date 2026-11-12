@@ -62,7 +62,9 @@ function StarControl({ item, github }) {
   const needsReauth = useGitHubStore((state) => state.needsReauth);
   const connected = github && Boolean(account) && !needsReauth;
   const [mine, setMine] = useState(null); // 내가 눌렀는지: null은 아직 모름
-  const [delta, setDelta] = useState(0); // 이 창에서 누르거나 취소해 달라진 수
+  const [live, setLive] = useState(null); // 연결한 탭에서 읽은 지금의 스타 수. 목록 파일의 수는 마지막 갱신 때의 값입니다.
+  const [delta, setDelta] = useState(0); // 지금의 수를 읽은 뒤 이 창에서 누르거나 취소해 달라진 수
+  const login = account?.login || '';
   const [working, setWorking] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -71,10 +73,13 @@ function StarControl({ item, github }) {
     if (!connected) return undefined;
     let alive = true;
     useGitHubStore.getState().starStatus(item.fullName).then((result) => {
-      if (alive && result.status === 'ok') setMine(result.starred);
+      if (!alive || result.status !== 'ok') return;
+      setMine(result.starred);
+      setLive(Number.isSafeInteger(result.stars) ? result.stars : null);
+      setDelta(0);
     });
     return () => { alive = false; };
-  }, [connected, item.fullName]);
+  }, [connected, login, item.fullName]);
 
   async function toggle() {
     const next = !mine;
@@ -85,7 +90,8 @@ function StarControl({ item, github }) {
     if (result.status === 'ok') {
       setMine(result.starred);
       setDelta((value) => value + (result.starred ? 1 : -1));
-    } else if (result.status === 'error') {
+    } else if (result.status !== 'stale') {
+      // 오류이거나 연결이 만료된 경우입니다.
       setFailed(true);
     }
   }
@@ -93,7 +99,7 @@ function StarControl({ item, github }) {
   return (
     <div className="flex flex-col gap-2" data-testid="gallery-star">
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Stars count={Math.max(0, item.stars + delta)} />
+        <Stars count={Math.max(0, (live ?? item.stars) + delta)} />
         {connected && mine !== null ? (
           <button type="button" className="toolbar-btn" onClick={toggle} disabled={working} aria-pressed={mine} data-testid="gallery-star-button">
             {mine ? ui("스타 취소") : ui("스타 누르기")}

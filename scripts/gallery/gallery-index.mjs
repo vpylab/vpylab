@@ -159,8 +159,8 @@ export function toEntry(repo, { topic = GALLERY_TOPIC } = {}) {
 }
 
 /**
- * 저장소에 미리보기 그림(thumbnail.jpg)이 있고 크기가 상한 안인지 확인해 주소를 돌려줍니다. 없거나 확인하지 못하면 null.
- * 그림 하나를 확인하지 못했다고 목록 전체를 실패시키지 않습니다.
+ * 저장소에 미리보기 그림(thumbnail.jpg)이 있고 크기가 상한 안인지 확인해 주소를 돌려줍니다. 그림이 없으면(404) null.
+ * 확인하지 못하면(연결 오류, 한도) 오류를 던집니다. 부르는 쪽(buildIndex)이 앞선 값을 두고 다음 실행에서 다시 확인합니다.
  */
 export async function findThumbnail({ fetchImpl = globalThis.fetch, token = '', entry, branch }) {
   const target = parseFullName(entry.fullName);
@@ -170,8 +170,9 @@ export async function findThumbnail({ fetchImpl = globalThis.fetch, token = '', 
     const file = await getJson(fetchImpl, url, token);
     if (file?.type !== 'file' || !Number.isInteger(file.size) || file.size <= 0 || file.size > MAX_THUMBNAIL_BYTES) return null;
     return thumbnailUrlOf(target.owner, target.repo, branch);
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof GalleryIndexError && error.status === 404) return null;
+    throw error;
   }
 }
 
@@ -223,8 +224,14 @@ export async function buildIndex({ repos, approvals, previous = null, previousPe
   const items = await mapLimited(listed, THUMBNAIL_CHECKS_AT_ONCE, async ({ entry, branch }) => {
     const old = before.get(entry.fullName.toLowerCase());
     // 저장소에 새 커밋이 없으면 그림도 그대로입니다.
-    const thumbnailUrl = old && old.updatedAt === entry.updatedAt ? old.thumbnailUrl : await checkThumbnail(entry, branch);
-    return validateGalleryEntry({ ...entry, thumbnailUrl });
+    if (old && old.updatedAt === entry.updatedAt) return validateGalleryEntry({ ...entry, thumbnailUrl: old.thumbnailUrl });
+    try {
+      return validateGalleryEntry({ ...entry, thumbnailUrl: await checkThumbnail(entry, branch) });
+    } catch {
+      // 그림을 이번에 확인하지 못했습니다. 작품은 싣되 앞선 그림 주소와 앞선 시각을 적어 둡니다.
+      // 시각이 저장소의 지금 시각과 다르므로 다음 실행이 그림을 다시 확인합니다(그림 없음으로 굳지 않습니다).
+      return validateGalleryEntry({ ...entry, thumbnailUrl: old?.thumbnailUrl ?? null, updatedAt: old?.updatedAt ?? null });
+    }
   });
 
   pending.sort(byUpdatedDesc);

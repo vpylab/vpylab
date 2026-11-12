@@ -224,7 +224,8 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
     }
     const result = await store().setGalleryListing(listed, { thumbnail });
     keepIfAuth(result, () => listInGallery(listed));
-    if (result.status === 'listed') setNotice(ui(result.thumbnail === 'saved' ? GALLERY_TEXT.listedWithPicture : GALLERY_TEXT.listedWithoutPicture));
+    // 그림이 없던 경우(none)와 그림을 GitHub에 올리지 못한 경우(failed)는 할 일이 달라 안내를 나눕니다.
+    if (result.status === 'listed') setNotice(ui({ saved: GALLERY_TEXT.listedWithPicture, failed: GALLERY_TEXT.listedPictureFailed }[result.thumbnail] || GALLERY_TEXT.listedWithoutPicture));
     else if (result.status === 'unlisted') setNotice(ui(GALLERY_TEXT.unlisted));
   }
 

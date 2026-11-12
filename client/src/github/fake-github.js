@@ -61,6 +61,8 @@ export function createFakeGitHub({ tokens = { 'token-ada': 'ada' } } = {}) {
       topics: [...repo.topics],
       has_pages: repo.pages !== null,
       default_branch: 'main',
+      // 스타 수: 흉내가 시작할 때의 수(repo.stars)에 이 흉내에서 누른 스타를 더합니다.
+      stargazers_count: (repo.stars || 0) + [...state.starred].filter((key) => key.endsWith(` ${keyOf(repo.owner, repo.name)}`)).length,
       pushed_at: repo.pushedAt,
       updated_at: repo.pushedAt,
       permissions: permissionsOf(repo, login),

@@ -2125,5 +2125,6 @@
   "올리는 중…": "Adding…",
   "갤러리에 올리기": "Add to gallery",
   "미리보기 그림 새로 올리기": "Upload a new preview image",
-  "갤러리에서 내리기": "Remove from gallery"
+  "갤러리에서 내리기": "Remove from gallery",
+  "갤러리에 올렸습니다. 미리보기 그림은 GitHub에 저장하지 못했습니다. 잠시 뒤 \"미리보기 그림 새로 올리기\"를 누르면 다시 저장할 수 있습니다.": "Added to the gallery. The preview image could not be saved to GitHub. Press \"Upload a new preview image\" again in a moment to save it."
 }

@@ -227,9 +227,11 @@ describe('스토어: 그림 커밋과 팀원의 저장', () => {
 describe('스토어: 스타', () => {
   it('연결한 탭에서는 스타를 읽고 누르며, 진행 표시와 오류 상태를 건드리지 않는다', async () => {
     const fullName = await withProject();
-    expect(await store().starStatus(fullName)).toEqual({ status: 'ok', starred: false });
+    github.repo(fullName).stars = 4; // 다른 사람이 누른 스타
+    expect(await store().starStatus(fullName)).toEqual({ status: 'ok', starred: false, stars: 4 });
     expect(await store().setStar(fullName, true)).toEqual({ status: 'ok', starred: true });
-    expect(await store().starStatus(fullName)).toEqual({ status: 'ok', starred: true });
+    // 지금의 스타 수를 함께 읽습니다(목록 파일의 수는 마지막 갱신 때의 값입니다).
+    expect(await store().starStatus(fullName)).toEqual({ status: 'ok', starred: true, stars: 5 });
     expect(await store().setStar(fullName, false)).toEqual({ status: 'ok', starred: false });
     expect(store().busy).toBe('');
     expect(store().error).toBeNull();
@@ -248,6 +250,73 @@ describe('스토어: 스타', () => {
     const fullName = await withProject();
     github.failNext({ method: 'PUT', test: /^\/user\/starred\//, status: 403, body: { message: 'Resource not accessible' } });
     expect(await store().setStar(fullName, true)).toEqual({ status: 'error', reason: 'forbidden' });
-    expect(await store().starStatus(fullName)).toEqual({ status: 'ok', starred: false });
+    expect(await store().starStatus(fullName)).toEqual({ status: 'ok', starred: false, stars: 0 });
+    // 스타 수만 읽지 못하면 stars는 null이고, 내가 눌렀는지는 그대로 알려 줍니다.
+    github.failNext({ method: 'GET', test: /^\/repos\/[^/]+\/[^/]+$/, status: 500, times: 9 });
+    expect(await store().starStatus(fullName)).toEqual({ status: 'ok', starred: false, stars: null });
+  });
+});
+
+describe('스토어: 진행 중인 동작과 연결 해제·계정 전환', () => {
+  it('프로젝트를 만드는 사이 연결을 끊으면(다른 코드를 연 경우) 만든 프로젝트를 편집기에 붙이지 않는다', async () => {
+    await store().connect();
+    const creating = store().createProject({ title: '공 튀기기', code: 'v1' });
+    store().detach();
+    expect(store().busy).toBe('');
+    expect(await creating).toEqual({ status: 'stale' });
+    expect(store().project).toBeNull();
+    expect(store().busy).toBe('');
+    // 저장소는 GitHub에 만들어졌고, 프로젝트 목록에서 다시 열 수 있습니다.
+    await store().loadProjects();
+    expect(store().projects.map((item) => item.title)).toEqual(['공 튀기기']);
+  });
+
+  it('프로젝트를 여는 사이 연결을 끊으면 그 프로젝트를 붙이지 않는다', async () => {
+    const fullName = await withProject();
+    store().detach();
+    const opening = store().openProject(fullName);
+    store().detach();
+    expect(await opening).toEqual({ status: 'stale' });
+    expect(store().project).toBeNull();
+    expect(store().busy).toBe('');
+  });
+
+  it('동작 도중 다른 계정으로 바뀌면 남은 요청을 새 계정의 토큰으로 보내지 않는다', async () => {
+    let nextToken = 'token-ada';
+    let afterFetch = null;
+    configureGitHub({
+      clientId: 'client-1',
+      storage,
+      origin: 'https://vpylab.example',
+      fetchImpl: async (url, init) => {
+        const response = await github.fetchImpl(url, init);
+        if (afterFetch) await afterFetch(url, init);
+        return response;
+      },
+      login: () => ({ promise: Promise.resolve({ accessToken: nextToken, scope: 'public_repo,repo:invite' }), cancel: () => {}, url: '', state: 's' }),
+      apiOptions: { sleep: async () => {}, now: () => new Date(2026, 10, 12, 9, 30) },
+      buildHtml: (code) => `<html>${code}</html>`,
+      openUrl: () => 'https://vpylab.example/sandbox#code=x',
+    });
+    const fullName = await withProject();
+    github.repo(fullName).collaborators.add('bo'); // 새 계정도 이 저장소에 쓸 수 있는 경우
+
+    // 저장의 첫 요청이 나간 직후, 공용 컴퓨터에서 다른 학생의 계정으로 연결됩니다.
+    let switching = null;
+    afterFetch = async (url, init) => {
+      if (switching || init?.headers?.Authorization !== 'Bearer token-ada' || init?.method === 'GET' || !init?.method) return;
+      nextToken = 'token-bo';
+      switching = store().connect();
+      await switching;
+    };
+    const writesBefore = github.state.log.length;
+    const result = await store().commit('v2', { message: '저장' });
+    expect(switching).not.toBeNull();
+    await switching;
+    expect(result.status).toBe('stale');
+    expect(store().account.login).toBe('bo');
+    // 새 계정의 이름으로 GitHub에 쓴 요청이 없습니다.
+    expect(github.state.log.slice(writesBefore).filter((entry) => entry.login === 'bo' && entry.method !== 'GET')).toEqual([]);
+    expect(github.file(fullName, 'main.py')).toBe('v1');
   });
 });

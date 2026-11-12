@@ -110,6 +110,44 @@ describe('GitHubAddon (만들기 화면과 애드온의 연결 지점)', () => {
     expect(readProjectDraft(fullName)).toBeNull();
   });
 
+  it('편집한 직후 다른 화면으로 가도 초안이 남는다', async () => {
+    const fullName = await reloadedWithProject('v1');
+    vi.useFakeTimers();
+    const { view, controlRef, handlers } = renderAddon({ code: 'v1' });
+    const rerender = (code) => view.rerender(
+      <GitHubAddon controlRef={controlRef} code={code} getCode={() => code} defaultTitle="내 작품" shouldRestore={() => true} {...handlers} />,
+    );
+    rerender('v1 방금 편집');
+    act(() => { vi.advanceTimersByTime(100); }); // 0.8초가 지나기 전에
+    expect(readProjectDraft(fullName)).toBeNull();
+    view.unmount();
+    expect(readProjectDraft(fullName)).toBe('v1 방금 편집');
+  });
+
+  it('저장한 코드로 되돌린 직후 떠나면 앞선 초안을 지운다', async () => {
+    const fullName = await reloadedWithProject('v1');
+    vi.useFakeTimers();
+    const { view, controlRef, handlers } = renderAddon({ code: 'v1' });
+    const rerender = (code) => view.rerender(
+      <GitHubAddon controlRef={controlRef} code={code} getCode={() => code} defaultTitle="내 작품" shouldRestore={() => true} {...handlers} />,
+    );
+    rerender('v1 편집 중');
+    act(() => { vi.advanceTimersByTime(900); });
+    expect(readProjectDraft(fullName)).toBe('v1 편집 중');
+    rerender('v1');
+    view.unmount();
+    expect(readProjectDraft(fullName)).toBeNull();
+  });
+
+  it('연결을 끊은 뒤 화면을 떠나면 초안을 다시 만들지 않는다', async () => {
+    const fullName = await reloadedWithProject('v1');
+    const { view, controlRef, handlers } = renderAddon({ code: '다른 코드' });
+    await waitFor(() => expect(handlers.onRestore).toHaveBeenCalled());
+    act(() => controlRef.current.detach());
+    view.unmount();
+    expect(readProjectDraft(fullName)).toBeNull();
+  });
+
   it('연결을 끊으면 초안도 지운다', async () => {
     const fullName = await reloadedWithProject('v1');
     const { controlRef, handlers } = renderAddon();

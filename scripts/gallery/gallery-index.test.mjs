@@ -271,7 +271,31 @@ test('미리보기 그림: 있고 200KB 이하일 때만 주소를 싣는다', a
   assert.equal(await check({ 'ada/solar': 0 }), null);
   assert.equal(await check({}), null);
   assert.equal(await check({ 'ada/solar': 50_000 }, null), null);
-  assert.equal(await findThumbnail({ fetchImpl: async () => { throw new Error('offline'); }, entry, branch: 'main' }), null);
+  // 그림이 없는 것(404)과 확인하지 못한 것(연결 오류, 한도)을 구분합니다.
+  await assert.rejects(findThumbnail({ fetchImpl: async () => { throw new Error('offline'); }, entry, branch: 'main' }));
+  await assert.rejects(findThumbnail({ fetchImpl: async () => respond(403, { message: 'API rate limit exceeded' }), entry, branch: 'main' }));
+});
+
+test('미리보기 그림을 확인하지 못한 실행은 앞선 그림을 두고, 다음 실행에서 다시 확인한다', async () => {
+  const approvals = parseApprovals('approve @ada');
+  const first = await buildIndex({ repos: [repoOf('ada/solar')], approvals, checkThumbnail: async () => 'https://raw.githubusercontent.com/ada/solar/main/thumbnail.jpg', now: () => NOW });
+  assert.equal(first.gallery.items[0].thumbnailUrl, 'https://raw.githubusercontent.com/ada/solar/main/thumbnail.jpg');
+
+  // 학생이 새로 저장한 직후, 그림 확인이 한도에 걸렸습니다.
+  const pushed = [repoOf('ada/solar', { pushed_at: '2026-11-11T09:00:00Z' }), repoOf('ada/new')];
+  const failed = await buildIndex({ repos: pushed, approvals, previous: first.gallery, checkThumbnail: async () => { throw new GalleryIndexError('GitHub API 403', { status: 403 }); }, now: () => NOW });
+  const solar = failed.gallery.items.find((item) => item.fullName === 'ada/solar');
+  assert.equal(solar.thumbnailUrl, 'https://raw.githubusercontent.com/ada/solar/main/thumbnail.jpg');
+  assert.equal(solar.updatedAt, first.gallery.items[0].updatedAt);
+  // 처음 실리는 작품은 그림 없이 실립니다.
+  const fresh = failed.gallery.items.find((item) => item.fullName === 'ada/new');
+  assert.deepEqual([fresh.thumbnailUrl, fresh.updatedAt], [null, null]);
+
+  // 다음 실행: 두 작품 모두 다시 확인합니다.
+  const checked = [];
+  const next = await buildIndex({ repos: pushed, approvals, previous: failed.gallery, checkThumbnail: async (entry) => { checked.push(entry.fullName); return null; }, now: () => NOW });
+  assert.deepEqual(checked.sort(), ['ada/new', 'ada/solar']);
+  assert.equal(next.gallery.items.find((item) => item.fullName === 'ada/solar').updatedAt, '2026-11-11T09:00:00.000Z');
 });
 
 // ── 목록 만들기 ──────────────────────────────────────────────
