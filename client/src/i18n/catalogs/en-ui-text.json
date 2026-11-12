@@ -2093,5 +2093,7 @@
   "도구 메뉴의 \"초기 코드로 돌아가기\"를 눌러 편집기에 남은 코드를 지웁니다.": "Press \"Back to starting code\" in the Tools menu to clear the code left in the editor.",
   "브라우저 창을 닫습니다.": "Close the browser window.",
   "승인 창을 열지 못했습니다. 브라우저의 팝업 차단을 해제하세요.": "The approval window could not be opened. Allow pop-ups in your browser.",
-  "승인 창이 닫혔습니다. 다시 시도하세요.": "The approval window was closed. Try again."
+  "승인 창이 닫혔습니다. 다시 시도하세요.": "The approval window was closed. Try again.",
+  "일식과 월식: 시점 바꾸기": "Eclipses: switching views",
+  "우주, 서울, 달 표면으로 시점을 바꾸며 일식과 월식을 관찰합니다. 크기와 거리는 한 화면에 보이도록 바꾼 모형입니다.": "Switch the view between space, Seoul and the Moon’s surface to watch solar and lunar eclipses. Sizes and distances are changed so that everything fits in one view."
 }

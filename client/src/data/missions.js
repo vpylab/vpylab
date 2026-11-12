@@ -1423,6 +1423,7 @@ print("피보나치 꽃밭 완성")
     ),
     starterCode: `from vpython import *
 
+scene.range = 6
 공 = sphere(pos=vector(-3, 0, 0), radius=0.25, color=색상['하늘'], make_trail=True)
 속도 = vector(1.5, 0, 0)
 dt = 0.05
@@ -1436,6 +1437,7 @@ print("속도 실험 완료")
 `,
     solutionCode: `from vpython import *
 
+scene.range = 6
 공 = sphere(pos=vector(-3, 0, 0), radius=0.25, color=색상['하늘'], make_trail=True)
 속도 = vector(2.0, 0, 0)
 dt = 0.05
@@ -1675,6 +1677,8 @@ print("용수철 실험 완료")
     starterCode: `from vpython import *
 
 scene_background(색상['검정'])
+scene.center = vector(0, 2, 0)
+scene.range = 5
 
 태양 = sphere(pos=vector(0, 0, 0), radius=0.45, color=색상['노랑'], emissive=True)
 행성 = sphere(pos=vector(2.5, 0, 0), radius=0.18, color=색상['하늘'], make_trail=True)
@@ -1697,6 +1701,8 @@ print("궤도 실험 완료")
     solutionCode: `from vpython import *
 
 scene_background(색상['검정'])
+scene.center = vector(0, 2, 0)
+scene.range = 5
 
 태양 = sphere(pos=vector(0, 0, 0), radius=0.45, color=색상['노랑'], emissive=True)
 행성 = sphere(pos=vector(2.5, 0, 0), radius=0.18, color=색상['하늘'], make_trail=True)

@@ -660,6 +660,7 @@ for i in range(0, 600):
         code: `from vpython import *
 
 scene_background(색상['검정'])
+scene.range = 6
 
 공 = sphere(pos=vector(-5, 0, 0), radius=0.3, color=색상['하늘'], make_trail=True)
 v = vector(2, 0, 0)
@@ -779,6 +780,7 @@ while t < 12:
         code: `from vpython import *
 
 scene_background(색상['검정'])
+scene.range = 5
 태양 = sphere(pos=vector(0, 0, 0), radius=0.5, color=색상['노랑'], emissive=True)
 
 행성 = sphere(pos=vector(4, 0, 0), radius=0.18, color=색상['하늘'], make_trail=True)
@@ -1038,6 +1040,7 @@ sphere(pos=vector(1, 0, 0), radius=0.6, color=색상['초록'])
         code: `from vpython import *
 
 scene_background(색상['검정'])
+scene.range = 5
 공 = sphere(pos=vector(-3, 3, 0), radius=0.3,
             color=색상['주황'], make_trail=True)
 
@@ -1060,6 +1063,7 @@ while t < 1.5:                       # ★ 시뮬 시간
         code: `from vpython import *
 
 scene_background(색상['검정'])
+scene.range = 4
 sphere(pos=vector(0, 0, 0), radius=0.3, color=색상['노랑'], emissive=True)
 행성 = sphere(pos=vector(3, 0, 0), radius=0.2,
               color=색상['하늘'], make_trail=True)

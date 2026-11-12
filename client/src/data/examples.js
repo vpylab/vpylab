@@ -2,10 +2,11 @@
  * VPyLab 대표 예제 20선
  * 코드는 쉽지만 아이디어가 뛰어난 영감을 주는 예제들
  */
+import { eclipseViewsCode } from './eclipse-views.js';
 
 const EXAMPLES = [
   // ═══════════════════════════════════════
-  // 🌌 우주/자연 (5개)
+  // 🌌 우주/자연 (6개)
   // ═══════════════════════════════════════
   {
     id: 'solar-system',
@@ -22,6 +23,7 @@ import math
 sun = sphere(pos=vector(0,0,0), radius=0.8, color=color.yellow)
 local_light(pos=vector(0,0,0), color=color.yellow, intensity=2)
 scene_background(vector(0.02, 0.02, 0.05))
+scene.range = 10   # 가장 먼 행성의 궤도까지 보이는 범위
 
 # 행성 데이터: [이름, 거리, 크기, 색, 속도]
 planets_data = [
@@ -242,6 +244,17 @@ while True:
             d.pos = vector(random.uniform(-5, 5), 8, d.pos.z)
             d.speed = random.uniform(0.15, 0.3)
 `
+  },
+
+  {
+    id: 'eclipse-views',
+    title: '일식과 월식: 시점 바꾸기',
+    thumbnail: '🌘',
+    category: 'space',
+    level: 3,
+    description: '우주, 서울, 달 표면으로 시점을 바꾸며 일식과 월식을 관찰합니다. 크기와 거리는 한 화면에 보이도록 바꾼 모형입니다.',
+    tags: ['camera', 'animation', 'widget'],
+    code: eclipseViewsCode,
   },
 
   // ═══════════════════════════════════════
@@ -726,6 +739,8 @@ while True:
 import random, math
 
 scene_background(vector(0.02, 0.02, 0.05))
+scene.center = vector(0, 2.5, 0)   # 불꽃이 터지는 높이를 화면 가운데에 둔다
+scene.range = 6
 
 # 불꽃놀이 함수
 async def firework(x, y):
