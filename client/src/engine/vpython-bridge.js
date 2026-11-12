@@ -741,6 +741,7 @@ function createTrail(cmd, scene) {
     const trailMaterial = new THREE.LineBasicMaterial({ color: trailColor });
     trailLine = new THREE.Line(trailGeometry, trailMaterial);
   }
+  trailLine.userData.vpTrail = true; // 카메라의 화면 맞춤 기준에서 뺀다 (움직임에서 나온 선)
   scene.add(trailLine);
   trailRegistry.set(cmd.id, {
     line: trailLine,

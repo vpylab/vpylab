@@ -26,8 +26,9 @@ function ensurePanel(canvasId = 'scene') {
   panelEl.dataset.canvasId = canvasId;
   panels.set(canvasId, panelEl);
   panelEl.style.cssText = [
-    'position:absolute', 'top:8px', 'right:8px',
-    'max-width:280px', 'max-height:60%',
+    // 오른쪽 위에는 3D 화면 조작부(전체 화면·화면에 맞추기·자동 맞춤·XYZ)가 있으므로 그 왼쪽에 둔다
+    'position:absolute', 'top:8px', 'right:108px',
+    'max-width:min(280px, calc(100% - 124px))', 'max-height:60%',
     'overflow:auto', 'z-index:10',
     'padding:10px 12px', 'border-radius:8px',
     'background:rgba(255,255,255,0.92)',

@@ -286,9 +286,9 @@ scene.select()                    # 할 일 없음 (캔버스가 하나)
 
 ```python
 scene.background = color.black
-scene.range = 5                      # 카메라 시야 반경 (MANUAL 모드 진입)
+scene.range = 5                      # 카메라 시야 반경 (이 뒤로는 카메라가 자동으로 바뀌지 않음)
 scene.center = vector(0, 0, 0)       # 카메라 타겟 중심
-scene.autoscale = False              # True면 Auto-Fit 복귀
+scene.autoscale = False              # True면 실행하는 동안 계속 화면에 맞춤
 scene.title = "내 시뮬레이션"        # 3D 화면 위쪽 글자
 scene.caption = "설명..."            # 3D 화면 아래쪽 글자
 scene.width = 800                    # 기본 화면은 앱 배치. 추가 canvas는 공간 안에서 크기 반영
@@ -300,7 +300,7 @@ scene.camera.rotate(angle=0.1, axis=vector(0,1,0), origin=scene.center)  # 중�
 
 `scene.align`, `scene.resizable`, `scene.caption_anchor`, `scene.title_anchor`는 GlowScript 코드가 멈추지 않도록 받기만 합니다.
 
-> **참고**: `scene.range` / `scene.center`를 설정하면 자동 카메라(Auto-Fit/Follow)가 비활성화됩니다. `scene.autoscale = True` 또는 뷰 더블클릭으로 복귀할 수 있습니다.
+> **참고 (카메라 기본 동작)**: VPyLab의 기본은 고정 카메라입니다. 물체가 만들어진 자리를 기준으로 화면을 정합니다. 물체의 이동이나 크기 변화로는 카메라가 바뀌지 않습니다. 새 물체가 범위 밖에 만들어질 때만 범위가 넓어집니다. 표준 VPython은 scene.autoscale의 기본값이 True이고 물체가 범위를 벗어나면 화면을 넓힙니다. VPyLab에서 표준 VPython과 같은 동작이 필요하면 코드에 scene.autoscale = True를 적거나 3D 화면의 자동 맞춤을 켭니다. scene.range, scene.camera.pos, scene.camera.axis를 지정하거나 마우스로 화면을 돌린 뒤에는 카메라가 자동으로 바뀌지 않습니다. 화면에 맞추기 버튼을 누르거나 3D 화면을 두 번 누르면 카메라가 지금 있는 물체에 한 번 맞춰집니다.
 
 전역 함수 `scene_background(color)`는 VPyLab 편의 함수이며 표준 표기는 `scene.background = color`입니다.
 

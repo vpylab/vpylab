@@ -72,143 +72,202 @@ describe('camera-system', () => {
     system.setExplicitCenter(0, 0, 0);
     expect(camera.position.equals(previousPosition)).toBe(true);
   });
+});
 
-  it('추적 모드에서는 Group의 앵커 위치를 중심으로 사용한다', () => {
+describe('camera-system: 기본은 고정 카메라', () => {
+  // 실행 중 매 프레임 update()가 불리는 상황을 흉내 낸다. 시간은 가짜 시계로 흘린다.
+  function setup(options) {
     const scene = new THREE.Scene();
     const camera = createCamera();
     const controls = createControls();
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial());
+    scene.add(ball);
+    const system = new CameraSystem(camera, controls, scene, options);
+    system.onCodeStart();
+    const frames = (count, step = 16) => { for (let i = 0; i < count; i++) { vi.advanceTimersByTime(step); system.update(); } };
+    const view = () => ({ pos: camera.position.toArray(), target: controls.target.toArray(), range: system.getRange() });
+    return { scene, camera, controls, ball, system, frames, view };
+  }
+  const withClock = run => () => { vi.useFakeTimers(); try { run(); } finally { vi.useRealTimers(); } };
 
-    const group = new THREE.Group();
-    group.position.set(4, 0, 0);
+  it('첫 장면에 한 번 맞춘 뒤에는 물체가 움직여도 카메라 위치·중심·범위가 바뀌지 않는다', withClock(() => {
+    const { ball, system, frames, view, camera, controls } = setup();
+    frames(120);
+    const fitted = system._distanceForBounds(system._computeCameraState().radius);
+    expect(camera.position.distanceTo(controls.target)).toBeCloseTo(fitted, 6);
+    expect(controls.target.length()).toBeCloseTo(0, 9);
+    const before = view();
+    for (let i = 0; i < 300; i++) { ball.position.x += 0.2; ball.scale.multiplyScalar(1.002); frames(1); }
+    expect(ball.position.x).toBeCloseTo(60, 6);
+    expect(view()).toEqual(before);
+    expect(system.getState().autoscale).toBe(true);
+    system.dispose();
+  }));
 
-    const child = new THREE.Mesh(
-      new THREE.BoxGeometry(2, 2, 2),
-      new THREE.MeshBasicMaterial(),
-    );
-    child.position.set(2, 0, 0);
-    group.add(child);
-    scene.add(group);
+  it('새 물체가 범위 밖에 만들어지면 만들어진 자리까지 넓히고, 그 물체가 움직여도 다시 바꾸지 않는다', withClock(() => {
+    const { scene, ball, system, frames, view, camera, controls } = setup();
+    scene.remove(ball);
+    frames(200); // 물체가 없는 동안에는 기본 위치에서 기다린다
+    expect(controls.target.toArray()).toEqual([0, 0, 0]);
+    scene.add(ball);
+    frames(120);
+    const near = camera.position.distanceTo(controls.target);
+    // 1초 뒤 멀리 새 물체가 만들어진다 (반복문과 음표로 하나씩 만드는 수업)
+    const far = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    far.position.set(20, 0, 0);
+    scene.add(far);
+    frames(120);
+    expect(controls.target.x).toBeCloseTo(9.75, 6);
+    expect(camera.position.distanceTo(controls.target)).toBeGreaterThan(near * 3);
+    const before = view();
+    far.position.set(-80, 30, 0);
+    ball.position.set(0, -50, 0);
+    frames(120);
+    expect(view()).toEqual(before);
+    // 범위 안에 만들어진 새 물체는 화면을 바꾸지 않는다
+    const inside = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    inside.position.set(10, 0, 0);
+    scene.add(inside);
+    frames(120);
+    expect(view()).toEqual(before);
+    system.dispose();
+  }));
 
-    const system = new CameraSystem(camera, controls, scene, {
-      followCenterDeadzone: 0.001,
-    });
+  it('궤적은 움직임에서 나온 선이므로 길어져도 화면을 넓히지 않는다', withClock(() => {
+    const { scene, system, frames, view } = setup();
+    frames(120);
+    const before = view();
+    const trail = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(200, 0, 0)]));
+    trail.userData.vpTrail = true;
+    scene.add(trail);
+    frames(120);
+    expect(view()).toEqual(before);
+    // 화면에 맞추기는 지금 그려진 궤적까지 담는다
+    system.fitOnce();
+    frames(120);
+    expect(system.controls.target.x).toBeGreaterThan(90);
+    system.dispose();
+  }));
 
-    system.mode = MODE.FOLLOW;
-    system._targetCenter.set(0, 0, 0);
-    system._currentCenter.set(0, 0, 0);
+  it('화면에 맞추기는 지금 물체에 한 번만 맞추고 다시 고정한다', withClock(() => {
+    const { ball, system, frames, view, controls } = setup();
+    frames(120);
+    ball.position.set(40, 10, 0);
+    frames(60);
+    expect(controls.target.x).toBeCloseTo(0, 9);
+    system.fitOnce();
+    frames(120);
+    expect(controls.target.x).toBeCloseTo(40, 6);
+    expect(controls.target.y).toBeCloseTo(10, 6);
+    const before = view();
+    ball.position.set(-40, 0, 0);
+    frames(120);
+    expect(view()).toEqual(before);
+    system.dispose();
+  }));
 
-    system.update();
+  it('마우스로 돌린 뒤에도 화면에 맞추기로 돌아올 수 있고, 맞춘 뒤에는 다시 고정된다', withClock(() => {
+    const { ball, system, frames, camera, controls } = setup();
+    frames(120);
+    system._onUserInteraction();
+    camera.position.set(30, 0, 0);
+    ball.position.set(0, 25, 0);
+    frames(30);
+    expect(camera.position.toArray()).toEqual([30, 0, 0]);
+    system.fitOnce();
+    frames(120);
+    expect(controls.target.y).toBeCloseTo(25, 6);
+    expect(camera.position.clone().sub(controls.target).normalize().x).toBeCloseTo(1, 6); // 보던 방향은 유지
+    system.dispose();
+  }));
 
-    expect(system._targetCenter.x).toBeCloseTo(4, 5);
-  });
+  it('학생 코드의 scene 설정은 고정된 뒤에도 그대로 반영된다', withClock(() => {
+    const { ball, system, frames, camera, controls } = setup();
+    frames(120);
+    system.setExplicitCenter(5, 0, 0);
+    frames(30);
+    expect(controls.target.toArray()).toEqual([5, 0, 0]);
+    system.setForward(0, -1, 0);
+    frames(30);
+    expect(system.getState().forward.map(v => Math.round(v * 1e6) / 1e6)).toEqual([0, -1, 0]);
+    system.setExplicitRange(7);
+    frames(30);
+    expect(system.getRange()).toBeCloseTo(7, 9);
+    system.setCameraPos(1, 2, 3);
+    system.setCameraAxis(0, 0, -4);
+    ball.position.set(100, 0, 0);
+    frames(30);
+    expect(camera.position.toArray()).toEqual([1, 2, 3]);
+    expect(controls.target.toArray()).toEqual([1, 2, -1]);
+    system.dispose();
+  }));
 
-  it('추적 중 미세한 중심 변화는 무시한다', () => {
-    const scene = new THREE.Scene();
-    const camera = createCamera();
-    const controls = createControls();
+  it('scene.center를 매 프레임 옮겨도 처음 맞춘 거리를 유지한 채 따라간다', withClock(() => {
+    const { ball, system, frames, camera, controls } = setup();
+    frames(120);
+    const distance = camera.position.distanceTo(controls.target);
+    for (let i = 0; i < 100; i++) { ball.position.x += 0.5; system.setExplicitCenter(ball.position.x, 0, 0); frames(1); }
+    expect(controls.target.x).toBeCloseTo(50, 9);
+    expect(camera.position.distanceTo(controls.target)).toBeCloseTo(distance, 9);
+    system.dispose();
+  }));
 
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshBasicMaterial(),
-    );
-    scene.add(mesh);
+  it('scene.camera.follow는 대상을 따라가되 처음 맞춘 뒤에는 거리를 바꾸지 않는다', withClock(() => {
+    const { scene, ball, system, frames, camera, controls } = setup();
+    const other = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    scene.add(other);
+    system.followObject(ball);
+    frames(120);
+    const distance = camera.position.distanceTo(controls.target);
+    for (let i = 0; i < 100; i++) { ball.position.x += 1; frames(1); }
+    expect(controls.target.x).toBeCloseTo(100, 9);
+    expect(camera.position.distanceTo(controls.target)).toBeCloseTo(distance, 6);
+    system.dispose();
+  }));
 
-    const system = new CameraSystem(camera, controls, scene, {
-      followCenterDeadzone: 0.05,
-    });
+  it('scene.autoscale = True를 명시하면 실행 중에도 계속 맞추고, 새 실행에서는 다시 고정이 기본이다', withClock(() => {
+    const { ball, system, frames, controls } = setup();
+    frames(120);
+    system.setAutoscale(true);
+    ball.position.set(30, 0, 0);
+    frames(400);
+    expect(controls.target.x).toBeCloseTo(30, 3);
+    system.onCodeStart();
+    expect(system.isContinuousFit()).toBe(false);
+    frames(120);
+    ball.position.set(-30, 0, 0);
+    frames(120);
+    expect(controls.target.x).toBeCloseTo(30, 6);
+    system.dispose();
+  }));
 
-    system.mode = MODE.FOLLOW;
-    system._targetCenter.set(0, 0, 0);
-    system._currentCenter.set(0, 0, 0);
+  it('화면의 자동 맞춤을 켜면 예전처럼 계속 맞추고 새 실행에서도 유지되며, 끄면 그 자리에 멈춘다', withClock(() => {
+    const { ball, system, frames, view, controls } = setup();
+    frames(120);
+    system.setContinuousFit(true);
+    system.onCodeStart();
+    ball.position.set(12, 0, 0);
+    frames(400);
+    expect(controls.target.x).toBeCloseTo(12, 3);
+    system.setContinuousFit(false);
+    const before = view();
+    ball.position.set(-50, 0, 0);
+    frames(120);
+    expect(view().target).toEqual(before.target);
+    system.dispose();
+  }));
 
-    mesh.position.set(0.02, 0, 0);
-    system.update();
-
-    expect(system._targetCenter.x).toBeCloseTo(0, 5);
-  });
-
-  it('추적 중 미세한 크기 변화로는 줌하지 않는다', () => {
-    const scene = new THREE.Scene();
-    const camera = createCamera();
-    const controls = createControls();
-
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshBasicMaterial(),
-    );
-    scene.add(mesh);
-
-    const system = new CameraSystem(camera, controls, scene, {
-      zoomLocked: false,
-      zoomThreshold: 0.2,
-    });
-
-    system.resetToAutoFit();
-    const initialDistance = system._targetDistance;
-    system.mode = MODE.FOLLOW;
-
-    mesh.geometry.dispose();
-    mesh.geometry = new THREE.BoxGeometry(1.05, 1, 1);
-    system.update();
-
-    expect(system._targetDistance).toBeCloseTo(initialDistance, 5);
-
-    mesh.geometry.dispose();
-    mesh.geometry = new THREE.BoxGeometry(4, 4, 4);
-    system.update();
-
-    expect(system._targetDistance).toBeGreaterThan(initialDistance);
-  });
-
-  it('기본값에서는 추적 중 자동 줌을 고정한다', () => {
-    const scene = new THREE.Scene();
-    const camera = createCamera();
-    const controls = createControls();
-
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshBasicMaterial(),
-    );
-    scene.add(mesh);
-
-    const system = new CameraSystem(camera, controls, scene);
-
-    system.resetToAutoFit();
-    const initialDistance = system._targetDistance;
-    system.mode = MODE.FOLLOW;
-
-    mesh.geometry.dispose();
-    mesh.geometry = new THREE.BoxGeometry(4, 4, 4);
-    system.update();
-
-    expect(system.isZoomLocked()).toBe(true);
-    expect(system._targetDistance).toBeCloseTo(initialDistance, 5);
-  });
-
-  it('줌 고정 해제하면 거리 계산을 재개한다', () => {
-    const scene = new THREE.Scene();
-    const camera = createCamera();
-    const controls = createControls();
-
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(1, 1, 1),
-      new THREE.MeshBasicMaterial(),
-    );
-    scene.add(mesh);
-
-    const system = new CameraSystem(camera, controls, scene);
-
-    system.resetToAutoFit();
-    const initialDistance = system._targetDistance;
-    system.mode = MODE.FOLLOW;
-
-    mesh.geometry.dispose();
-    mesh.geometry = new THREE.BoxGeometry(4, 4, 4);
-    system.setZoomLocked(false);
-
-    expect(system.isZoomLocked()).toBe(false);
-    expect(system._targetDistance).toBeGreaterThan(initialDistance);
-  });
+  it('고정된 뒤 화면 크기가 바뀌어도 보이는 범위를 유지하고 다시 맞추지 않는다', withClock(() => {
+    const { ball, system, frames, controls } = setup();
+    frames(120);
+    const range = system.getRange();
+    ball.position.set(50, 0, 0);
+    system.resize(1200, 600);
+    frames(60);
+    expect(system.getRange()).toBeCloseTo(range, 9);
+    expect(controls.target.x).toBeCloseTo(0, 9);
+    system.dispose();
+  }));
 });
 
 describe('camera-system: GlowScript 호환 카메라 제어', () => {
@@ -413,7 +472,7 @@ describe('실제 OrbitControls와 카메라 수명·화면 비율', () => {
 it('자동 맞춤 보간 중 forward를 반복해도 fit 거리로 수렴한다',()=>{
  const camera=createCamera(),controls=createControls(),scene=new THREE.Scene();
  scene.add(new THREE.Mesh(new THREE.SphereGeometry(100),new THREE.MeshBasicMaterial()));
- const system=new CameraSystem(camera,controls,scene,{zoomLocked:true});system.onCodeStart();
+ const system=new CameraSystem(camera,controls,scene);system.onCodeStart();
  for(let i=0;i<500;i++){system.update();system.setForward(Math.sin(i/30),0,-Math.cos(i/30));}
  expect(camera.position.distanceTo(controls.target)).toBeCloseTo(system._distanceForBounds(system._computeCameraState().radius),2);system.dispose();
 });

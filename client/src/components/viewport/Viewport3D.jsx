@@ -46,17 +46,17 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
   const [extraCanvases, setExtraCanvases] = useState([]);
   const [defaultHasObjects, setDefaultHasObjects] = useState(false);
   const [showAxes, setShowAxes] = useState(false);
-  const [cameraMode, setCameraMode] = useState('auto-fit');
-  const [lockFollowZoom, setLockFollowZoom] = useState(false);
+  // 기본은 고정 카메라입니다. 켜면 실행 중에도 계속 화면에 맞춥니다(예전 "자동").
+  const [continuousFit, setContinuousFit] = useState(false);
   // WebGL을 만들 수 없는 컴퓨터에서는 화면 영역에만 안내를 표시하고 편집기·콘솔은 그대로 둡니다.
   const [webglUnavailable, setWebglUnavailable] = useState(false);
   const startingCamera = useRef(initialCameraPosition);
   const theme = useAppStore((s) => s.theme);
 
-  const initialSceneSetup = useRef({ canvasId, onSceneReady, sceneRef, theme, lockFollowZoom });
+  const initialSceneSetup = useRef({ canvasId, onSceneReady, sceneRef, theme, continuousFit });
 
   useEffect(() => {
-    const { canvasId, onSceneReady, sceneRef, theme, lockFollowZoom } = initialSceneSetup.current;
+    const { canvasId, onSceneReady, sceneRef, theme, continuousFit } = initialSceneSetup.current;
     const container = containerRef.current;
     if (!container) return;
 
@@ -111,18 +111,17 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
     controls.maxDistance = 100;
     controlsRef.current = controls;
 
-    // 하이브리드 카메라 시스템
+    // 카메라 시스템 — 첫 장면에 한 번 맞춘 뒤 고정합니다
     const camSystem = new CameraSystem(camera, controls, scene, {
-      zoomLocked: lockFollowZoom,
+      continuousFit,
     });
     cameraSystemRef.current = camSystem;
     // bridge.js에서 scene._cameraSystem으로 접근 (scene.range/center/autoscale 처리)
     scene._cameraSystem = camSystem;
 
-    // 더블클릭 → Auto-Fit 리셋
+    // 더블클릭 → 화면에 한 번 맞추기
     const onDblClick = () => {
-      camSystem.resetToAutoFit();
-      setCameraMode(camSystem.getMode());
+      camSystem.fitOnce();
     };
     renderer.domElement.addEventListener('dblclick', onDblClick);
 
@@ -302,7 +301,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
     const shouldRender = createRenderGate();
 
     // 카메라 제어는 계속 갱신하되 변함없는 장면의 GPU 그리기는 줄입니다.
-    let modeUpdateCounter = 0;
+    let stateUpdateCounter = 0;
     let cameraStateSeq = 0;
     function animate(now = performance.now()) {
       animFrameRef.current = requestAnimationFrame(animate);
@@ -320,18 +319,13 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       }
 
       // 카메라 상태를 Python 쪽에 알림 (6프레임마다, 약 10Hz)
-      if (++modeUpdateCounter % 6 === 0) {
+      if (++stateUpdateCounter % 6 === 0) {
         const state = camSystem.getState();
         state.seq = ++cameraStateSeq;
         state.revision = scene._cameraRevision || 0;
         state.width = renderer.domElement.clientWidth;
         state.height = renderer.domElement.clientHeight;
         postCameraState(state, canvasId);
-      }
-
-      // UI 모드 표시 업데이트 (60프레임마다)
-      if (modeUpdateCounter % 60 === 0) {
-        setCameraMode(camSystem.getMode());
       }
     }
     animate();
@@ -384,10 +378,13 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
     sceneForChildren.current?._requestRender?.();
   }, [showAxes]);
 
-  // 줌 고정 토글
+  // 자동 맞춤 토글 — 처음 그릴 때는 생성자 옵션으로 이미 전달했으므로 바뀔 때만 알립니다
+  const appliedContinuousFit = useRef(continuousFit);
   useEffect(() => {
-    cameraSystemRef.current?.setZoomLocked(lockFollowZoom);
-  }, [lockFollowZoom]);
+    if (appliedContinuousFit.current === continuousFit) return;
+    appliedContinuousFit.current = continuousFit;
+    cameraSystemRef.current?.setContinuousFit(continuousFit);
+  }, [continuousFit]);
 
   // cameraSystemRef를 외부에 노출 (Sandbox/MissionPlay에서 사용)
   useEffect(() => {
@@ -460,7 +457,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
         data-vpylab-caption=""
       />
 
-      {/* 카메라 모드 표시 + 옵션 토글 */}
+      {/* 화면 조작부: 전체 화면 · 화면에 맞추기 · 자동 맞춤 · 좌표축 */}
       {!webglUnavailable && <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
         {/* 전체 화면 */}
         <button
@@ -475,60 +472,36 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
         >
           {fullscreen.active ? '✕ ' : '⛶ '}{t('viewport.fullscreen')}
         </button>
-        {/* 카메라 모드 선택 */}
-        <div className="flex gap-0.5">
-          <button
-            onClick={() => {
-              if (cameraSystemRef.current) {
-                cameraSystemRef.current.resetToAutoFit();
-                setCameraMode('auto-fit');
-              }
-            }}
-            className="text-xs px-2 py-0.5 rounded-l cursor-pointer"
-            style={{
-              color: cameraMode === 'auto-fit' ? 'var(--color-accent)' : 'var(--color-text-muted)',
-              backgroundColor: 'color-mix(in srgb, var(--color-bg-secondary) 80%, transparent)',
-              border: cameraMode === 'auto-fit' ? '1px solid var(--color-accent)' : '1px solid transparent',
-            }}
-            title={t('viewport.autoFitTip')}
-          >
-            {t('viewport.autoFit')}
-          </button>
-          <button
-            onClick={() => {
-              if (cameraSystemRef.current) {
-                cameraSystemRef.current.switchToFollow();
-                setCameraMode('follow');
-              }
-            }}
-            className="text-xs px-2 py-0.5 rounded-r cursor-pointer"
-            style={{
-              color: cameraMode === 'follow' ? 'var(--color-accent)' : 'var(--color-text-muted)',
-              backgroundColor: 'color-mix(in srgb, var(--color-bg-secondary) 80%, transparent)',
-              border: cameraMode === 'follow' ? '1px solid var(--color-accent)' : '1px solid transparent',
-            }}
-            title={t('viewport.followTip')}
-          >
-            {t('viewport.follow')}
-          </button>
-        </div>
+        {/* 화면에 맞추기 — 지금 있는 물체가 모두 보이도록 한 번만 맞춥니다 */}
+        <button
+          type="button"
+          onClick={() => cameraSystemRef.current?.fitOnce()}
+          className="text-xs px-2 py-0.5 rounded cursor-pointer"
+          style={overlayButtonStyle}
+          title={t('viewport.fitOnceTip')}
+          data-vpylab-fit-once=""
+        >
+          {t('viewport.fitOnce')}
+        </button>
 
+        {/* 자동 맞춤 — 기본은 꺼짐(고정 카메라) */}
         <label
           className="flex items-center gap-1.5 text-xs cursor-pointer select-none px-2 py-1 rounded"
           style={{
-            color: lockFollowZoom ? 'var(--color-accent)' : 'var(--color-text-muted)',
+            color: continuousFit ? 'var(--color-accent)' : 'var(--color-text-muted)',
             backgroundColor: 'color-mix(in srgb, var(--color-bg-secondary) 80%, transparent)',
-            border: lockFollowZoom ? '1px solid var(--color-accent)' : 'none',
+            border: continuousFit ? '1px solid var(--color-accent)' : 'none',
           }}
-          title={t('viewport.lockZoomTip')}
+          title={t('viewport.autoFitTip')}
         >
           <input
             type="checkbox"
-            checked={lockFollowZoom}
-            onChange={(e) => setLockFollowZoom(e.target.checked)}
+            checked={continuousFit}
+            onChange={(e) => setContinuousFit(e.target.checked)}
             className="accent-current"
+            data-vpylab-auto-fit=""
           />
-          {t('viewport.lockZoom')}
+          {t('viewport.autoFit')}
         </label>
 
         {/* 축 토글 */}

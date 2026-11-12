@@ -339,13 +339,11 @@
   "viewport": {
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
-    "autoFit": "Auto",
-    "follow": "Follow",
-    "lockZoom": "Lock zoom",
+    "fitOnce": "Fit to view",
+    "autoFit": "Auto-fit",
     "axes": "XYZ",
-    "autoFitTip": "Zoom automatically so every object fits",
-    "followTip": "Follow the center of moving objects",
-    "lockZoomTip": "Keep the current camera distance",
+    "fitOnceTip": "Frame every object once. Double-clicking the 3D view does the same.",
+    "autoFitTip": "When on, the camera keeps adjusting so every object stays in view while the code runs. When off, the camera stays in one place. It starts off.",
     "webglUnavailable": "The 3D view cannot open on this computer.",
     "webglUnavailableHelp": "You can still edit code and read console output. Turn on hardware acceleration in your browser settings, or open VPyLab in a current version of Chrome or Edge, to see the 3D view."
   },

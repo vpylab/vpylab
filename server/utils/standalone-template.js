@@ -554,6 +554,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     if (cmd.pos) positions.push(cmd.pos[0], cmd.pos[1], cmd.pos[2]);
     trailGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
     const trailLine = new THREE.Line(trailGeo, trailMat);
+    trailLine.userData.vpTrail = true;
     scene.add(trailLine);
     trails.set(cmd.id, { line: trailLine, positions, maxPoints: 10000 });
   }
@@ -1108,11 +1109,17 @@ class vector:
 vec = vector
 
 # === 30색 팔레트 ===
+class _GrayColor(vector):
+    # color.gray는 회색 벡터이면서 color.gray(0.2)처럼 밝기를 지정할 수도 있다 (편집기와 같은 동작)
+    def __call__(self, level):
+        level = float(level)
+        return vector(level, level, level)
+
 class _ColorPalette:
     red=vector(1,0,0); green=vector(0,1,0); blue=vector(0,0,1)
     yellow=vector(1,1,0); cyan=vector(0,1,1); magenta=vector(1,0,1)
     orange=vector(1,0.6,0); white=vector(1,1,1); black=vector(0,0,0)
-    gray=vector(0.5,0.5,0.5); purple=vector(0.4,0.2,0.6)
+    gray=_GrayColor(0.5,0.5,0.5); purple=vector(0.4,0.2,0.6)
     pink=vector(1,0.75,0.8); brown=vector(0.6,0.3,0.1); gold=vector(1,0.84,0)
     silver=vector(0.75,0.75,0.75); navy=vector(0,0,0.5); skyblue=vector(0.53,0.81,0.92)
     lime=vector(0.5,1,0); olive=vector(0.5,0.5,0); coral=vector(1,0.5,0.31)
@@ -1825,7 +1832,23 @@ class button(_NoOpWidget):
     def text(self, v): self._text = v
 class checkbox(_NoOpWidget): pass
 class radio(_NoOpWidget): pass
-class menu(_NoOpWidget): pass
+class menu(_NoOpWidget):
+    """조작은 지원하지 않지만 처음 선택한 항목은 읽을 수 있어 menu를 사용하는 작품이 멈추지 않는다."""
+    def __init__(self, choices=None, selected=None, **kw):
+        super().__init__(**kw)
+        self._choices = list(choices) if choices else []
+        if selected is None and self._choices: selected = self._choices[0]
+        self._value = selected
+    @property
+    def choices(self): return list(self._choices)
+    @property
+    def selected(self): return self._value
+    @selected.setter
+    def selected(self, v): self._value = v
+    @property
+    def index(self): return self._choices.index(self._value) if self._value in self._choices else -1
+    @index.setter
+    def index(self, i): self._value = self._choices[int(i)]
 class winput(_NoOpWidget): pass
 
 class graph:
