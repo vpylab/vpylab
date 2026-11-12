@@ -10,9 +10,13 @@
  *
  * 프로젝트 = 공개 저장소 하나. topic `vpylab-project`가 붙은 저장소를 VPyLab 프로젝트로 봅니다.
  * 갤러리에 올린 프로젝트에는 topic `vpylab-gallery`가 더 붙습니다(목록은 scripts/gallery/가 만듭니다).
+ * 대장간의 모듈은 저장소 `<아이디>/vpylab-forge` 하나에 파일로 올립니다(modules/<모듈 ID>.py, topic `vpylab-forge`).
  * 이 모듈은 fetch와 토큰을 주입받는 순수 모듈이며 화면 상태를 갖지 않습니다.
  */
 import { GALLERY_TOPIC, MAX_THUMBNAIL_BYTES, THUMBNAIL_PATH } from '../../../server/shared/gallery-rules.js';
+import {
+  FORGE_DIR, FORGE_REPO, FORGE_TOPIC, MAX_FORGE_FILE_BYTES, MAX_FORGE_MODULES_PER_REPO, forgeFilePath, forgeFileUrlOf, forgeIdOfFileName, isForgeModuleId,
+} from '../../../server/shared/forge-rules.js';
 
 const API = 'https://api.github.com';
 
@@ -446,10 +450,10 @@ export function createGitHubApi({
     return commit.tree?.sha || null;
   }
 
-  /** 파일을 읽어 { sha, text }를 돌려줍니다. 없으면 null. */
+  /** 파일을 읽어 { sha, text }를 돌려줍니다. 없으면 null. ref를 적지 않으면 기본 브랜치에서 읽습니다. */
   async function getContentsFile(owner, repo, path, ref) {
     try {
-      const file = await request(`/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(ref)}`);
+      const file = await request(`/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`);
       return { sha: file.sha, text: decodeBase64Utf8(file.content) };
     } catch (error) {
       if (error.status === 404) return null;
@@ -647,8 +651,149 @@ export function createGitHubApi({
     return items;
   }
 
+  // ── 대장간(선택 기능) ───────────────────────────────────────
+
+  const forgeOwner = (owner) => {
+    const login = sanitizeGithubUsername(owner);
+    if (!login) throw new GitHubError('GitHub 아이디가 올바르지 않습니다.', { status: 400, reason: 'invalidName', detail: 'username' });
+    return login;
+  };
+
+  const forgeRepoError = () => new GitHubError('대장간 저장소를 사용할 수 없습니다.', { status: 409, reason: 'rejected', detail: 'forgeRepo' });
+
+  /** 새로 만든 저장소는 준비가 늦을 수 있습니다. 방금 만든 경우에만 잠시 뒤 다시 시도합니다. */
+  async function whilePreparing(fresh, work) {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await work();
+      } catch (error) {
+        if (!fresh || !isRepoStillPreparing(error) || attempt >= REPO_READY_RETRY_DELAYS_MS.length) throw error;
+        await sleep(REPO_READY_RETRY_DELAYS_MS[attempt]);
+      }
+    }
+  }
+
+  /**
+   * 내 대장간 저장소(<아이디>/vpylab-forge)를 준비합니다. 없으면 공개 저장소로 만들고, topic `vpylab-forge`가 없으면 붙입니다.
+   * 같은 이름의 저장소가 비공개이거나 내가 관리할 수 없으면 올리지 않습니다(공개 범위를 앱이 바꾸지 않습니다).
+   */
+  /** 응답이 정말 `<아이디>/vpylab-forge`인지. 이름을 바꾸거나 옮긴 저장소는 GitHub가 옛 주소를 새 저장소로 넘겨 주므로 다른 저장소가 올 수 있습니다. */
+  const isForgeRepo = (info, owner) => Boolean(info) && info.name === FORGE_REPO && String(info.owner?.login || '').toLowerCase() === owner.toLowerCase();
+
+  /** 내 대장간 저장소의 정보. 없거나(404) 옛 주소가 다른 저장소로 넘어가면 null. */
+  async function findForgeRepo(owner) {
+    try {
+      const info = await request(`/repos/${owner}/${FORGE_REPO}`);
+      return isForgeRepo(info, owner) ? info : null;
+    } catch (error) {
+      if (error.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async function ensureForgeRepo(owner) {
+    let info = await findForgeRepo(owner);
+    let fresh = false;
+    if (!info) {
+      try {
+        info = await post('/user/repos', {
+          name: FORGE_REPO,
+          description: 'VPyLab 대장간 모듈',
+          auto_init: true, // README로 기본 브랜치를 만들어 둡니다. 빈 저장소에는 파일을 바로 올리지 못할 수 있습니다.
+          has_issues: false,
+          has_wiki: false,
+          private: false,
+        });
+        fresh = true;
+      } catch (error) {
+        if (error.status !== 422) throw error;
+        // 같은 이름의 저장소가 이미 있습니다. 그사이 다른 탭에서 만들었으면 다시 읽힙니다.
+        // 읽히지 않으면 비공개 저장소입니다(연결할 때 받은 public_repo 권한으로는 비공개 저장소가 보이지 않습니다).
+        info = await findForgeRepo(owner);
+        if (!info) throw forgeRepoError();
+      }
+    }
+    if (info.private || info.archived) throw forgeRepoError();
+    const topics = Array.isArray(info.topics) ? info.topics.filter((name) => typeof name === 'string') : [];
+    if (!topics.includes(FORGE_TOPIC)) {
+      await whilePreparing(fresh, () => request(`/repos/${owner}/${FORGE_REPO}/topics`, { method: 'PUT', body: { names: [...topics, FORGE_TOPIC] } }));
+    }
+    return { branch: typeof info.default_branch === 'string' && info.default_branch ? info.default_branch : 'main', fresh };
+  }
+
   return {
     me,
+
+    /**
+     * 내 대장간 저장소에 올린 모듈 파일을 읽습니다: { items: [{ id, sha, code }] }. 저장소나 폴더가 없으면 빈 목록입니다.
+     * 내용 검사는 부르는 쪽(client/src/forge/)이 합니다.
+     */
+    async listForgeModules(owner) {
+      const login = forgeOwner(owner);
+      if (!(await findForgeRepo(login))) return { items: [] };
+      let listing;
+      try {
+        listing = await request(`/repos/${login}/${FORGE_REPO}/contents/${FORGE_DIR}`);
+      } catch (error) {
+        if (error.status === 404) return { items: [] };
+        throw error;
+      }
+      const files = (Array.isArray(listing) ? listing : [])
+        .filter((file) => file?.type === 'file' && forgeIdOfFileName(file.name) && Number.isInteger(file.size) && file.size > 0 && file.size <= MAX_FORGE_FILE_BYTES)
+        .slice(0, MAX_FORGE_MODULES_PER_REPO);
+      const items = [];
+      for (let start = 0; start < files.length; start += 4) {
+        const batch = await Promise.all(files.slice(start, start + 4).map(async (file) => {
+          const read = await getContentsFile(login, FORGE_REPO, `${FORGE_DIR}/${file.name}`);
+          return read ? { id: forgeIdOfFileName(file.name), sha: read.sha, code: read.text } : null;
+        }));
+        items.push(...batch.filter(Boolean));
+      }
+      return { items };
+    },
+
+    /**
+     * 모듈 하나를 내 대장간 저장소에 올립니다(modules/<모듈 ID>.py). 같은 ID의 파일이 있으면 고칩니다.
+     * 모두의 모듈에 실리는 것은 교사가 저장소를 승인한 뒤이고, 목록은 주기적으로 갱신됩니다(scripts/gallery/forge-index.mjs).
+     * 결과: { owner, id, fileUrl, changed, fresh } — fresh는 이번에 저장소를 새로 만들었는지입니다.
+     */
+    async putForgeModule({ owner, id, code, title } = {}) {
+      const login = forgeOwner(owner);
+      if (!isForgeModuleId(id)) throw new GitHubError('모듈 ID가 올바르지 않습니다.', { status: 400, reason: 'rejected', detail: 'forgeId' });
+      if (typeof code !== 'string' || !code.trim()) throw new GitHubError('모듈 내용이 비어 있습니다.', { status: 400, reason: 'empty' });
+      if (byteLength(code) > MAX_FORGE_FILE_BYTES) throw new GitHubError('모듈이 너무 큽니다.', { status: 413, reason: 'tooLarge', detail: 'forge' });
+      const { branch, fresh } = await ensureForgeRepo(login);
+      const path = forgeFilePath(id);
+      const name = oneLine(title, 80) || id;
+      const changed = await whilePreparing(fresh, async () => {
+        const existing = await getContentsFile(login, FORGE_REPO, path, branch);
+        if (existing && existing.text === code) return false;
+        await request(`/repos/${login}/${FORGE_REPO}/contents/${path}`, {
+          method: 'PUT',
+          body: { message: `${existing ? '모듈 고침' : '모듈 공개'}: ${name}`, content: encodeBase64Utf8(code), branch, ...(existing ? { sha: existing.sha } : {}) },
+        });
+        return true;
+      });
+      return { owner: login, id, fileUrl: forgeFileUrlOf(login, id), changed, fresh };
+    },
+
+    /** 내 대장간 저장소에서 모듈 파일을 지웁니다. 파일이 없으면 removed는 false입니다. 다음 목록 갱신 때 모두의 모듈에서 빠집니다. */
+    async deleteForgeModule({ owner, id } = {}) {
+      const login = forgeOwner(owner);
+      if (!isForgeModuleId(id)) throw new GitHubError('모듈 ID가 올바르지 않습니다.', { status: 400, reason: 'rejected', detail: 'forgeId' });
+      const path = forgeFilePath(id);
+      if (!(await findForgeRepo(login))) return { removed: false };
+      const existing = await getContentsFile(login, FORGE_REPO, path);
+      if (!existing) return { removed: false };
+      try {
+        await request(`/repos/${login}/${FORGE_REPO}/contents/${path}`, { method: 'DELETE', body: { message: `모듈 공개 내림: ${id}`, sha: existing.sha } });
+      } catch (error) {
+        // 그사이 다른 탭이나 앞선 클릭이 이미 지웠습니다.
+        if (error.status === 404) return { removed: false };
+        throw error;
+      }
+      return { removed: true };
+    },
 
     /** 내가 소유하거나 협업자인 공개 저장소 가운데 VPyLab 프로젝트(topic)인 것. 최근에 바뀐 순서. */
     async listProjects() {

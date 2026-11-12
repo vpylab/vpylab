@@ -1,4 +1,5 @@
 import { activeParameters, buildForgeModel, createRecipe, forgeParameters, validateRecipe, forgeColorVector, isForgeStudio } from './recipes.js';
+import { forgeFileUrlOf, parseForgeSourceId } from '../../../server/shared/forge-rules.js';
 
 export const MODULE_PREFIX = '# vpylab-forge:v1 ';
 export const MODULE_FORMAT = 'vpylab-forge';
@@ -38,7 +39,8 @@ export function moduleDefinition(module) {
   const model=buildForgeModel(module.recipe),name=factoryName(module),lines=[],hasSound=model.preset.id==='bell'&&module.recipe.bellMode!=='shape',hasWaves=hasSound&&module.recipe.bellMode==='waves';
   const push=(line='',level=1)=>lines.push('    '.repeat(level)+line);
   lines.push(`# ${cleanText(module.title,80)} · VPyLab 대장간`);
-  if(module.source)lines.push(`# 원본: ${module.source.title} · ${module.source.author}`,`# 원본 프로젝트: /gallery/${module.source.id}`);
+  // 원본이 GitHub의 모듈(gh:아이디/모듈 ID)이면 그 파일의 주소를 적습니다.
+  if(module.source){const gh=parseForgeSourceId(module.source.id);lines.push(`# 원본: ${module.source.title} · ${module.source.author}`,`# 원본 프로젝트: ${gh?forgeFileUrlOf(gh.owner,gh.id):'/gallery/'+module.source.id}`);}
   for(const ref of module.references||[])lines.push(`# 참고: ${cleanText(ref.title,100)} · ${cleanText(ref.url,2000)}`);
   lines.push(`def ${name}(pos=None, scale=1):`);
   push('if not isinstance(scale, (int, float)) or not 0 < scale < 1000:');push('raise ValueError("scale은 0보다 큰 유한한 양수여야 합니다 (1000 미만)")',2);

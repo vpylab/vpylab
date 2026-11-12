@@ -42,6 +42,21 @@ export const GITHUB_ADDON = OPEN_EDITION && Boolean((import.meta.env.VITE_GITHUB
 const galleryIndexUrl = (import.meta.env.VITE_GALLERY_INDEX_URL || '').trim();
 export const GALLERY_INDEX_URL = OPEN_EDITION && isAllowedIndexUrl(galleryIndexUrl) ? galleryIndexUrl : '';
 export const GITHUB_GALLERY = Boolean(GALLERY_INDEX_URL);
+/**
+ * 오픈소스 판의 GitHub 연동 대장간(모두의 모듈, 서버·DB 없음, client/src/forge/github-registry.js).
+ * 목록 주소(VITE_FORGE_INDEX_URL)가 설정된 배포에서만 켜집니다. 주소 규칙은 갤러리 목록과 같습니다.
+ * 목록은 갤러리와 같은 워크플로가 만듭니다(forge.json). 공개 등록은 위의 GitHub 애드온이 있을 때만 보입니다.
+ */
+const forgeIndexUrl = (import.meta.env.VITE_FORGE_INDEX_URL || '').trim();
+export const FORGE_INDEX_URL = OPEN_EDITION && isAllowedIndexUrl(forgeIndexUrl) ? forgeIndexUrl : '';
+export const GITHUB_FORGE = Boolean(FORGE_INDEX_URL);
+/**
+ * 대장간의 모두의 모듈을 어디에 두는지.
+ *   server: 수업용 판. Supabase의 갤러리 테이블(client/src/forge/registry.js)
+ *   github: 오픈소스 판에서 목록 주소가 설정된 배포. 학생의 GitHub 저장소와 정적 목록
+ *   none: 그 밖의 배포. 모두의 모듈과 공개 등록을 보이지 않습니다. 만들기·보관함·내려받기는 그대로 동작합니다.
+ */
+export const FORGE_REGISTRY = SERVER_FEATURES ? 'server' : GITHUB_FORGE ? 'github' : 'none';
 /** 만들기 화면에 팀 프로젝트(GitHub)가 있는 배포인지. 수업용 판은 운영 서버 방식, 오픈소스 판은 위의 애드온입니다. */
 export const TEAM_PROJECTS = SERVER_FEATURES || GITHUB_ADDON;
 /** 공유 주소의 이름을 정할 수 있는지. 두 판의 저장소가 모두 지원합니다(규칙: server/shared/share-names.js). */

@@ -21,6 +21,7 @@ VPyLab은 저장소 하나(`vpylab/vpylab`)에서 두 판을 배포합니다. �
 - `GITHUB_ADDON`: 오픈소스 판에 GitHub 클라이언트 ID(`VITE_GITHUB_CLIENT_ID`)를 넣은 배포. 서버 없는 GitHub 팀 프로젝트가 켜집니다.
 - `TEAM_PROJECTS`: 만들기 화면에 팀 프로젝트가 있는 배포(수업용 판의 운영 서버 방식 또는 위 애드온).
 - `GITHUB_GALLERY`: 오픈소스 판에 갤러리 목록 주소(`VITE_GALLERY_INDEX_URL`)를 넣은 배포. 서버 없는 GitHub 연동 갤러리와 머리글의 갤러리 메뉴가 켜집니다.
+- `GITHUB_FORGE`: 오픈소스 판에 대장간 목록 주소(`VITE_FORGE_INDEX_URL`)를 넣은 배포. 대장간의 모두의 모듈이 서버 없이 켜집니다. `FORGE_REGISTRY`는 수업용 판이면 `server`, 이 배포면 `github`, 그 밖에는 `none`입니다.
 - 오픈소스 판에서 꺼지는 것: 로그인 버튼, 갤러리 메뉴(목록 주소를 넣지 않은 배포). 구글 클라이언트 ID가 없는 배포에서 "저장"을 누르면 드라이브 저장 준비 안내가 표시됩니다.
 - 오픈소스 판은 커밋된 `client/.env.production`에 Supabase·Railway 값이 있어도 사용하지 않습니다. `build:open`이 이 값을 비우고 빌드하므로 번들에 주소가 남지 않습니다. CSP에서도 두 주소를 뺍니다.
 
@@ -153,6 +154,30 @@ npx wrangler pages dev client/dist --port 4087
 목록 주소는 본 앱의 CSP가 허용하는 두 가지만 받습니다. `https://raw.githubusercontent.com/…`로 시작하는 `.json` 주소, 또는 같은 출처의 경로(`/…`)입니다. 다른 주소를 넣으면 갤러리는 꺼진 채로 빌드됩니다. 이 기능 때문에 CSP에 더한 주소는 없습니다. 실행 화면은 새 탭으로 엽니다.
 
 다른 학교가 자기 목록을 운영하려면 자기 저장소(포크)에서 2~5번을 하고 주소의 `vpylab/vpylab`을 자기 저장소로 바꿉니다. topic은 모든 배포가 `vpylab-gallery`를 함께 사용하므로, 승인 대기 목록에는 다른 학교 학생이 올린 작품도 나타납니다. 공개 목록에는 그 저장소의 승인 파일에 있는 작품만 들어갑니다.
+
+### 대장간의 모두의 모듈 (GitHub 방식, 2026-11-12)
+
+대장간의 공개 등록도 같은 구조로 서버 없이 동작합니다. 수업용 판의 기존 등록(Supabase의 `vpylab_gallery`)과는 별개입니다.
+
+| 단계 | 하는 일 | 코드 |
+|---|---|---|
+| 공개 등록(학생) | 작업대의 "모두의 모듈에 공개 등록"이 학생 계정에 공개 저장소 `vpylab-forge`를 만들고(없을 때) topic `vpylab-forge`를 붙인 뒤 `modules/<모듈 ID>.py`를 올립니다. 파일 첫 줄에 모듈 자료가 들어 있습니다. | `client/src/github/github-api.js`(`putForgeModule`), `client/src/forge/github-registry.js`, `client/src/components/forge/ForgeGitHubPublish.jsx` |
+| 목록 만들기 | 갤러리와 같은 워크플로가 topic으로 저장소를 찾고, 승인된 저장소의 모듈 파일만 읽어 `forge.json`을 씁니다. 승인 대기 저장소는 `forge-pending.json`과 `PENDING.md`의 둘째 표에 남습니다. | `scripts/gallery/forge-index.mjs`, `scripts/gallery/build-index.mjs` |
+| 승인(교사) | 갤러리와 같은 `approvals.txt`. `approve 아이디/vpylab-forge` 또는 `approve @아이디` | `docs/GALLERY_GITHUB.md` 6절 |
+| 보기·가져오기 | 앱은 `forge.json`만 읽습니다. 가져오기는 로그인과 네트워크 요청 없이 이 브라우저의 보관함에 사본을 만들고 원본을 `gh:아이디/모듈 ID`로 기록합니다. | `client/src/forge/forge-index.js`, `client/src/components/forge/ForgeLibrary.jsx` |
+| 공개 내리기 | "내 모듈 공개 내리기"가 그 파일을 저장소에서 지웁니다. | `deleteForgeModule` |
+
+켜는 순서: 갤러리의 1~4번을 마친 저장소에서 Actions 변수 `VITE_FORGE_INDEX_URL`에 `https://raw.githubusercontent.com/vpylab/vpylab/gallery-data/forge.json`을 넣고 오픈소스 판을 다시 배포합니다. 공개 등록 버튼은 GitHub 팀 프로젝트 애드온(`VITE_GITHUB_CLIENT_ID`)이 켜진 배포에서만 보이고, 애드온이 없는 배포는 보기와 가져오기만 됩니다. 변수를 지우고 다시 배포하면 모두의 모듈 탭과 공개 등록이 꺼지며 만들기, 보관함, 내려받기는 그대로 동작합니다.
+
+알아 둘 점:
+
+- 모듈의 파이썬 코드는 목록에 싣지 않습니다. 목록에는 모듈 자료(레시피)만 있고, 앱이 대장간의 검사기(`parseModuleFile`)를 통과한 레시피에서 코드를 다시 만듭니다. 학생이 저장소의 `.py` 파일을 손으로 고쳐도 다른 학생의 브라우저에서 실행되지 않습니다.
+- 승인은 저장소 단위입니다. 승인한 저장소에 나중에 올라오는 모듈도 표시됩니다.
+- 한 저장소에서 50개, 전체 300개까지 싣습니다. 마지막으로 읽은 뒤 푸시가 없는 저장소는 GitHub에 다시 묻지 않고(`forge.json`의 `repos`에 읽은 때의 푸시 시각을 적어 둡니다), 푸시가 있으면 내용(sha)이 바뀐 파일만 다시 읽습니다. 저장소 하나를 읽지 못하면 그 저장소의 앞선 모듈을 그대로 두고 다음 실행에서 다시 읽습니다.
+- 목록 스크립트는 모듈 파일의 첫 줄(모듈 자료)만 읽습니다. 본문의 파이썬 코드는 앱에서 사용하지 않으므로 검사하지 않습니다. 카드의 "GitHub에서 보기"는 학생의 저장소 파일을 그대로 엽니다.
+- 학생 계정에 같은 이름의 비공개 저장소가 있으면 올리지 않고 안내합니다(앱의 권한으로는 비공개 저장소가 보이지 않습니다). 예전 `vpylab-forge`의 이름을 바꾼 경우에는 새 저장소를 만듭니다.
+- 필요한 GitHub 권한은 `public_repo`이며 새로 요청하는 권한이 없습니다.
+- 확인하지 못한 것: 실제 계정으로 공개 등록, 워크플로 실행, 승인, 모두의 모듈 표시. 화면과 스크립트는 흉내 낸 GitHub로 확인했습니다.
 
 권한과 한계는 다음과 같습니다.
 

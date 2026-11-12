@@ -5,7 +5,8 @@
  *   node scripts/gallery/build-index.mjs --approvals <approvals.txt> --out <폴더> [--previous <폴더>] [--dry-run]
  *
  * <폴더>에 gallery.json(앱이 읽는 공개 목록), pending.json과 PENDING.md(승인 대기 목록)를 씁니다.
- * --previous 폴더에 앞서 만든 gallery.json·pending.json이 있으면 바뀐 저장소의 미리보기 그림만 다시 확인합니다.
+ * 대장간의 모두의 모듈 목록(forge.json)과 승인 대기 목록(forge-pending.json)도 함께 씁니다(forge-index.mjs).
+ * --previous 폴더에 앞서 만든 목록이 있으면 바뀐 저장소의 미리보기 그림과 바뀐 모듈 파일만 다시 읽습니다.
  * --dry-run은 파일을 쓰지 않고 결과 요약만 출력합니다.
  * 환경 변수 GITHUB_TOKEN이 있으면 GitHub 요청에 사용합니다(읽기만 합니다). 토큰은 출력하지 않습니다.
  * GitHub 검색이 실패하면 아무 파일도 쓰지 않고 1로 끝납니다. 앞서 만든 목록이 그대로 남습니다.
@@ -14,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildIndex, findThumbnail, parseApprovals, renderPendingMarkdown, searchGalleryRepos } from './gallery-index.mjs';
+import { buildForgeIndex, forgeSearchQuery, readForgeModules, renderForgePendingMarkdown } from './forge-index.mjs';
 
 export function parseArgs(argv) {
   const options = { approvals: '', out: '', previous: '', dryRun: false };
@@ -53,13 +55,21 @@ export async function main(argv, { env = process.env, fetchImpl = globalThis.fet
   const token = String(env.GITHUB_TOKEN || '').trim();
   const previous = options.previous ? readJson(path.join(options.previous, 'gallery.json')) : null;
   const previousPending = options.previous ? readJson(path.join(options.previous, 'pending.json')) : null;
+  const previousForge = options.previous ? readJson(path.join(options.previous, 'forge.json')) : null;
+  const previousForgePending = options.previous ? readJson(path.join(options.previous, 'forge-pending.json')) : null;
 
   let result;
+  let forge;
   try {
     const repos = await searchGalleryRepos({ fetchImpl, token });
     result = await buildIndex({
       repos, approvals, previous, previousPending, now,
       checkThumbnail: (entry, branch) => findThumbnail({ fetchImpl, token, entry, branch }),
+    });
+    const forgeRepos = await searchGalleryRepos({ fetchImpl, token, query: forgeSearchQuery() });
+    forge = await buildForgeIndex({
+      repos: forgeRepos, approvals, previous: previousForge, previousPending: previousForgePending, now,
+      readModules: (repo, old) => readForgeModules({ fetchImpl, token, repo, previous: old }),
     });
   } catch (error) {
     io.error(`목록을 만들지 못했습니다: ${error.message}`);
@@ -68,16 +78,19 @@ export async function main(argv, { env = process.env, fetchImpl = globalThis.fet
 
   const { stats, warnings } = result;
   io.log(`검색 ${stats.found}건 · 공개 목록 ${stats.approved}건 · 승인 대기 ${stats.pending}건 · 차단 ${stats.blocked}건 · 제외 ${stats.skipped}건`);
+  io.log(`대장간: 검색 ${forge.stats.found}건 · 승인된 저장소 ${forge.stats.repos}곳 · 공개 모듈 ${forge.stats.modules}개 · 승인 대기 ${forge.stats.pending}곳 · 차단 ${forge.stats.blocked}곳 · 제외 ${forge.stats.skipped}건${forge.stats.kept ? ` · 이번에 읽지 못해 그대로 둔 저장소 ${forge.stats.kept}곳` : ''}`);
   for (const warning of warnings) io.error(`승인 파일 ${warning.line}번째 줄을 읽지 못했습니다: ${warning.text}`);
 
-  const pendingMarkdown = renderPendingMarkdown(result.pending, warnings);
+  const pendingMarkdown = `${renderPendingMarkdown(result.pending, warnings)}\n${renderForgePendingMarkdown(forge.pending)}`;
   if (options.dryRun) {
-    io.log(JSON.stringify({ gallery: result.gallery, pending: result.pending }, null, 2));
+    io.log(JSON.stringify({ gallery: result.gallery, pending: result.pending, forge: forge.forge, forgePending: forge.pending }, null, 2));
     return 0;
   }
   fs.mkdirSync(options.out, { recursive: true });
   fs.writeFileSync(path.join(options.out, 'gallery.json'), `${JSON.stringify(result.gallery, null, 2)}\n`);
   fs.writeFileSync(path.join(options.out, 'pending.json'), `${JSON.stringify(result.pending, null, 2)}\n`);
+  fs.writeFileSync(path.join(options.out, 'forge.json'), `${JSON.stringify(forge.forge)}\n`);
+  fs.writeFileSync(path.join(options.out, 'forge-pending.json'), `${JSON.stringify(forge.pending, null, 2)}\n`);
   fs.writeFileSync(path.join(options.out, 'PENDING.md'), pendingMarkdown);
   if (env.GITHUB_STEP_SUMMARY) {
     try { fs.appendFileSync(env.GITHUB_STEP_SUMMARY, `${pendingMarkdown}\n`); } catch { /* 요약을 쓰지 못해도 목록은 만들어졌습니다. */ }
