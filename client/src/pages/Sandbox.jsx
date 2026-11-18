@@ -492,7 +492,11 @@ export default function Sandbox() {
           updateCode(repoCode);
           homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = repoCode;
           setRepoLoadStatus(null);
-          if (repoAutorun) {
+          if (runViewParam) {
+            // README 링크(?repo=…&view=run): 공유 링크처럼 실행 화면부터 보여 주고, 누르면 실행합니다.
+            setTheaterMode(true);
+            setTheaterWaiting(true);
+          } else if (repoAutorun) {
             pendingPlayRef.current = repoCode;
           }
           setOutputs([{ text: ui`${repoParam} 프로젝트 코드를 불러왔습니다.`, type: 'success', id: Date.now() }]);
@@ -506,7 +510,12 @@ export default function Sandbox() {
             if (playCode) {
               updateCode(playCode);
               homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = playCode;
-              pendingPlayRef.current = playCode;
+              if (runViewParam) {
+                setTheaterMode(true);
+                setTheaterWaiting(true);
+              } else {
+                pendingPlayRef.current = playCode;
+              }
               setRepoLoadStatus(null);
               setOutputs([{ text: ui("저장소를 불러올 수 없어 갤러리 스냅샷으로 실행합니다"), type: 'warning', id: Date.now() }]);
               return;
@@ -1473,7 +1482,8 @@ export default function Sandbox() {
     };
 
     return (
-      <div className="h-screen w-screen relative" style={{ backgroundColor: '#000' }}>
+      // 왼쪽 위 [코드 보기]·왼쪽 아래 [정지] 단추가 scene.title·caption을 가리지 않게 글자를 안쪽으로 옮깁니다.
+      <div className="h-screen w-screen relative" style={{ backgroundColor: '#000', '--vpylab-title-top': '4rem', '--vpylab-caption-bottom': '4rem' }}>
         {draftGuard}
         <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: handleRun, onStop: handleStop, isRunning:isRunning||audio.playing, isReady }} />
 
@@ -1499,11 +1509,12 @@ export default function Sandbox() {
         {!theaterWaiting && (
           <button
             onClick={() => { handleStop(); setTheaterMode(false); }}
+            className="text-[13px] pointer-coarse:text-[15px] pointer-coarse:min-h-11"
             style={{
               position: 'fixed', top: 16, left: 16, zIndex: 100,
               background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
               border: 'none', borderRadius: 10,
-              color: 'white', padding: '8px 14px', fontSize: 13, fontWeight: 600,
+              color: 'white', padding: '8px 14px', fontWeight: 600,
               cursor: 'pointer', transition: 'opacity 0.2s',
               boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
             }}
@@ -1517,11 +1528,12 @@ export default function Sandbox() {
         {(isRunning||audio.playing) && (
           <button
             onClick={handleStop}
+            className="text-[13px] pointer-coarse:text-[15px] pointer-coarse:min-h-11"
             style={{
               position: 'fixed', bottom: 16, left: 16, zIndex: 100,
               background: 'rgba(239,68,68,0.8)', backdropFilter: 'blur(8px)',
               border: 'none', borderRadius: 10,
-              color: 'white', padding: '8px 14px', fontSize: 13, fontWeight: 600,
+              color: 'white', padding: '8px 14px', fontWeight: 600,
               cursor: 'pointer', transition: 'background 0.2s',
             }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,1)'}
