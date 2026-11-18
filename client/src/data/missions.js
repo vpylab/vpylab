@@ -534,7 +534,7 @@ for i in range(len(불빛들)):
       { type: 'sphere', property: 'pos.y', operator: '>', value: 0.85, index: 2 },
     ],
     codeChecks: [
-      { pattern: '불빛들\\s*\\[\\s*i\\s*\\]\\.pos\\s*=', minCount: 1, message: '불빛들[i].pos를 업데이트하세요' },
+      { pattern: '불빛들\\s*\\[\\s*i\\s*\\]\\.pos\\s*\\+?=(?!=)', minCount: 1, message: '불빛들[i].pos를 업데이트하세요' },
       { pattern: '이동량들\\s*\\[\\s*i\\s*\\]', minCount: 1, message: '이동량들[i]를 사용하세요' },
     ],
     hints: [

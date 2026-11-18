@@ -69,6 +69,25 @@ describe.skipIf(!pythonAvailable)('미션 채점: 시작 코드 실패 · 모범
     }
   });
 
+  it('CT-10은 += 풀이도 같은 좌표로 채점하고 반대로 이동하면 실패한다', () => {
+    const mission = missions.find(item => item.id === 'CT-10');
+    const original = mission.solutionCode;
+    const cases = ['+=', '-='].map(operator => ({
+      id: mission.id, label: operator,
+      code: original.replace('불빛들[i].pos = 불빛들[i].pos +', `불빛들[i].pos ${operator}`),
+    }));
+    const variants = runPythonJobs(cases);
+    for (const { label, code } of cases) {
+      const run = variants.get(`CT-10:${label}`);
+      expect(run.error).toBeNull();
+      expect(gradeRun(mission, run, code).passed).toBe(label === '+=');
+      if (label === '+=') {
+        expect(getSnapshot().filter(obj => obj.type === 'sphere').map(obj => obj.props.pos))
+          .toEqual([[-1, 0.3, 0], [0, 0.6, 0], [1, 0.9, 0]]);
+      }
+    }
+  });
+
   it('실행형(run) 미션은 모두 조건식 또는 코드 검사를 가진다', () => {
     for (const mission of missions.filter(m => m.gradeType === 'run')) {
       const hasRule = (mission.assertions?.length > 0) || (mission.codeChecks?.length > 0);
