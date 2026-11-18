@@ -1,7 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { embedCode, embedUrl, isGalleryId, workUrl } from './embed';
 
 describe('임베드 주소와 코드', () => {
+  it.each([
+    'https://vpylab.pages.dev',
+    'https://preview.vpylab.pages.dev',
+    'https://vpylab.vercel.app',
+    'http://localhost:4033',
+  ])('%s에서 복사하는 iframe은 같은 배포의 작품을 연다', origin => {
+    vi.stubGlobal('window', { location: new URL(origin) });
+    try {
+      expect(embedCode('class-demo')).toContain(`src="${origin}/embed/class-demo"`);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('uuid는 갤러리, 짧은 id는 공유 코드로 본다', () => {
     expect(isGalleryId('2f1c9a4e-5b6d-4c7e-8f90-123456789abc')).toBe(true);
     expect(isGalleryId('abc12345')).toBe(false);

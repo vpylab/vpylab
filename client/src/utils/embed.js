@@ -9,12 +9,9 @@ export function isGalleryId(id) {
   return UUID.test(String(id || ''));
 }
 
-/** 배포 주소를 기본으로 쓰고, 로컬 개발 서버에서는 현재 출처를 써서 바로 확인할 수 있게 합니다. */
+/** 작품을 만든 배포의 저장소에서 같은 ID를 읽습니다. */
 export function shareOrigin() {
-  if (typeof window === 'undefined') return PUBLIC_ORIGIN;
-  const host = window.location?.hostname || '';
-  if (/^(localhost|127\.0\.0\.1|\[::1\])$/.test(host) || host.endsWith('.local')) return window.location.origin;
-  return PUBLIC_ORIGIN;
+  return typeof window === 'undefined' ? PUBLIC_ORIGIN : window.location.origin;
 }
 
 /** 작품·공유 코드의 일반 페이지 주소 (/gallery/:id 또는 /s/:id) */
