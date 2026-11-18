@@ -187,7 +187,7 @@ export default function ClassroomApp() {
         <button className="cr-materials-banner" onClick={() => navigate('/materials')}><span className="cr-materials-icon" aria-hidden="true">📚</span><span><strong>배움의 재료가 필요하다면</strong><small>{curriculumCounts.courses}개 코스 · {curriculumCounts.lessons}개 차시 · {curriculumCounts.missions}개 미션 · {curriculumCounts.examples}개 예제</small></span><span>수업 자료 둘러보기 ↗</span></button>
       </>}
     </main>}
-    {!projectId && <footer className="cr-footer"><span>VPyLab <b>·</b> 작은 실험이 큰 생각이 되는 곳</span><span>코드 AGPL v3 <b>·</b> 수업 자료 CC BY-NC-SA 4.0</span></footer>}
+    {!projectId && <footer className="cr-footer"><span>VPyLab <b>·</b> 작은 실험으로 생각을 넓히는 곳</span><span>코드 AGPL v3 이상 <b>·</b> 수업 자료 CC BY-NC-SA 4.0</span></footer>}
     {create && user && <ProjectDialog initial={create} onClose={() => setCreate(null)} onCreate={createProject} defaultCode={DEFAULT_CODE} />}
   </div>;
 }
