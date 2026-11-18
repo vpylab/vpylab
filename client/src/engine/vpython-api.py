@@ -90,8 +90,17 @@ class vector:
     def _changed(self):
         """성분이 바뀌면 소유 객체의 속성 세터를 다시 호출해 화면 갱신 커맨드를 보낸다."""
         owner = self._owner
-        if owner is not None:
-            setattr(owner, self._attr, self)
+        if owner is None:
+            return
+        slot = '_' + self._attr
+        if getattr(owner, slot, None) is not self:
+            return  # 이미 다른 값으로 교체된 벡터
+        setattr(owner, self._attr, self)
+        # 세터가 방향 정규화 등으로 복제본을 만들더라도 현재 벡터의 참조는 유지한다.
+        updated = getattr(owner, slot)
+        if updated is not self and isinstance(updated, vector):
+            self._x, self._y, self._z = updated._x, updated._y, updated._z
+            setattr(owner, slot, self)
 
     @property
     def x(self):
@@ -514,7 +523,7 @@ class _VectorOwner:
     def __setattr__(self, name, value):
         if isinstance(value, vector) and name.startswith('_') and name[1:] in self._vector_attrs:
             # 사용자 변수나 다른 객체의 벡터를 그대로 보관하면 별칭이 되므로 복제한다 (VPython은 성분을 복사한다)
-            if value._owner is not self:
+            if value._owner is not self or value._attr != name[1:]:
                 value = value.clone()
             value._owner = self
             value._attr = name[1:]

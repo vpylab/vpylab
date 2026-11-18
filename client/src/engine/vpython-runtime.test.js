@@ -13,6 +13,32 @@ const pythonAvailable = hasPython();
 const one = (code, extra = {}) => runPythonJobs([{ id: 'r', label: 'a', code, ...extra }]).get('r:a');
 
 describe.skipIf(!pythonAvailable)('학생 코드 실행 런타임', { timeout: 60_000 }, () => {
+  it('한 구의 위치와 색은 독립적이고 교체된 벡터는 화면을 갱신하지 않는다', () => {
+    const run = one(`from vpython import *
+b = sphere(pos=vec(1,0,0))
+p = b.pos
+b.color = p
+b.pos = b.pos
+p.y = 0.5
+assert b.color == vec(1,0,0) and b.pos is p
+b.color.z = 0.25
+assert p.z == 0
+b.pos = b.color
+p.x = 8
+assert b.pos == vec(1,0,0.25)
+`);
+    expect(run.error).toBeNull();
+    const updates = run.commands.filter(command => command.action === 'update');
+    const expected = [
+      { color: [1, 0, 0] },
+      { pos: [1, 0, 0] },
+      { pos: [1, 0.5, 0] },
+      { color: [1, 0, 0.25] },
+      { pos: [1, 0, 0.25] },
+    ];
+    expect(updates).toEqual(expected.map(props => ({ action: 'update', id: 'obj_1', ...props })));
+  });
+
   it('학생의 except Exception:이 정지 신호를 삼키지 못한다 (_StopExecution은 BaseException)', () => {
     const r = one('from vpython import *\nn = 0\nwhile True:\n    try:\n        rate(1000)\n        n += 1\n    except Exception:\n        pass\n', { rateLimit: 300 });
     expect(r.stopped).toBe(true);
