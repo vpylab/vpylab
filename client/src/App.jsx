@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Outlet, Route, RouterProvider } from 'react-router-dom';
 import { I18nProvider } from './i18n';
 import { useI18n } from './i18n/useI18n';
 import Home from './pages/Home';
@@ -72,43 +72,45 @@ function AppContent() {
           {t('common.loading')}
         </div>
       }>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/tutorials" element={<Tutorials />} />
-          <Route path="/tutorials/:tutorialId" element={<Tutorials />} />
-          <Route path="/courses" element={<Courses />} />
-          <Route path="/courses/:courseId" element={<Courses />} />
-          <Route path="/courses/:courseId/:lessonId" element={<Courses />} />
-          <Route path="/sandbox" element={<Sandbox />} />
-          <Route path="/examples" element={<Examples />} />
-          <Route path="/missions" element={<Missions />} />
-          <Route path="/mission/:missionId" element={<MissionPlay />} />
-          <Route path="/docs" element={<Docs />} />
-          <Route path="/forge" element={<Forge />} />
-          <Route path="/guide" element={<Guide />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/gallery" element={GitHubGallery ? <GitHubGallery /> : <Gallery />} />
-          <Route path="/gallery/glowscript/:projectId" element={<SourceProject />} />
-          <Route path="/gallery/:id" element={<GalleryDetail />} />
-          {/* 공유 주소는 만들기 화면이 직접 읽습니다. 주소창에 /s/이름이 남아 새로 고침·복사해도 작품이 다시 열립니다. */}
-          <Route path="/s/:id" element={<Sandbox />} />
-          <Route path="/embed/:id" element={<Embed />} />
-          <Route path="/privacy" element={<Privacy />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/github/callback" element={<GitHubCallback />} />
-        </Routes>
+        <Outlet />
       </Suspense>
     </>
   );
 }
 
+const router = createBrowserRouter(createRoutesFromElements(
+  <Route element={<AppContent />}>
+    <Route path="/" element={<Home />} />
+    <Route path="/tutorials" element={<Tutorials />} />
+    <Route path="/tutorials/:tutorialId" element={<Tutorials />} />
+    <Route path="/courses" element={<Courses />} />
+    <Route path="/courses/:courseId" element={<Courses />} />
+    <Route path="/courses/:courseId/:lessonId" element={<Courses />} />
+    <Route path="/sandbox" element={<Sandbox />} />
+    <Route path="/examples" element={<Examples />} />
+    <Route path="/missions" element={<Missions />} />
+    <Route path="/mission/:missionId" element={<MissionPlay />} />
+    <Route path="/docs" element={<Docs />} />
+    <Route path="/forge" element={<Forge />} />
+    <Route path="/guide" element={<Guide />} />
+    <Route path="/about" element={<About />} />
+    <Route path="/dashboard" element={<Dashboard />} />
+    <Route path="/gallery" element={GitHubGallery ? <GitHubGallery /> : <Gallery />} />
+    <Route path="/gallery/glowscript/:projectId" element={<SourceProject />} />
+    <Route path="/gallery/:id" element={<GalleryDetail />} />
+    {/* 공유 주소는 만들기 화면이 직접 읽습니다. 주소창에 /s/이름이 남아 새로 고침·복사해도 작품이 다시 열립니다. */}
+    <Route path="/s/:id" element={<Sandbox />} />
+    <Route path="/embed/:id" element={<Embed />} />
+    <Route path="/privacy" element={<Privacy />} />
+    <Route path="/auth/callback" element={<AuthCallback />} />
+    <Route path="/github/callback" element={<GitHubCallback />} />
+  </Route>
+));
+
 function App() {
   return (
     <I18nProvider>
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </I18nProvider>
   );
 }
