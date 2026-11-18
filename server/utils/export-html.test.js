@@ -140,15 +140,28 @@ assert a.pos==vector(1,2,0)
 a.pos=vector(7,8,9)
 p.z=6
 assert a.pos==vector(7,8,9)
+a.color=a.pos
+old_color=a.color
+a.color=vector(1,0,0)
+old_color.z=0.25
+assert a.color==vector(1,0,0) and a.pos==vector(7,8,9)
 s=sphere(pos=origin)
 q=s.pos
 q.x=4
 q.y=5
 assert s.pos==vector(4,5,0) and origin==vector(9,0,0)
+s.color=s.pos
+q.y=0.5
+assert s.color==vector(4,5,0)
+s.color.z=0.25
+assert s.pos==vector(4,0.5,0)
 _send_commands()
 ''',namespace)
-assert [c for c in commands if c.get('id')==namespace['a']._id and c['action']=='update'][-1]['pos']==[7,8,9]
-assert [c for c in commands if c.get('id')==namespace['s']._id and c['action']=='update'][-1]['pos']==[4,5,0]
+assert [c for c in commands if c.get('id')==namespace['a']._id and 'pos' in c and c['action']=='update'][-1]['pos']==[7,8,9]
+assert [c['color'] for c in commands if c.get('id')==namespace['a']._id and c['action']=='update' and 'color' in c]==[[7,8,9],[1,0,0]]
+assert [c for c in commands if c.get('id')==namespace['s']._id and c['action']=='update'][-2:]==[
+ {'action':'update','id':namespace['s']._id,'pos':[4,0.5,0]},
+ {'action':'update','id':namespace['s']._id,'color':[4,5,0.25]}]
 print('POSITION_REFERENCES_OK')
 `;
   const result=spawnSync('python3',['-I','-c',verify],{input:JSON.stringify({api:runInNewContext(expression[1])}),encoding:'utf8',timeout:15000});

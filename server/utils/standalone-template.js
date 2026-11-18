@@ -1152,17 +1152,21 @@ color = _ColorPalette()
 색상 = color
 
 
-# 위치는 입력 벡터를 복사하고, 성분 수정 시 같은 벡터에서 갱신합니다.
-def _bind_position(owner, value, notify=True):
-    if hasattr(owner, '_pos'):
-        owner._pos._change_callback = None
-    owner._pos = value.clone()
+# 위치·색은 슬롯마다 독립된 벡터를 보관하고 성분 변경도 화면에 보냅니다.
+def _bind_vector(owner, attr, value, notify=True):
+    slot = '_' + attr
+    previous = getattr(owner, slot, None)
+    if value is not previous:
+        if previous is not None:
+            previous._change_callback = None
+        value = value.clone()
+        setattr(owner, slot, value)
     def changed():
-        pos = owner._pos.to_list()
-        _add_command({'action':'update','id':owner._id,'pos':pos})
-        if getattr(owner, '_make_trail', False):
-            _add_command({'action':'trail_update','id':owner._id,'pos':pos})
-    owner._pos._change_callback = changed
+        components = value.to_list()
+        _add_command({'action':'update','id':owner._id,attr:components})
+        if attr == 'pos' and getattr(owner, '_make_trail', False):
+            _add_command({'action':'trail_update','id':owner._id,'pos':components})
+    value._change_callback = changed
     if notify: changed()
 
 # === 3D 객체 베이스 클래스 ===
@@ -1172,8 +1176,8 @@ class _GObject:
         self._type = obj_type
         self._make_trail = kwargs.pop('make_trail', False)
         self._trail_color = kwargs.pop('trail_color', None)
-        _bind_position(self, kwargs.get('pos', vector(0,0,0)), False)
-        self._color = kwargs.get('color', color.white)
+        _bind_vector(self, 'pos', kwargs.get('pos', vector(0,0,0)), False)
+        _bind_vector(self, 'color', kwargs.get('color', color.white), False)
         self._visible = kwargs.get('visible', True)
         self._opacity = kwargs.get('opacity', 1.0)
         self._emissive = kwargs.get('emissive', False)
@@ -1192,13 +1196,12 @@ class _GObject:
     def pos(self): return self._pos
     @pos.setter
     def pos(self, v):
-        _bind_position(self, v)
+        _bind_vector(self, 'pos', v)
     @property
     def color(self): return self._color
     @color.setter
     def color(self, v):
-        self._color = v
-        _add_command({"action":"update","id":self._id,"color":v.to_list()})
+        _bind_vector(self, 'color', v)
     @property
     def visible(self): return self._visible
     @visible.setter
@@ -1389,11 +1392,11 @@ class compound:
         bounds = json.loads(str(_js_compound_bounds(json.dumps([o._id for o in self._objects]))))
         self._center0 = vector(*bounds['center'])
         self._size0 = vector(*bounds['size'])
-        _bind_position(self, kw.get('pos', self._center0), False)
+        _bind_vector(self, 'pos', kw.get('pos', self._center0), False)
         axis = kw.get('axis', vector(1,0,0))
         self._axis = (axis.hat if axis.mag else vector(1,0,0)) * self._size0.x
         self._up = kw.get('up', vector(0,1,0))
-        self._set_color(kw.get('color') or color.white)
+        _bind_vector(self, 'color', kw.get('color') or color.white, False)
         self._visible = kw.get('visible', True)
         self._opacity = self._check_unit(kw.get('opacity',1.0),'opacity')
         self._shininess = self._check_unit(kw.get('shininess',0.6),'shininess')
@@ -1438,22 +1441,18 @@ class compound:
         v=float(v)
         if not math.isfinite(v) or not 0<=v<=1: raise ValueError('compound.'+name+' must be between 0 and 1')
         return v
-    def _set_color(self,v):
-        self._color=vector(v.x,v.y,v.z)
-        self._color._change_callback=lambda: _add_command({'action':'update','id':self._id,'color':self._color.to_list()})
     def __getitem__(self, i): return self._objects[i]
     def __len__(self): return len(self._objects)
     @property
     def pos(self): return self._pos
     @pos.setter
     def pos(self, v):
-        _bind_position(self, v)
+        _bind_vector(self, 'pos', v)
     @property
     def color(self): return self._color
     @color.setter
     def color(self, v):
-        self._set_color(v)
-        _add_command({"action":"update","id":self._id,"color":self._color.to_list()})
+        _bind_vector(self, 'color', v)
     @property
     def visible(self): return self._visible
     @visible.setter
