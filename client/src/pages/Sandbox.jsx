@@ -22,6 +22,7 @@ import { runSound, errorSound, stopBgm, stopAllSounds, initAudioOnUserGesture, i
 import { MAX_RECORDING_SECONDS, canRecordCanvas, startCanvasRecording, downloadRecording } from '../engine/video-recorder';
 import { captureThumbnail } from '../engine/thumbnail';
 import { createShareLink, decodeCodeFromURL, loadSharedCode, SHARE_RUN_VIEW } from '../utils/share';
+import AnonymousDraftGuard from '../components/code/AnonymousDraftGuard';
 import ShareLinkDialog from '../components/share/ShareLinkDialog';
 import DriveDialog from '../components/drive/DriveDialog';
 import VideoSaveDialog from '../components/drive/VideoSaveDialog';
@@ -310,10 +311,10 @@ export default function Sandbox() {
       stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;
       updateCode(location.state.restoredCode);
       homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = location.state.restoredCode;
-      window.history.replaceState({}, '');
+      window.history.replaceState({ ...window.history.state, usr: null }, '');
       continueAfterAuth();
     } else if (returnAction === 'publish') {
-      window.history.replaceState({}, '');
+      window.history.replaceState({ ...window.history.state, usr: null }, '');
       continueAfterAuth();
     }
   }, [
@@ -351,19 +352,18 @@ export default function Sandbox() {
 
   // 자유 코딩 초안 남기기: 불러온 원본에서 달라진 코드만 이 브라우저에 남깁니다(탭을 닫아도 이어서 할 수 있게).
   // 학습 자료의 연습 코드(탭 단위 보관), 드라이브 파일, 팀 프로젝트, 계정 자동 저장을 쓰는 로그인 사용자는 각자의 저장 방식을 따릅니다.
-  useEffect(() => {
-    // 구글 드라이브에 로그인한 동안에는 계정별 드라이브 초안(driveSession.rememberDraft)이 맡습니다. 공용 컴퓨터에서 로그아웃한 뒤 코드가 남지 않게 합니다.
-    if (practiceContextRef.current || driveFile || driveAccount || activeProject || githubProject || (ACCOUNT_SAVE && user)) return undefined;
-    const timer = setTimeout(() => {
-      if (codeRef.current !== code) return;
-      if (code === initialCodeRef.current) { if (isStarterCode(code)) clearSandboxDraft(); return; }
-      // 로그아웃·연결 해제 직후의 코드는 남기지 않습니다(아래 sandboxBaselineRef). 그 뒤에 고친 내용부터 남깁니다.
-      if (code === sandboxBaselineRef.current) return;
-      sandboxBaselineRef.current = null;
-      writeSandboxDraft(code);
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [code, driveFile, driveAccount, activeProject, githubProject, user]);
+  const anonymousEditing = !driveFile && !driveAccount && !activeProject && !githubProject && !(ACCOUNT_SAVE && user);
+  const saveAnonymousDraft = useCallback(() => {
+    if (practiceContextRef.current) return true;
+    const current = codeRef.current;
+    if (current === initialCodeRef.current) {
+      if (isStarterCode(current)) clearSandboxDraft();
+      return true;
+    }
+    if (current === sandboxBaselineRef.current) return true;
+    sandboxBaselineRef.current = null;
+    return writeSandboxDraft(current);
+  }, []);
   // 드라이브(로그인·파일)나 팀 프로젝트로 옮겨 가면 그 전의 자유 코딩 초안은 지웁니다(다음에 열 때 옛 코드가 나오지 않게).
   useEffect(() => {
     if (driveFile || driveAccount || activeProject || githubProject) clearSandboxDraft();
@@ -470,7 +470,7 @@ export default function Sandbox() {
         setOutputs([{ text: location.state?.homeDraft ? ui("내 메인의 코드 사본을 열었습니다. 수정 후 다시 내 메인으로 설정해 주세요.") : tRef.current('share.externalCode'), type: 'warning', id: Date.now() }]);
       }
       // state 정리 (뒤로가기 시 다시 로드 방지)
-      window.history.replaceState({}, '');
+      window.history.replaceState({ ...window.history.state, usr: null }, '');
       return;
     }
     // GitHub 프로젝트 README/Pages에서 넘어온 링크: ?repo=owner/repo
@@ -1460,6 +1460,10 @@ export default function Sandbox() {
     }
   };
 
+  const draftGuard = anonymousEditing && (
+    <AnonymousDraftGuard code={code} save={saveAnonymousDraft} onDownload={handleDownloadPython} locale={locale} />
+  );
+
   // 극장 모드: 3D 뷰포트만 전체 화면
   if (theaterMode) {
     const handleTheaterStart = () => {
@@ -1470,6 +1474,7 @@ export default function Sandbox() {
 
     return (
       <div className="h-screen w-screen relative" style={{ backgroundColor: '#000' }}>
+        {draftGuard}
         <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: handleRun, onStop: handleStop, isRunning:isRunning||audio.playing, isReady }} />
 
         {/* 클릭하여 시작 오버레이 */}
@@ -1529,6 +1534,7 @@ export default function Sandbox() {
 
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: 'var(--color-bg-primary)' }} onDragOverCapture={handleFileDrop} onDropCapture={handleFileDrop}>
+      {draftGuard}
       <Header />
       <input ref={fileInputRef} type="file" accept=".py,.html,.htm,text/x-python,text/html" hidden aria-hidden="true" tabIndex={-1} data-testid="code-file-input"
         onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; openCodeFile(file); }} />
