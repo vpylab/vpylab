@@ -7,6 +7,7 @@ import { createRenderGate } from '../../engine/render-gate';
 import AudioNoteIndicator from './AudioNoteIndicator';
 import { postCameraState, postEvent, postMouseState, postPressedKeys } from '../../engine/pyodide-singleton';
 import { isEventBound, updateBillboards, registerCanvasScene } from '../../engine/vpython-bridge';
+import { attachPointerInput } from './pointer-input';
 import useFullscreen from '../../hooks/useFullscreen';
 import { useOptionalI18n } from '../../i18n/useI18n';
 
@@ -119,12 +120,6 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
     // bridge.js에서 scene._cameraSystem으로 접근 (scene.range/center/autoscale 처리)
     scene._cameraSystem = camSystem;
 
-    // 더블클릭 → 화면에 한 번 맞추기
-    const onDblClick = () => {
-      camSystem.fitOnce();
-    };
-    renderer.domElement.addEventListener('dblclick', onDblClick);
-
     // === scene.bind / scene.mouse 이벤트 디스패치 ===
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();      // -1..1 NDC 좌표
@@ -159,25 +154,18 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       return { pos, pick };
     }
 
-    const onPointerDown = (e) => {
-      renderer.domElement.focus({ preventScroll: true });
-      if (!isEventBound('mousedown', canvasId) && !isEventBound('click', canvasId)) return;
-      const { pos, pick } = computePosFromEvent(e);
-      if (isEventBound('mousedown', canvasId)) postEvent({ canvas_id: canvasId, name: 'mousedown', pos, pick });
-    };
-    const onPointerUp = (e) => {
-      const downBound = isEventBound('mouseup', canvasId) || isEventBound('click', canvasId);
-      if (!downBound) return;
-      const { pos, pick } = computePosFromEvent(e);
-      if (isEventBound('mouseup', canvasId)) postEvent({ canvas_id: canvasId, name: 'mouseup', pos, pick });
-      if (isEventBound('click', canvasId)) postEvent({ canvas_id: canvasId, name: 'click', pos, pick });
-    };
-    const onPointerMove = (e) => {
-      // mouse pos는 항상 갱신 (scene.mouse.pos 폴링용)
-      const { pos, pick } = computePosFromEvent(e);
-      if (pos) postMouseState(pos, pick, canvasId);
-      if (isEventBound('mousemove', canvasId)) postEvent({ canvas_id: canvasId, name: 'mousemove', pos, pick });
-    };
+    // 누르기·떼기·움직이기·두 번 누르기(마우스로만 화면 맞추기) — 손가락 입력 처리는 pointer-input.js
+    const detachPointerInput = attachPointerInput(renderer.domElement, {
+      canvasId,
+      locate: computePosFromEvent,
+      isEventBound,
+      postEvent,
+      postMouseState,
+      // 프로그램이 scene.userzoom·userspin·userpan을 끄면 두 번 눌러도 카메라를 옮기지 않습니다.
+      canFit: () => controls.enableZoom !== false && controls.enableRotate !== false && controls.enablePan !== false,
+      fit: () => camSystem.fitOnce(),
+    });
+
     // keysdown() 폴링용 — 현재 눌려있는 키 셋
     const pressedKeys = new Set();
     const flushKeys = () => postPressedKeys([...pressedKeys]);
@@ -205,9 +193,6 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       }
     };
 
-    renderer.domElement.addEventListener('pointerdown', onPointerDown);
-    renderer.domElement.addEventListener('pointerup', onPointerUp);
-    renderer.domElement.addEventListener('pointermove', onPointerMove);
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
@@ -346,10 +331,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       observer.disconnect();
       cancelAnimationFrame(animFrameRef.current);
       cancelAnimationFrame(readyFrame);
-      renderer.domElement.removeEventListener('dblclick', onDblClick);
-      renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-      renderer.domElement.removeEventListener('pointerup', onPointerUp);
-      renderer.domElement.removeEventListener('pointermove', onPointerMove);
+      detachPointerInput();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
@@ -407,6 +389,16 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       style={{
         overflow: extraCanvases.length ? 'auto' : undefined,
         touchAction: 'none',
+        // 손가락으로 길게 눌러도 제목·설명 글자가 선택되거나 iOS 메뉴가 뜨지 않게 합니다(입력 칸은 index.css에서 다시 허용).
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        WebkitTouchCallout: 'none',
+        // scene.title·caption 자리는 극장 화면이 위·아래 단추를 피하도록 --vpylab-title-top 등으로 정합니다.
+        // 전체 화면에서는 그 단추가 보이지 않으므로 기본 자리로 두고, 아래에 실행·정지 단추가 뜨면 설명을 그 위로 올립니다.
+        ...(fullscreen.active || canvasId !== 'scene' ? {
+          '--vpylab-title-top': '0.5rem',
+          '--vpylab-caption-bottom': fullscreen.active && controls ? '3.75rem' : '0.5rem',
+        } : {}),
         // 전체 화면 API가 없는 브라우저(iOS Safari)는 화면을 채우는 고정 배치로 대체합니다.
         ...(fullscreen.pseudo ? { position: 'fixed', inset: 0, zIndex: 9999, width: '100vw', height: '100vh', backgroundColor: 'var(--color-bg-primary)' } : {}),
       }}
@@ -446,14 +438,14 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       {/* scene.title / scene.caption */}
       <div
         ref={titleRef}
-        className="absolute top-2 left-2 max-w-[70%] text-sm font-semibold px-2 py-1 rounded whitespace-pre-wrap"
-        style={{ display: 'none', color: 'var(--color-text-primary)', backgroundColor: 'color-mix(in srgb, var(--color-bg-secondary) 80%, transparent)' }}
+        className="absolute left-2 max-w-[70%] text-sm pointer-coarse:text-base font-semibold px-2 py-1 rounded whitespace-pre-wrap"
+        style={{ display: 'none', top: 'var(--vpylab-title-top, 0.5rem)', color: 'var(--color-text-primary)', backgroundColor: 'color-mix(in srgb, var(--color-bg-secondary) 80%, transparent)' }}
         data-vpylab-title=""
       />
       <div
         ref={captionRef}
-        className="absolute bottom-2 left-2 max-w-[90%] text-xs px-2 py-1 rounded whitespace-pre-wrap"
-        style={{ display: 'none', color: 'var(--color-text-secondary)', backgroundColor: 'color-mix(in srgb, var(--color-bg-secondary) 80%, transparent)' }}
+        className="absolute left-2 max-w-[90%] text-xs pointer-coarse:text-sm px-2 py-1 rounded whitespace-pre-wrap"
+        style={{ display: 'none', bottom: 'var(--vpylab-caption-bottom, 0.5rem)', color: 'var(--color-text-secondary)', backgroundColor: 'color-mix(in srgb, var(--color-bg-secondary) 80%, transparent)' }}
         data-vpylab-caption=""
       />
 
