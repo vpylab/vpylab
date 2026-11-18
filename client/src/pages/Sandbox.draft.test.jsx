@@ -73,11 +73,19 @@ it('크기 초과 시 이전 초안을 유지하고 최신 코드 내려받기�
 it('용량 오류를 알리고 다음 저장 성공 시 경고를 해제하며 타이머 전 이동에도 최신 코드를 남긴다', async () => {
   writeSandboxDraft('box()');
   const router = openEditor();
-  const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
-    throw new DOMException('저장 공간 부족', 'QuotaExceededError');
+  const draftKey = 'vpylab:sandbox:draft:v1';
+  // jsdom은 setItem을 프로토타입에, 테스트용 메모리 저장소는 객체에 정의한다.
+  const target = Object.hasOwn(localStorage, 'setItem') ? localStorage : Object.getPrototypeOf(localStorage);
+  const originalSetItem = target.setItem;
+  const setItem = vi.spyOn(target, 'setItem').mockImplementation(function (key, value) {
+    if (this === localStorage && key === draftKey) {
+      throw new DOMException('저장 공간 부족', 'QuotaExceededError');
+    }
+    return originalSetItem.call(this, key, value);
   });
   edit('sphere()');
   expect(tryClosingTab()).toBe(true);
+  expect(setItem).toHaveBeenCalledWith(draftKey, expect.any(String));
   expect(screen.getByRole('alert')).toBeInTheDocument();
   expect(readSandboxDraft()).toBe('box()');
   setItem.mockRestore();
