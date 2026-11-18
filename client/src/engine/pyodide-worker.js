@@ -344,6 +344,10 @@ if 'pyodide' in sys.modules:
  * - import 이름과 설치 이름이 다른 패키지는 IMPORT_TO_PACKAGE 대응표로 바꿉니다.
  * - 대응표에 없는 이름은 import 이름 그대로 설치를 시도합니다(패키지 이름만, 주소·파일 경로는 받지 않음).
  * - 주석·문자열 안의 import, 상대 import(from . import x)는 무시합니다.
+ *
+ * 내려받은 HTML은 server/shared/package-imports.js에 같은 규칙(목록·Python 코드·안내 문구·설치 순서)을 갖고 있습니다.
+ * 이 Worker는 classic Worker라 그 파일을 import할 수 없습니다. 한쪽을 고치면 다른 쪽도 고치고,
+ * server/utils/package-imports.test.js가 두 쪽이 같은지 확인합니다.
  */
 const STDLIB_MODULES = new Set([
   'sys', 'os', 'io', 'json', 'math', 'random', 'time', 'datetime',
