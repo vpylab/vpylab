@@ -1,10 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import { generateStandaloneHTML } from './export-html.js';
 import { generateStandaloneHTML as generateShared } from './standalone-template.js';
+import { createPackageImportTools } from '../shared/package-imports.js';
 import course from '../../client/src/data/light-sound-course.js';
 
 const editorTransform = readFileSync(new URL('../../client/src/engine/student-code-transform.py', import.meta.url), 'utf8');
@@ -33,6 +36,39 @@ test('서버와 브라우저의 공유 HTML은 같은 템플릿과 변환기를 
 test('HTML에 삽입한 변환기는 백슬래시·백틱·템플릿·script 종료 문자열도 보존한다', () => {
   const transform = editorTransform + '\n# \\ ` ${value} </script> 한글\n';
   assert.equal(embeddedTransform(generateShared('', '검증', {}, transform)), transform);
+});
+
+test('내려받은 HTML은 편집기와 같은 규칙으로 import한 패키지를 설치한다', () => {
+  const page = generateStandaloneHTML('import segno\nimport numpi\nprint(segno.__name__)');
+  // 공용 규칙을 그대로 싣고, 예전의 고정 목록(numpy 등 다섯 개)은 남아 있지 않다.
+  assert(page.includes(`const packageImports = (${createPackageImportTools.toString()})();`));
+  assert(!page.includes('needsPackages'));
+  // 설치는 VPython API·학생 코드보다 먼저, 결과는 화면의 출력 창(logToConsole)으로 보낸다.
+  const install = page.indexOf('await packageImports.installImportedPackages(pyodide, code, logToConsole);');
+  assert(install > 0);
+  assert(install < page.indexOf('await pyodide.runPythonAsync(vpythonApi);'));
+  assert(install < page.indexOf('await pyodide.runPythonAsync(runner);'));
+  // 이 HTML의 CSP가 PyPI 요청을 허용한다(micropip이 pypi.org에서 정보를, files.pythonhosted.org에서 파일을 받는다).
+  const csp = page.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+  const connect = csp.split(';').map(part => part.trim()).find(part => part.startsWith('connect-src'));
+  for (const origin of ['https://cdn.jsdelivr.net', 'https://unpkg.com', 'https://pypi.org', 'https://files.pythonhosted.org']) {
+    assert(connect.split(/\s+/).includes(origin), origin);
+  }
+});
+
+test('내려받은 HTML의 모듈 스크립트는 문법 검사(node --check)를 통과한다', () => {
+  const page = generateStandaloneHTML('import segno\nimport numpi');
+  const scripts = [...page.matchAll(/<script type="module">([\s\S]*?)<\/script>/g)];
+  assert.equal(scripts.length, 1);
+  const dir = mkdtempSync(join(tmpdir(), 'vpylab-export-'));
+  try {
+    const file = join(dir, 'page.mjs');
+    writeFileSync(file, scripts[0][1]);
+    const result = spawnSync(process.execPath, ['--check', file], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('HTML의 실제 JavaScript가 넘기는 Python 실행 문자열과 콘솔 줄바꿈이 유효하다', t => {

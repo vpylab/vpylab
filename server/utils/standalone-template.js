@@ -10,7 +10,8 @@
  * - scene 객체: scene.background 및 편집기와 공유하는 카메라 계산
  * - frame 별칭 (= compound)
  * - 30색 팔레트 + 한글 색상 이름
- * - 사운드/차트/한글 API/numpy 자동 설치 (이전 버전과 동일)
+ * - 사운드/차트/한글 API
+ * - import한 패키지 설치: 편집기와 같은 규칙(server/shared/package-imports.js)으로 필요한 패키지만 설치
  *
  * 학생 코드 실행: 편집기와 같은 변환기(engine/student-code-transform.py)를 함께 실어 함수 안의
  *   rate()·sleep()과 global 선언이 편집기에서와 같이 동작한다.
@@ -31,6 +32,7 @@
 import { createCompoundAppearanceTools } from '../shared/compound-appearance.js';
 import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
+import { createPackageImportTools } from '../shared/package-imports.js';
 
 const PYODIDE_VERSION = '0.27.0';
 const THREE_VERSION = '0.183.2';
@@ -127,6 +129,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   controls.enableDamping = true;
 
   const CameraSystem = (${createCameraSystem.toString()})(THREE);
+  // import한 패키지 설치 규칙(server/shared/package-imports.js). 편집기 Worker와 같은 규칙입니다.
+  const packageImports = (${createPackageImportTools.toString()})();
   const cameraSystem = new CameraSystem(camera, controls, scene);
   cameraSystem.onCodeStart();
 
@@ -875,22 +879,11 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     const pyodide = await loadPyodide({ indexURL: pyodideIndexUrl });
     progress.style.width = '80%';
 
-    // micropip으로 필요한 패키지 자동 설치
+    // 코드가 import한 패키지를 편집기와 같은 규칙으로 설치합니다.
+    // Pyodide에 든 패키지는 Pyodide를 받은 CDN에서, 그 밖의 순수 파이썬 패키지는 PyPI에서 받습니다.
+    // 설치하지 못해도 실행은 이어 가며, 결과는 화면 아래 출력 창에 남깁니다.
     const code = decodeURIComponent(escape(atob('${base64Code}')));
-    const needsPackages = [];
-    if (/import\\s+numpy|from\\s+numpy/.test(code)) needsPackages.push('numpy');
-    if (/import\\s+matplotlib|from\\s+matplotlib/.test(code)) needsPackages.push('matplotlib');
-    if (/import\\s+pandas|from\\s+pandas/.test(code)) needsPackages.push('pandas');
-    if (/import\\s+scipy|from\\s+scipy/.test(code)) needsPackages.push('scipy');
-    if (/import\\s+sympy|from\\s+sympy/.test(code)) needsPackages.push('sympy');
-
-    if (needsPackages.length > 0) {
-      await pyodide.loadPackage('micropip');
-      const micropip = pyodide.pyimport('micropip');
-      for (const pkg of needsPackages) {
-        try { await micropip.install(pkg); } catch(e) { console.warn('패키지 설치 실패:', pkg, e); }
-      }
-    }
+    await packageImports.installImportedPackages(pyodide, code, logToConsole);
 
     pyodide.globals.set('_js_camera_state', () => JSON.stringify(cameraSystem.getState()));
 
