@@ -72,7 +72,7 @@
     "allCategories": "All Categories",
     "level": "Lv.{{level}}",
     "selectCategory": "Select a category",
-    "footer": "AGPL v3 License · Open-source education platform for schools worldwide",
+    "footer": "AGPL v3 or later · Open-source education platform for schools worldwide",
     "author": "Danggok High School · Seok Ri-song"
   },
   "categories": {
