@@ -51,13 +51,21 @@ In **Community modules**, a public object's code starts collapsed. Sign in and f
 
 The character tutorial combines parts, moves the compound, and changes only the controlled character's tint when it collects an item. Try arrow keys, WASD, or the on-screen buttons. Partners can develop body, face, movement, and sound, then read and combine their code.
 
+## Using Python packages
+
+When your code imports a Python package, for example `import numpy`, VPyLab installs it when you press **Run** if it is not there yet. The output shows the install and its result, and this needs the internet. Packages that come with Pyodide (such as numpy) are downloaded from jsDelivr, and other pure-Python packages from PyPI. If a name cannot be found or the package cannot run in browser Python, a ⚠️ notice appears and your code still runs, so you see the usual error. A name one letter away from a common module (for example `import numpi`) is treated as a typo and is not installed. An HTML file from **Download HTML** installs packages the same way when you open it.
+
 ## Save as video
 
-**Tools → Save as video** in Create records the 3D view and sound together, for a presentation or a submission. Recording stops by itself at 30 seconds, or when you press **Finish recording**. The video file is then downloaded to this computer. Recording happens in your browser and the video is not sent to a server. Leaving Create while recording cancels it. On a shared computer, move the file somewhere safe before the lesson ends.
+**Tools → Save as video** in Create records the 3D view and sound together, for a presentation or a submission. Recording stops by itself at 30 seconds, or when you press **Finish recording**. The video file is then downloaded to this computer. If Google Drive is connected, you can choose instead to save it to a `영상` folder inside the `VPyLab` folder in your Drive. Recording happens in your browser and the video is not sent to a VPyLab server. Leaving Create while recording cancels it. On a shared computer, move the file somewhere safe before the lesson ends.
 
 ## Keeping your practice record
 
 When you are signed in, the missions you pass in Training are also saved to your account. Sign in with the same account on another computer and they show as passed again. If a mission has a record in both places, the higher score is shown. Missions you pass without signing in stay in that browser and move to your account when you sign in later. Signing out clears the record from that computer; signing in brings it back. On a shared computer, sign out when you finish so the next person does not see your record. Only passed missions are restored. Code you are still writing is kept only when you press Save.
+
+## Saving your own code
+
+When no team project is open, **Save** in Create (or Ctrl/Cmd+S) saves your code to a `VPyLab` folder in your own Google Drive. The first time, tick the Google Drive box on Google's consent screen; it starts unchecked. **My Drive** in the toolbar lists your saved files and opens them on any computer. While a team project is open, Save saves to the team project instead.
 
 ## Saving and working together
 
