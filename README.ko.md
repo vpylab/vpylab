@@ -43,7 +43,7 @@ label(pos=vector(0, 1.2, 0), text="안녕!", color=색상['하양'], height=20)
 - 공개판 만들기 화면의 저장과 Ctrl/Cmd+S는 학생 본인 구글 드라이브의 VPyLab 폴더에 저장합니다. 처음 한 번 구글 계정으로 로그인하고 드라이브 권한을 승인합니다. 도구 줄의 내 드라이브에서 저장한 파일을 다시 엽니다. 다른 기기에서 먼저 저장했으면 충돌을 알립니다. 도구 → HTML 내려받기도 그대로 사용할 수 있습니다.
 - 공개판에서도 **도구 → 공유**로 짧은 주소를 만들 수 있습니다. 이름을 정하면 vpylab.pages.dev/s/정한이름이 되고, 정하지 않으면 무작위 6자가 붙습니다. 주소나 QR 코드로 열면 실행 화면이 먼저 나오며, 임베드 코드도 제공합니다. 코드와 제목만 Cloudflare D1에 저장하며 로그인은 필요 없습니다. 이름을 정하면 공유 창을 열 때 먼저 만든 무작위 주소는 지워집니다(그 창에서 이미 복사·QR 코드·임베드·열기로 사용했다면 남습니다). 그러므로 이름을 정한 뒤에 나온 주소를 공유해야 합니다.
 - **도구 → 영상으로 저장**은 3D 화면과 소리를 최대 30초 녹화합니다. 녹화는 브라우저 안에서 진행되며 서버로 영상이 전송되지 않습니다. 구글 드라이브를 연결했으면 내려받기와 드라이브의 VPyLab 폴더 안 `영상` 폴더에 저장하기 가운데 고르고, 연결하지 않았으면 바로 내려받습니다. 파일은 mp4이고, mp4로 녹화하지 못하는 브라우저에서는 webm입니다.
-- 수업용 판(vpylab.vercel.app)도 2026-11-12에 구글 클라이언트 ID를 설정해, 저장과 영상으로 저장에서 학생 본인의 구글 드라이브를 쓸 수 있습니다([설명](docs/DEPLOY_TWO_EDITIONS.md)). 미션 통과 기록은 계정을 따라갑니다. 다른 컴퓨터에서 로그인하면 기록이 복원되고, 로그아웃하면 그 컴퓨터에서 지워집니다.
+- 수업용 판(vpylab.vercel.app)에도 2026-11-12에 구글 클라이언트 ID를 설정했습니다. 학생은 ‘저장’과 ‘영상으로 저장’에서 본인의 구글 드라이브를 쓸 수 있습니다([설명](docs/DEPLOY_TWO_EDITIONS.md)). 2026-11-18에 실제 계정으로 파일을 드라이브에 저장한 뒤 다시 열어 확인했습니다. 미션 통과 기록은 계정에 연결됩니다. 다른 컴퓨터에서 로그인하면 기록이 복원되고, 로그아웃하면 그 컴퓨터에서 지워집니다.
 
 ## 두 가지 판, 하나의 코드
 
@@ -78,7 +78,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 
 만들기 화면의 **도구 → 예제**에는 8개 분야에 예제 58개가 있습니다. 자동 완성과 단어 도움은 AI 없이 동작하며, 학생 코드를 AI 서비스로 보내지 않습니다. 언어(한국어·English)와 테마는 **더 보기** 메뉴에서 변경할 수 있습니다.
 
-코드에서 파이썬 패키지를 import할 수 있습니다. **실행**을 누르면 아직 없는 패키지를 설치합니다. Pyodide가 함께 제공하는 패키지(numpy 등)는 Pyodide CDN에서, 그 밖의 순수 파이썬 패키지는 PyPI에서 받으므로 인터넷이 필요합니다. 자주 쓰는 모듈과 한 글자만 다른 이름(예: `import numpi`)은 설치하지 않습니다. 철자 실수로 엉뚱한 패키지를 받지 않고, 평소처럼 오류와 안내가 나옵니다.
+코드에서 파이썬 패키지를 import할 수 있습니다. **실행**을 누르면 아직 설치하지 않은 패키지를 설치합니다. Pyodide가 함께 제공하는 패키지(numpy 등)는 Pyodide CDN에서, 그 밖의 순수 파이썬 패키지는 PyPI에서 받으므로 인터넷이 필요합니다. 패키지 이름이 자주 쓰는 모듈 이름과 한 글자만 다르면(예: `import numpi`) 철자 실수로 보고 설치하지 않습니다. 이때는 평소처럼 오류와 안내가 나옵니다. 내려받은 HTML 파일을 실행할 때도 같은 방식으로 패키지를 설치합니다.
 
 안내서:
 
@@ -91,11 +91,11 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 
 ### 공개판
 
-공개판에는 VPyLab 계정이 없고, VPyLab이 개인정보를 저장하는 서버나 데이터베이스도 없습니다. 구글 로그인은 학생 본인의 드라이브에 저장할 때만, GitHub는 팀 프로젝트에서만 사용합니다. 사이트는 Cloudflare Pages의 정적 파일과 작은 함수 두 개(공유 주소, GitHub 로그인)로 이루어집니다. 저장소는 공유 주소용 Cloudflare D1 하나뿐이며, 공유를 누를 때 코드와 제목만 저장됩니다. 요청 수 제한에는 1분마다 바뀌는 IP 주소 변환값을 쓰고, 2분이 지난 값은 다음 요청 때 지웁니다. IP 주소 자체는 저장하지 않습니다.
+공개판에는 VPyLab 계정이 없고, VPyLab이 개인정보를 저장하는 서버나 데이터베이스도 없습니다. 구글 로그인은 학생 본인의 드라이브에 저장할 때만, GitHub는 팀 프로젝트에서만 사용합니다. 사이트는 Cloudflare Pages의 정적 파일과 작은 함수 두 개(공유 주소, GitHub 로그인)로 이루어집니다. 저장소는 공유 주소용 Cloudflare D1 하나뿐입니다. ‘공유’를 누르면 코드와 제목만 저장됩니다. 요청 수를 제한할 때는 IP 주소를 변환한 값을 씁니다. 이 값은 1분마다 바뀌고, 2~3분이 지난 값은 그다음 요청이 들어올 때 지웁니다. IP 주소 자체는 저장하지 않습니다.
 
 코드는 학생 브라우저 안에서 실행됩니다. 진행 기록, 테마, 언어, 메인 화면 설정과 만들기 화면에서 작성하던 코드(14일 뒤 삭제)는 이 브라우저(localStorage)에, 연습 초안은 브라우저 탭(sessionStorage)에 보관됩니다. 브라우저 데이터를 지우면 사라지며 다른 기기로 옮겨지지 않습니다.
 
-외부 요청은 웹 글꼴(Google Fonts, Fontshare)을 받을 때 이루어집니다. 파이썬 엔진은 vpylab.pages.dev에서 받으며, 실패할 때만 jsDelivr나 unpkg를 사용합니다. 코드가 패키지를 import하면 실행할 때 내려받습니다. Pyodide가 함께 제공하는 패키지는 jsDelivr(또는 unpkg)에서, 그 밖의 패키지는 PyPI(`pypi.org`, `files.pythonhosted.org`)에서 받습니다. 내려받은 HTML 파일은 열 때 jsDelivr에서 Pyodide와 Three.js를 불러오고(Pyodide는 unpkg도 사용), 코드가 numpy, matplotlib, pandas, scipy, sympy를 import하면 그 패키지도 받습니다.
+웹 글꼴(Google Fonts, Fontshare)을 받을 때 외부 요청을 보냅니다. 앱은 대체 경로가 필요할 때 파일을 빨리 받을 수 있도록 jsDelivr와 unpkg에 미리 연결(preconnect)해 둡니다. 이 연결만으로는 파일을 받지 않습니다. 파이썬 엔진은 vpylab.pages.dev에서 받고, 여기서 받지 못했을 때만 jsDelivr나 unpkg에서 받습니다. 코드에서 import한 패키지는 실행할 때 내려받습니다. Pyodide가 함께 제공하는 패키지는 jsDelivr에서 받습니다. 파이썬 엔진을 unpkg에서 받았다면 이 패키지도 unpkg에서 받습니다. 그 밖의 패키지는 PyPI(`pypi.org`, `files.pythonhosted.org`)에서 받습니다. 내려받은 HTML 파일을 열면 jsDelivr에서 Pyodide와 Three.js를 불러옵니다(Pyodide는 unpkg도 사용). 코드에서 import한 패키지는 앱과 같은 방식으로 설치합니다. Pyodide가 함께 제공하는 패키지는 Pyodide를 받은 CDN에서, 그 밖의 패키지는 PyPI에서 받습니다.
 
 팀 프로젝트(선택)에서 GitHub를 연결하면 `public_repo`, `repo:invite` 권한을 요청합니다. GitHub 토큰은 브라우저 탭 저장 공간에 있고, 로그인 코드를 토큰으로 바꾸는 함수는 토큰을 저장하거나 기록하지 않습니다. 프로젝트 저장소는 공개 저장소라 누구나 코드, 저장 기록, GitHub 아이디를 볼 수 있습니다.
 
@@ -128,7 +128,7 @@ https://vpylab.pages.dev 에서 시작합니다. 상단 메뉴는 추천 순서�
 | 앱 | `vpylab.pages.dev` |
 | 웹 글꼴(막혀도 시스템 글꼴로 표시) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
 | 파이썬 엔진 대체 경로, Pyodide가 함께 제공하는 패키지(numpy 등), 내려받은 HTML 파일 | `cdn.jsdelivr.net`, `unpkg.com` |
-| 학생 코드가 import하는 그 밖의 패키지(PyPI) | `pypi.org`, `files.pythonhosted.org` |
+| 학생 코드에서 import하는 그 밖의 패키지(PyPI), 앱과 내려받은 HTML 파일에 모두 해당 | `pypi.org`, `files.pythonhosted.org` |
 | 구글 드라이브 저장 | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
 | 팀 프로젝트(GitHub, 선택) | `github.com`, `api.github.com`, `*.github.io` |
 
@@ -224,7 +224,7 @@ npm run dev                          # 클라이언트 4033 + 서버 4034
 
 ## 라이선스
 
-- 코드: AGPL v3 이상([LICENSE](LICENSE)). Copyright (C) 2026 석리송 (Seok Ri-song) / 당곡고등학교 수리정보교육부
+- 코드: AGPL v3 이상. 라이선스 전문은 [LICENSE](LICENSE), 저작권 고지는 [NOTICE](NOTICE)에 있습니다. Copyright (C) 2026 석리송 (Seok Ri-song) / 당곡고등학교 수리정보교육부
 - 미션 콘텐츠: CC BY-NC-SA 4.0
 - 포함한 외부 코드(MIT): `shapes`·`paths` 구현은 [vpython-jupyter](https://github.com/vpython/vpython-jupyter)의 `shapespaths.py`를 가져왔고, `compound`의 좌표 변환과 `text`의 위치 계산식은 같은 저장소의 `vpython.py`에서 이식했습니다(Copyright (C) 2015 John Coady, Ruth Chabay, Bruce Sherwood). `group`은 [GlowScript](https://github.com/vpython/glowscript)의 `lib/glow/primitives.js`(MIT)를 명세로 삼았습니다. 출처와 허가 문구는 `client/src/engine/vpython-api.py`의 해당 절에 있습니다.
 

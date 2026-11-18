@@ -87,4 +87,4 @@ A maintainer reviews every pull request. Lessons and missions are also read for 
 
 ## Code of conduct and license
 
-By contributing you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Code is licensed under AGPL v3. Mission and lesson content is licensed under CC BY-NC-SA 4.0.
+By contributing you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Code is licensed under the GNU AGPL v3 or later: [LICENSE](LICENSE) has the full text and [NOTICE](NOTICE) the copyright notice. Mission and lesson content is licensed under CC BY-NC-SA 4.0.

@@ -46,7 +46,7 @@ VPyLab is in active development. In the open edition (vpylab.pages.dev):
 - **Save as video**: **Tools → Save as video** records the 3D view and sound for up to 30 seconds, in the browser. Nothing is sent to a VPyLab server. With Google Drive connected you choose between downloading the file and saving it to a `영상` folder inside the `VPyLab` folder in your Drive; otherwise the file downloads. Files are mp4, or webm where the browser cannot record mp4.
 - **Short share links**: **Tools → Share** creates a short link such as `vpylab.pages.dev/s/k7x2p9`, or `vpylab.pages.dev/s/your-name` if you choose a name (3–30 lowercase letters, numbers or hyphens; first come, first served). The link or its QR code opens straight to the running view (tap to start; the top-left button shows the source), and an embed code is available. Only the code and its title are stored, in Cloudflare D1. No sign-in is needed. If you pick a name, the random link created when the Share window opened is deleted (unless you already copied, opened or embedded it, or showed its QR code, in that window), so share the link shown after naming.
 
-In the classroom edition (vpylab.vercel.app), Save and Save as video can also use the student's Google Drive, since a Google client ID was set for that deployment on 2026-11-12 ([details](docs/DEPLOY_TWO_EDITIONS.md), Korean). Mission progress follows the account there: signing in on another computer restores the missions a student has passed, and signing out clears them from that computer.
+In the classroom edition (vpylab.vercel.app), Save and Save as video can also use the student's Google Drive, since a Google client ID was set for that deployment on 2026-11-12 ([details](docs/DEPLOY_TWO_EDITIONS.md), Korean). Saving to Drive and reopening the file there was checked with a real account on 2026-11-18. Mission progress follows the account there: signing in on another computer restores the missions a student has passed, and signing out clears them from that computer.
 
 ## Two editions, one codebase
 
@@ -81,7 +81,7 @@ Start at https://vpylab.pages.dev. The top menu follows a suggested order:
 
 More: 58 examples in 8 categories under **Create → Tools → Examples**. Editor completion and word help work without AI, and your code is not sent to an AI service. Switch language and theme under **More**.
 
-Code can import Python packages. When you press **Run**, VPyLab installs the ones it does not have yet: packages that come with Pyodide (such as numpy) from the Pyodide CDN, and other pure-Python packages from PyPI. This needs the internet. A name one letter away from a common module (for example `import numpi`) is not installed, so a typo shows the usual error instead of a stranger's package.
+Code can import Python packages. When you press **Run**, VPyLab installs the ones it does not have yet: packages that come with Pyodide (such as numpy) from the Pyodide CDN, and other pure-Python packages from PyPI. This needs the internet. A name one letter away from a common module (for example `import numpi`) is not installed, so a typo shows the usual error instead of a stranger's package. A downloaded HTML file installs packages the same way when it runs.
 
 Guides:
 
@@ -95,11 +95,11 @@ Guides:
 **Open edition**
 
 - There are no VPyLab accounts, and VPyLab keeps no personal information. Google sign-in is used only to save to the student's own Drive, and GitHub only for team projects. The site is static files on Cloudflare Pages plus two small functions (share links and GitHub sign-in).
-- Your code runs in your browser. The only thing VPyLab stores is what you share: pressing **Share** saves the code and its title in Cloudflare D1. A hash of the IP address, which changes every minute, is used for rate limiting; entries older than two minutes are deleted on the next request, and the IP address itself is never stored.
+- Your code runs in your browser. The only thing VPyLab stores is what you share: pressing **Share** saves the code and its title in Cloudflare D1. A hash of the IP address is used for rate limiting. The hash changes every minute, old hashes are deleted with the next request once they are two to three minutes old, and the IP address itself is never stored.
 - Progress, theme, language and home settings, and the code you were writing in Create (removed after 14 days), are kept in your browser (localStorage). Practice drafts are kept in the browser tab (sessionStorage). Clearing browser data removes them, and they do not move to other devices.
-- Third-party requests: web fonts from Google Fonts and Fontshare. The Python runtime is served from vpylab.pages.dev; jsDelivr or unpkg is used only if that fails. When code imports a package, it is downloaded at run time: packages that come with Pyodide from jsDelivr (or unpkg), others from PyPI (`pypi.org`, `files.pythonhosted.org`).
+- Third-party requests: web fonts from Google Fonts and Fontshare. The app opens an early connection (preconnect) to jsDelivr and unpkg so that a fallback can start quickly; the connection itself fetches no file. The Python runtime is served from vpylab.pages.dev, and files are fetched from jsDelivr or unpkg only if that fails. When code imports a package, it is downloaded at run time: packages that come with Pyodide from jsDelivr (or from unpkg, if the runtime itself was loaded from there), others from PyPI (`pypi.org`, `files.pythonhosted.org`).
 - Team projects (optional): connecting GitHub asks for `public_repo` and `repo:invite`. The token stays in the browser tab's storage, and the function that exchanges the sign-in code does not store or log it. Project repositories are public, so code, history and GitHub usernames can be seen by anyone.
-- A downloaded HTML file loads Pyodide and Three.js from jsDelivr (Pyodide falls back to unpkg) when opened, plus numpy, matplotlib, pandas, scipy or sympy if the code imports them.
+- A downloaded HTML file loads Pyodide and Three.js from jsDelivr (Pyodide falls back to unpkg) when opened. It installs the packages its code imports the same way as the app: packages that come with Pyodide from the CDN it loaded Pyodide from, others from PyPI.
 
 **Saving to Google Drive** (Save in Create, and the test page https://vpylab.pages.dev/drive-lab)
 
@@ -142,7 +142,7 @@ Testing VPyLab at another school: [docs/TESTERS.ko.md](docs/TESTERS.ko.md) (Kore
 | The app | `vpylab.pages.dev` |
 | Web fonts (optional; the app falls back to system fonts) | `fonts.googleapis.com`, `fonts.gstatic.com`, `api.fontshare.com`, `cdn.fontshare.com` |
 | Python runtime fallback, packages that come with Pyodide (such as numpy), and downloaded HTML files | `cdn.jsdelivr.net`, `unpkg.com` |
-| Other packages that student code imports (PyPI) | `pypi.org`, `files.pythonhosted.org` |
+| Other packages that student code imports (PyPI), in the app and in downloaded HTML files | `pypi.org`, `files.pythonhosted.org` |
 | Saving to Google Drive | `accounts.google.com`, `www.googleapis.com`, `oauth2.googleapis.com` |
 | Team projects (GitHub, optional) | `github.com`, `api.github.com`, `*.github.io` |
 
@@ -241,7 +241,7 @@ VPyLab is in a feature freeze: bug fixes, tests, translations, lessons and docum
 
 ## License
 
-- **Code:** GNU Affero General Public License v3 or later ([LICENSE](LICENSE)). Copyright (C) 2026 석리송 (Seok Ri-song) / 당곡고등학교 수리정보교육부.
+- **Code:** GNU Affero General Public License v3 or later. [LICENSE](LICENSE) is the full license text, and [NOTICE](NOTICE) has the copyright notice. Copyright (C) 2026 석리송 (Seok Ri-song) / 당곡고등학교 수리정보교육부.
 - **Mission content:** CC BY-NC-SA 4.0.
 - **Included MIT code:** the `shapes` and `paths` implementations come from `shapespaths.py` in [vpython-jupyter](https://github.com/vpython/vpython-jupyter). The `compound` coordinate transforms and the `text` positioning were ported from `vpython.py` in the same repository (Copyright (C) 2015 John Coady, Ruth Chabay, Bruce Sherwood). `group` follows `lib/glow/primitives.js` in [GlowScript](https://github.com/vpython/glowscript) (MIT) as its specification. Notices are in the matching sections of `client/src/engine/vpython-api.py`.
 

@@ -218,3 +218,7 @@ feat: 갤러리 공유 기능 구현
 docs: 기여 가이드 업데이트
 refactor: Worker 메시지 핸들링 개선
 ```
+
+### 행동 강령과 라이선스
+
+기여하면 [행동 강령](CODE_OF_CONDUCT.md)에 동의하는 것으로 봅니다. 코드에는 GNU AGPL v3 이상을 적용합니다. 라이선스 전문은 [LICENSE](LICENSE), 저작권 고지는 [NOTICE](NOTICE)에 있습니다. 미션과 학습 자료에는 CC BY-NC-SA 4.0을 적용합니다.
