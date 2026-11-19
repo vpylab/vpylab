@@ -291,6 +291,12 @@ function CourseDetail({ courseId, lessonId }) {
                 <code>{activeLesson.code}</code>
               </pre>
               <div className="px-4 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                {activeLesson.video && (
+                  <a className="inline-flex items-center min-h-11 mb-2 text-sm underline"
+                    href={activeLesson.video}>
+                    {lang === 'ko' ? '이 단계의 실행 영상 보기' : 'Watch this step run'}
+                  </a>
+                )}
                 <button
                   onClick={() =>
                     navigate(

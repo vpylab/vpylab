@@ -238,5 +238,10 @@ export default {
   description: '검은 화면의 지구에서 여덟 행성과 혜성까지, 앞 단계의 작품에 한 가지씩 더하는 STEAM 실습입니다. 거리·크기·시간을 관찰하기 좋게 조정한 수업용 모형입니다.',
   targetGrade: '중·고등학생',
   sessions: lessons.length,
-  lessons: lessons.map((lesson, i) => ({ ...lesson, id: `space-from-earth-${i + 1}`, code: program(i + 1) })),
+  lessons: lessons.map((lesson, i) => ({
+    ...lesson,
+    id: `space-from-earth-${i + 1}`,
+    code: program(i + 1),
+    video: `/projects/space-from-earth/${String(i + 1).padStart(2, '0')}.mp4`,
+  })),
 };
