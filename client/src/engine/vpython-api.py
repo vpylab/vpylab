@@ -6136,6 +6136,12 @@ def _new_student_namespace():
     return namespace
 
 
+async def _standard_wait(seconds):
+    _before_wait()
+    await _sleep_chunked(seconds)
+    _raise_if_stopped()
+
+
 async def _vpylab_run(source, filename='<student>', namespace=None):
     """학생 코드를 변환(student-code-transform.py)해 모듈 수준에서 실행한다.
     함수로 감싸지 않으므로 global 선언이 동작하고, 줄 번호는 학생 코드 그대로다.
@@ -6150,7 +6156,8 @@ async def _vpylab_run(source, filename='<student>', namespace=None):
     scope = _new_student_namespace() if namespace is None else namespace
     # 실행마다 필요한 함수만 담은 얇은 객체를 넣는다 (학생이 바꿔도 다음 실행에 남지 않는다)
     import types as _types
-    scope[transform.RUNTIME_NAME] = _types.SimpleNamespace(maybe_await=transform.maybe_await)
+    scope[transform.RUNTIME_NAME] = _types.SimpleNamespace(maybe_await=transform.maybe_await,
+        sleep_dispatch=transform.make_sleep_dispatch(_standard_wait))
     try:
         result = eval(code, scope)
         if inspect.iscoroutine(result):

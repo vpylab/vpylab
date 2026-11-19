@@ -29,6 +29,9 @@ scene.waitfor·scene.capture를 대기 함수로 두고 사용자 함수 전부�
 """
 import ast
 import inspect
+import math
+import operator
+import time
 
 # 바로 부르는 코루틴 이름 (vpython-api.py에서 async def로 정의)
 BLOCKING_NAMES = frozenset({'rate', 'sleep', '악기', '음표', 'play_note_and_wait', '화음', 'input'})
@@ -55,6 +58,31 @@ async def maybe_await(value):
     if inspect.isawaitable(value):
         return await value
     return value
+
+
+def make_sleep_dispatch(wait):
+    """가려진 이름의 실제 호출 대상을 보존하고, 표준 대기만 화면·이벤트 처리기에 연결한다."""
+    builtin_sleep = time.sleep
+
+    async def standard_sleep(seconds, /):
+        if not isinstance(seconds, float):
+            seconds = operator.index(seconds)
+        if math.isnan(seconds):
+            raise ValueError("Invalid value NaN (not a number)")
+        if not math.isfinite(seconds) or seconds >= 2**63 / 1e9:
+            raise OverflowError("timestamp out of range for platform time_t")
+        if seconds < 0:
+            raise ValueError("sleep length must be non-negative")
+        # 브라우저 타이머가 일찍 깨어나도 요청한 시간 전에는 학생 코드로 돌아가지 않는다.
+        deadline = time.monotonic() + seconds
+        await wait(seconds)
+        while (remaining := deadline - time.monotonic()) > 0:
+            await wait(remaining)
+
+    def dispatch(function):
+        return standard_sleep if function is builtin_sleep else function
+
+    return dispatch
 
 
 # async def로 바꾸면 파이썬 규약이 깨지는 특수 메서드 — 대기 함수를 넣으면 경고만 낸다
@@ -271,7 +299,9 @@ class _ScopeBuilder(ast.NodeVisitor):
     def visit_Import(self, node):
         for alias in node.names:
             bound = alias.asname or alias.name.split('.')[0]
-            if alias.name in VPYTHON_MODULES:
+            if alias.name == 'time':
+                self.scope.bind(bound, _Binding('timemodule'))
+            elif alias.name in VPYTHON_MODULES:
                 self.scope.bind(bound, _Binding('vpmodule'))
             else:
                 self.scope.bind(bound, _Binding('import'))
@@ -285,7 +315,9 @@ class _ScopeBuilder(ast.NodeVisitor):
                     self.scope.bind(alias.asname or alias.name, _Binding('vpname', node=alias.name))
         else:
             for alias in node.names:
-                if alias.name != '*':
+                if not node.level and node.module == 'time' and alias.name == 'sleep':
+                    self.scope.bind(alias.asname or alias.name, _Binding('timesleep'))
+                elif alias.name != '*':
                     self.scope.bind(alias.asname or alias.name, _Binding('import'))
 
     def visit_Global(self, node):
@@ -474,9 +506,24 @@ class _Analysis:
             return bool(bindings) and len(bindings) == 1 and bindings[0].kind == 'vpmodule'
         return False
 
+    def may_be_standard_sleep(self, func, scope, depth=0):
+        if depth > 8:
+            return False
+        if isinstance(func, ast.Attribute) and func.attr == 'sleep' and isinstance(func.value, ast.Name):
+            bindings, _ = self.resolve(scope, func.value.id)
+            return any(b.kind == 'timemodule' for b in bindings or ())
+        if isinstance(func, ast.Name):
+            bindings, owner = self.resolve(scope, func.id)
+            return any(b.kind == 'timesleep' or
+                       (b.kind == 'assign' and self.may_be_standard_sleep(b.value, owner, depth + 1))
+                       for b in bindings or ())
+        return False
+
     def classify_call(self, call, scope):
         """Call 노드를 확정 대기·확정 동기·미확정으로 나눈다."""
         func = call.func
+        if self.may_be_standard_sleep(func, scope):
+            return UNCERTAIN  # 실제로 호출할 때 같은 이름의 사용자 함수를 구분한다.
         if isinstance(func, ast.Name):
             return self._name_kind(scope, func.id)
         if isinstance(func, ast.Attribute):
@@ -681,9 +728,13 @@ class _Transformer(ast.NodeTransformer):
 
     def visit_Call(self, node):
         self.generic_visit(node)
+        kind = self.analysis.classify_call(node, self.scope)
+        if self.analysis.may_be_standard_sleep(node.func, self.scope):
+            helper = ast.Attribute(value=ast.Name(id=RUNTIME_NAME, ctx=ast.Load()),
+                                   attr='sleep_dispatch', ctx=ast.Load())
+            node.func = ast.copy_location(ast.Call(func=helper, args=[node.func], keywords=[]), node.func)
         if id(node) in self.already_awaited:
             return node
-        kind = self.analysis.classify_call(node, self.scope)
         if kind == CERTAIN_SYNC:
             return node
         awaitable, label = self.context[-1]

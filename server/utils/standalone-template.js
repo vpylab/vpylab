@@ -999,6 +999,7 @@ def _send_commands():
       '    print("⚠️ " + _vpylab_w)',
       '_vpylab_ns = {"__name__": "__main__"}',
       '_vpylab_ns.update({_k: _v for _k, _v in globals().items() if not _k.startswith("_")})',
+      '_vpylab_transform.sleep_dispatch = _vpylab_transform.make_sleep_dispatch(sleep)',
       '_vpylab_ns[_vpylab_transform.RUNTIME_NAME] = _vpylab_transform',
       '_vpylab_result = eval(_vpylab_code, _vpylab_ns)',
       'if _vpylab_inspect.iscoroutine(_vpylab_result):',
