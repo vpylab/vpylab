@@ -5,6 +5,8 @@ const extensions=new Set(['play_sound','play_note','play_chord','play_sequence',
 const functions=new Map(apiReferenceDocs.filter(d=>/^\w+$/.test(d.id)&&(d.signature?.startsWith(d.id+'(')||extensions.has(d.id))).map(d=>[d.id,d]));
 const aliases={소리:'play_sound',음표:'play_note_and_wait',화음:'play_chord',효과음:'play_sfx',배경음악:'bgm',산점도:'scatter3d',표면그래프:'surface3d',선그래프:'line3d',막대그래프:'bar3d'};
 for(const [alias,name]of Object.entries(aliases))if(functions.has(name))functions.set(alias,functions.get(name));
+// textures. 뒤의 목록과 한글 뜻은 문서의 '텍스처 프리셋' 표를 그대로 씁니다 (새 재질을 문서에 넣으면 자동 완성에도 나옵니다).
+const texturePresets=apiReferenceDocs.find(d=>d.id==='textures-presets')?.params||[];
 const shapes=new Set(['sphere','box','ellipsoid','cylinder','cone','ring','arrow','pyramid','compound','curve','helix','label','extrusion']);
 const members={
  vector:['x','y','z','mag','mag2','hat','dot','cross','norm','proj','comp','diff_angle','rotate','equals'],
@@ -13,7 +15,7 @@ const members={
  list:['append','extend','insert','pop','remove','clear','index','count','sort','reverse','copy'],
  color:['red','green','blue','white','black','yellow','cyan','magenta','orange','purple','pink','gray','hsv_to_rgb','rgb_to_hsv'],
 };
-const extras={print:'값을 출력하기',len:'개수',range:'반복할 숫자',abs:'절댓값',round:'반올림',min:'가장 작은 값',max:'가장 큰 값',sum:'합계',enumerate:'번호와 값',zip:'나란히 묶기',int:'정수로',float:'실수로',str:'문자열로',list:'목록으로',dict:'키와 값으로',sorted:'정렬한 목록',sin:'사인',cos:'코사인',sqrt:'제곱근',pi:'원주율',random:'0부터 1 사이 난수',True:'참',False:'거짓',None:'값 없음',for:'하나씩 반복',while:'조건 동안 반복',if:'조건 확인',else:'그렇지 않으면',elif:'다른 조건',def:'함수 정의',return:'값 돌려주기',break:'반복 끝내기',continue:'다음 반복',from:'가져올 곳',import:'가져오기',in:'안에',and:'그리고',or:'또는',not:'아님'};
+const extras={print:'값을 출력하기',len:'개수',range:'반복할 숫자',abs:'절댓값',round:'반올림',min:'가장 작은 값',max:'가장 큰 값',sum:'합계',enumerate:'번호와 값',zip:'나란히 묶기',int:'정수로',float:'실수로',str:'문자열로',list:'목록으로',dict:'키와 값으로',sorted:'정렬한 목록',sin:'사인',cos:'코사인',sqrt:'제곱근',pi:'원주율',textures:'재질 모음 (textures.earth)',random:'0부터 1 사이 난수',True:'참',False:'거짓',None:'값 없음',for:'하나씩 반복',while:'조건 동안 반복',if:'조건 확인',else:'그렇지 않으면',elif:'다른 조건',def:'함수 정의',return:'값 돌려주기',break:'반복 끝내기',continue:'다음 반복',from:'가져올 곳',import:'가져오기',in:'안에',and:'그리고',or:'또는',not:'아님'};
 const word=(id,prefix)=>vocabularyWord(id,prefix);
 const docText=(d,locale)=>d?.[locale]||d?.ko||'';
 const identifier=/[\p{L}_][\p{L}\p{N}_]*/u;
@@ -53,6 +55,8 @@ function typeMembers(type){if(type==='vector'||type==='list'||type==='scene'||ty
 export function completionChoices(source,locale='ko'){
  const context=pythonContext(source);if(context.blocked||/(?:^|[^\p{L}\p{N}_])\d+\.$/u.test(context.masked))return[];const declared=declarations(context.masked),member=context.masked.match(/([\p{L}_][\p{L}\p{N}_.]*)\.([\p{L}\p{N}_]*)$/u),ko=locale==='ko';
  const choice=(name,detail,description,kind='property',insertText=name)=>({name,detail,description,kind,insertText});
+ // 학생이 textures라는 이름을 직접 만들었거나(textures = []) 다른 객체의 속성(a.textures.)이면 재질 목록을 내지 않습니다.
+ if(member&&member[1]==='textures'&&!declared.has('textures')&&!/[.\])]$/.test(context.masked.slice(0,member.index).trimEnd()))return texturePresets.map(p=>choice(p.name,ko?p.desc.ko:p.desc.en,ko?`sphere(texture=textures.${p.name})처럼 도형의 표면에 입혀요.`:`Use it as a surface: sphere(texture=textures.${p.name})`));
  if(member){const type=receiverType(member[1],declared);return typeMembers(type).map(name=>choice(name,ko?(word(name,member[1]+'.'+name)?.meaning||'속성·동작'):'Property / method',ko?(word(name,member[1]+'.'+name)?.explanation||'현재 객체에서 사용할 수 있는 이름입니다.'):(word(name)?.english||'A member of this object.')));}
  if(/\.[\p{L}\p{N}_]*$/u.test(context.masked))return[];
  const values=[...[...declared].filter(([name])=>identifier.test(name)&&!functions.has(name)&&!extras[name]).map(([name])=>choice(name,ko?'내 코드의 이름':'Name in this code',ko?'이 코드에서 정의한 이름입니다.':'A name defined in this code.','variable')),...[...functions].map(([name,d])=>choice(name,ko?(word(name)?.meaning||docText(d.title,locale)):(d.title?.en||name),docText(d.description,locale),'function')),...Object.entries(extras).map(([name,meaning])=>choice(name,ko?meaning:'Python',ko?meaning:name,'keyword'))];

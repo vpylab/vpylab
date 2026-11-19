@@ -5,6 +5,8 @@
  */
 
 import * as THREE from 'three';
+import { trackSphere, forgetSphere } from './sphere-detail';
+import { updateSolarGlow } from './solar-glow';
 import { createPrimitiveGeometry } from '../../../server/shared/primitive-geometry.js';
 const primitiveGeometry = createPrimitiveGeometry(THREE);
 import { createCompoundAppearanceTools } from '../../../server/shared/compound-appearance.js';
@@ -17,7 +19,7 @@ import {
   registerSound,
 } from './object-registry';
 import { processSoundCommand, setNotePlayCallback, setSoundEventCallback } from './sound-system';
-import { resolveTexture, whenTexturesReady } from './texture-system';
+import { resolveTexture, whenTexturesReady, surfacePlaceholder, finishSurfaceImage } from './texture-system';
 import { postEvent } from './pyodide-singleton';
 import {
   DEFAULT_OBJECT_PROPS, asNumber, asVectorArray, resolveBoxSize, getRegistryProps,
@@ -131,6 +133,7 @@ function pathCenter(path) {
 /** 메시(그룹이면 자식까지)의 지오메트리·재질·텍스처를 해제 */
 function disposeObject(mesh) {
   const disposeOne = (obj) => {
+    forgetSphere(obj);
     obj.geometry?.dispose?.();
     eachMaterial(obj, (mat) => {
       mat.map?.dispose?.();
@@ -217,6 +220,22 @@ function cloneThreeColor(color) {
   return typeof color?.clone === 'function'
     ? color.clone()
     : new THREE.Color(color?.r ?? 0, color?.g ?? 0, color?.b ?? 0);
+}
+
+const CELESTIAL_SURFACES = new Set(['sun', 'moon', 'jupiter', 'saturn']);
+
+// 조명 및 사용자 shininess가 바뀌어도 동일한 재질 규칙을 사용합니다.
+function applySurface(material, spec, texture) {
+  if (!material || !('roughness' in material)) return;
+  const name = String(spec || '').replace('preset:', '');
+  // 이미 만든 작품이 달라 보이지 않도록, 요철과 발광 무늬는 새로 추가한 천체 재질에만 씁니다.
+  // (metal의 금속성을 올리면 환경 반사가 없는 이 렌더러에서는 기존 금속 재질이 어두워집니다.)
+  const celestial = CELESTIAL_SURFACES.has(name);
+  material.metalness = DEFAULT_MATERIAL_PARAMS.metalness;
+  material.bumpMap = name === 'moon' ? texture : null;
+  material.bumpScale = name === 'moon' ? .018 : 0;
+  material.emissiveMap = celestial ? texture : null;
+  material.needsUpdate = true;
 }
 
 function setMaterialEmissive(material, enabled) {
@@ -363,7 +382,7 @@ function createObject(cmd, scene) {
   let mesh;
 
   const col = toThreeColor(cmd.color || [1, 1, 1]);
-  const tex = resolveTexture(cmd.texture);
+  const tex = surfacePlaceholder(cmd.texture, scene._renderer);
   material = new THREE.MeshStandardMaterial({
     color: col,
     map: tex || null,
@@ -375,15 +394,21 @@ function createObject(cmd, scene) {
     opacity: cmd.opacity ?? 1,
   });
   if (tex) {
+    applySurface(material, cmd.texture, tex);
     material.userData = material.userData || {};
     material.userData.textureSpec = cmd.texture;
+    finishSurfaceImage(material, cmd.texture, scene._renderer);
   }
 
   switch (cmd.type) {
-    case 'sphere':
-      geometry = new THREE.SphereGeometry(cmd.radius ?? DEFAULT_OBJECT_PROPS.sphere.radius, 32, 16);
+    case 'sphere': {
+      const segments = tex ? 64 : 32;
+      geometry = new THREE.SphereGeometry(cmd.radius ?? DEFAULT_OBJECT_PROPS.sphere.radius, segments, segments / 2);
       mesh = new THREE.Mesh(geometry, material);
+      trackSphere(scene, mesh);
+      updateSolarGlow(mesh);
       break;
+    }
 
     case 'box': {
       const size = resolveBoxSize(cmd);
@@ -540,6 +565,19 @@ function createObject(cmd, scene) {
           transparent: cmd.opacity < 1,
           opacity: cmd.opacity ?? 1,
         });
+        if (cmd.shape === 'mist') {
+          pmat.transparent = true;
+          pmat.depthWrite = false;
+          pmat.blending = THREE.AdditiveBlending;
+          pmat.onBeforeCompile = shader => {
+            shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', `
+              vec2 offset = gl_PointCoord * 2.0 - 1.0;
+              float radiusSquared = dot(offset, offset);
+              diffuseColor.a *= exp(-3.6 * radiusSquared) * (1.0 - smoothstep(0.55, 1.0, radiusSquared));
+              #include <alphatest_fragment>
+            `);
+          };
+        }
         mesh = new THREE.Points(geom, pmat);
       }
       mesh.userData = {
@@ -784,7 +822,7 @@ function updateTrail(cmd) {
 /**
  * 객체 속성 업데이트
  */
-function updateMesh(cmd) {
+function updateMesh(cmd, scene) {
   const mesh = meshRegistry.get(cmd.id);
   if (!mesh) return;
 
@@ -876,12 +914,14 @@ function updateMesh(cmd) {
   }
 
   if (cmd.texture !== undefined) {
-    const newTex = resolveTexture(cmd.texture);
+    const newTex = surfacePlaceholder(cmd.texture, scene._renderer);
     const apply = (mat) => {
       if (!mat) return;
       mat.map = newTex || null;
+      applySurface(mat, cmd.texture, mat.map);
       mat.userData = mat.userData || {};
       mat.userData.textureSpec = cmd.texture || null;
+      finishSurfaceImage(mat, cmd.texture, scene._renderer);
       mat.needsUpdate = true;
     };
     if (mesh.isGroup) {
@@ -910,7 +950,8 @@ function updateMesh(cmd) {
     // geometry 재생성 (sphere, cone, cylinder, ring)
     let newGeom;
     if (mesh.geometry.type === 'SphereGeometry') {
-      newGeom = new THREE.SphereGeometry(cmd.radius, 32, 16);
+      const segments = mesh.material?.map ? 64 : 32;
+      newGeom = new THREE.SphereGeometry(cmd.radius, segments, segments / 2);
     } else if (mesh.geometry.type === 'ConeGeometry' && mesh.userData?.vpType !== 'pyramid') {
       const h = mesh.geometry.parameters?.height || 1;
       newGeom = primitiveGeometry.cone(cmd.radius, h);
@@ -925,6 +966,10 @@ function updateMesh(cmd) {
       mesh.geometry.dispose();
       mesh.geometry = newGeom;
     }
+  }
+
+  if (mesh.geometry?.type === 'SphereGeometry' && (cmd.radius !== undefined || cmd.texture !== undefined || cmd.emissive !== undefined)) {
+    updateSolarGlow(mesh);
   }
 
   if (mesh.userData?.vpType === 'helix' && ['size', 'radius', 'coils', 'thickness', 'ccw', 'axis'].some(key => cmd[key] !== undefined)) {
@@ -1126,6 +1171,7 @@ export function processBatch(commands, scene) {
       if (mesh) {
         const previousScene = mesh.parent;
         scene.add(mesh);
+        if (mesh.userData.vpType === 'sphere' || mesh.geometry?.type === 'SphereGeometry') trackSphere(scene, mesh);
         mesh.userData.vpCanvasId = canvasId;
         previousScene?._requestRender?.();
         scene._requestRender?.();
@@ -1139,7 +1185,7 @@ export function processBatch(commands, scene) {
         createObject(cmd, scene);
         break;
       case 'update':
-        updateMesh(cmd);
+        updateMesh(cmd, scene);
         break;
       case 'mesh_vertices': {
         const mesh = meshRegistry.get(cmd.id);
@@ -1318,6 +1364,9 @@ export function processBatch(commands, scene) {
           const tex = resolveTexture(cmd.texture);
           group.traverse((child) => eachMaterial(child, (mat) => {
             mat.map = tex || null;
+            applySurface(mat, cmd.texture, mat.map);
+            mat.userData ||= {};
+            mat.userData.textureSpec = cmd.texture;
             mat.needsUpdate = true;
           }));
         }
