@@ -36,6 +36,7 @@ for distance, radius, tint, speed, phase in data:
     path = [distance * vector(cos(i*pi/90), 0, sin(i*pi/90)) for i in range(181)]
     curve(pos=path, color=vector(0.09, 0.14, 0.21))
     planets.append(sphere(radius=radius, color=vector(*tint), shininess=0.10))
+# 표면 그림의 색이 그대로 보이도록 바탕색을 흰색으로 바꾼 뒤 재질을 입힙니다.
 planets[4].color = color.white
 planets[4].texture = textures.jupiter
 planets[5].color = color.white
@@ -48,9 +49,9 @@ for r, width, tone in [(0.99, 0.028, 0.54), (1.08, 0.045, 0.78), (1.20, 0.022, 0
     rings.append(ring(radius=r, thickness=width, axis=vector(0.32, 1, 0.18), color=vector(tone, 0.86*tone, 0.66*tone)))
 
 # 혜성: 근일점 거리와 이심률을 바꾸면 궤도와 먼지의 분포가 함께 바뀝니다.
-q = 2.8
-eccentricity = 0.68
-mu = 14
+q = 2.8               # 근일점 거리: 태양에 가장 가까워질 때의 거리
+eccentricity = 0.68   # 이심률: 0이면 원, 1에 가까울수록 길쭉한 타원
+mu = 14               # 태양이 끌어당기는 세기
 comet = sphere(pos=vector(-q,0,0), radius=0.065, texture=textures.granite)
 velocity = vector(0, 0.18, 0.984).norm() * sqrt(mu*(1+eccentricity)/q)
 # 핵 주위의 코마, 태양 반대쪽의 이온 줄기, 공전 뒤쪽으로 휘는 먼지 부채.
@@ -164,6 +165,7 @@ scene.forward = vector(0,-.65,-1)
 def strike(i):
     ends[i] = monotonic() + .65
     play_note(notes[i], .65, type=timbres[voice.index] + ("-room" if room.checked else ""), volume=volume.value)
+# 버튼 다섯 개를 만들고 누르면 그 번호의 건반을 칩니다. (i=i는 버튼마다 자기 번호를 기억하게 하는 표현입니다)
 for i in range(5):
     button(text=str(i+1), bind=lambda b, i=i: strike(i))
 def on_key(e):
@@ -173,6 +175,7 @@ scene.bind("keydown", on_key)
 while True:
     rate(45)
     for i in range(5):
+        # glow는 방금 친 건반이 1에서 0으로 서서히 줄어드는 값입니다. 건반 빛과 조명 세기에 씁니다.
         glow = max(0, (ends[i]-monotonic())/.65)
         if keys[i].emissive != (glow > .1):
             keys[i].emissive = glow > .1

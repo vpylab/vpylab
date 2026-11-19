@@ -222,15 +222,19 @@ function cloneThreeColor(color) {
     : new THREE.Color(color?.r ?? 0, color?.g ?? 0, color?.b ?? 0);
 }
 
+const CELESTIAL_SURFACES = new Set(['sun', 'moon', 'jupiter', 'saturn']);
+
 // 조명 및 사용자 shininess가 바뀌어도 동일한 재질 규칙을 사용합니다.
 function applySurface(material, spec, texture) {
   if (!material || !('roughness' in material)) return;
   const name = String(spec || '').replace('preset:', '');
-  const rocky = ['moon', 'granite', 'stones', 'rough'].includes(name);
-  material.metalness = name === 'metal' ? .72 : DEFAULT_MATERIAL_PARAMS.metalness;
-  material.bumpMap = rocky ? texture : null;
-  material.bumpScale = rocky ? .018 : 0;
-  material.emissiveMap = texture;
+  // 이미 만든 작품이 달라 보이지 않도록, 요철과 발광 무늬는 새로 추가한 천체 재질에만 씁니다.
+  // (metal의 금속성을 올리면 환경 반사가 없는 이 렌더러에서는 기존 금속 재질이 어두워집니다.)
+  const celestial = CELESTIAL_SURFACES.has(name);
+  material.metalness = DEFAULT_MATERIAL_PARAMS.metalness;
+  material.bumpMap = name === 'moon' ? texture : null;
+  material.bumpScale = name === 'moon' ? .018 : 0;
+  material.emissiveMap = celestial ? texture : null;
   material.needsUpdate = true;
 }
 
@@ -397,13 +401,14 @@ function createObject(cmd, scene) {
   }
 
   switch (cmd.type) {
-    case 'sphere':
+    case 'sphere': {
       const segments = tex ? 64 : 32;
       geometry = new THREE.SphereGeometry(cmd.radius ?? DEFAULT_OBJECT_PROPS.sphere.radius, segments, segments / 2);
       mesh = new THREE.Mesh(geometry, material);
       trackSphere(scene, mesh);
       updateSolarGlow(mesh);
       break;
+    }
 
     case 'box': {
       const size = resolveBoxSize(cmd);

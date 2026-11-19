@@ -22,6 +22,23 @@ export const codeVocabulary = [
   word('rate', '반복 속도', '레이트', '반복문의 속도를 조절하고 화면이 바뀔 시간을 줘요. rate(30)은 초당 최대 30번 반복하도록 해요.', 'while True:\n    rate(30)', 'Limit loop speed and give the screen time to update.'),
   word('visible', '보이기', '비저블', 'True면 보이고 False면 숨겨요. 숨겨도 변수와 도형은 남아 있어요.', 'ball.visible = False', 'True shows the object; False hides it.'),
   word('emissive', '스스로 밝게', '이미시브', '조명을 받지 않아도 밝게 보여요. 다른 도형을 비추는 광원이 되는 것은 아니에요.', 'sphere(emissive=True)', 'Looks bright without lighting; it does not illuminate other objects.'),
+  // 재질·빛·소리 (시네마틱 예제에서 처음 만나는 낱말)
+  word('texture', '표면 그림', '텍스처', '도형의 겉에 입히는 무늬나 사진이에요. 나무, 돌, 행성의 표면처럼 보이게 해 줘요.', 'sphere(texture=textures.earth)', 'A picture or pattern wrapped around a shape.'),
+  word('textures', '재질 모음', '텍스처스', '미리 준비한 표면 그림 모음이에요. 뒤에 점을 찍으면 고를 수 있는 재질과 뜻이 나와요.', 'sphere(texture=textures.moon)', 'The built-in set of surfaces. Type a dot after it to choose one.'),
+  word('local_light', '전구 조명', '로컬 라이트', '전구처럼 한 자리에서 사방으로 빛을 비춰요. 가까운 쪽은 밝고 먼 쪽은 어두워져서 낮과 밤이 생겨요.', 'local_light(pos=vector(0, 2, 0), color=color.white)', 'A light that shines in all directions from one place.'),
+  word('intensity', '빛의 세기', '인텐시티', '조명이 얼마나 밝은지 정해요. 숫자가 클수록 멀리까지 밝게 비춰요.', 'lamp.intensity = 20', 'How bright a light is.'),
+  word('shininess', '반짝임', '샤이니니스', '표면이 빛을 받아 반짝이는 정도예요. 0에 가까우면 매트하고 1에 가까우면 매끈해요.', 'sphere(shininess=0.2)', 'How glossy a surface looks, from 0 to 1.'),
+  word('play_note', '음 연주하기', '플레이 노트', '음 이름과 길이를 정해 소리를 내요. type으로 악기 소리를 고를 수 있어요.', 'play_note("C4", 0.5, type="marimba")', 'Play a note by name. Choose an instrument with type.'),
+  word('volume', '소리 크기', '볼륨', '소리가 얼마나 큰지 정해요. 0은 소리 없음, 1은 가장 큰 소리예요.', 'play_note("C4", 0.5, volume=0.5)', 'Loudness from 0 to 1.'),
+  word('ambient', '바탕 빛', '앰비언트', '무대 전체에 고르게 깔리는 빛이에요. 어둡게 하면 조명이 닿지 않는 쪽이 밤처럼 보여요.', 'scene.ambient = color.gray(0.2)', 'Even base light for the whole scene.'),
+  word('fov', '보는 넓이', '에프오브이 · field of view', '카메라가 한 번에 보는 각도예요. 작게 하면 망원경처럼 좁고 크게 보여요. 라디안으로 써요.', 'scene.fov = pi / 3', 'The camera’s field of view, in radians.'),
+  word('camera', '카메라', '캐머러', '3D 무대를 바라보는 눈이에요. pos는 눈의 자리, axis는 바라보는 방향이에요.', 'scene.camera.pos = vector(0, 10, 20)', 'The viewpoint. pos is where it is; axis is where it looks.'),
+  word('points', '점 모음', '포인츠', '많은 점을 한꺼번에 그려요. 밤하늘의 별이나 혜성의 먼지를 만들 때 써요.', 'points(pos=[vector(0, 0, 0), vector(1, 1, 0)], radius=3)', 'Draw many points at once.'),
+  word('slider', '조절 막대', '슬라이더', '끌어서 숫자를 바꾸는 막대를 만들어요. 값은 .value로 읽어요.', 'speed = slider(min=0, max=3, value=1)', 'A slider for choosing a number. Read it with .value.'),
+  word('menu', '고르기 메뉴', '메뉴', '여러 항목 가운데 하나를 고르는 메뉴를 만들어요. 고른 항목은 .selected로 읽어요.', 'view = menu(choices=["전체", "가까이"])', 'A menu for choosing one item. Read it with .selected.'),
+  word('checkbox', '체크 상자', '체크박스', '눌러서 켜고 끄는 상자를 만들어요. 켜졌는지는 .checked로 읽어요.', 'echo = checkbox(text="울림")', 'A box you can tick. Read it with .checked.'),
+  word('norm', '방향만 남기기', '놈', '화살표의 방향은 그대로 두고 길이를 1로 맞춰요. 방향만 필요할 때 써요.', 'away = norm(comet.pos)', 'A vector of length 1 in the same direction.'),
+  word('mag', '벡터의 길이', '매그 · magnitude', '화살표의 길이, 곧 원점에서 그 위치까지의 거리를 구해요.', 'distance = mag(comet.pos)', 'The length of a vector.'),
 ];
 
 export function vocabularyForCode(code = '') {

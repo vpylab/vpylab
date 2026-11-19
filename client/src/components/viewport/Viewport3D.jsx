@@ -4,7 +4,6 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import useAppStore from '../../stores/appStore';
 import CameraSystem from '../../engine/camera-system';
 import { releaseSurfaceImages } from '../../engine/texture-system';
-import { updateSphereDetail } from '../../engine/sphere-detail';
 import { createRenderGate } from '../../engine/render-gate';
 import AudioNoteIndicator from './AudioNoteIndicator';
 import { postCameraState, postEvent, postMouseState, postPressedKeys } from '../../engine/pyodide-singleton';
@@ -102,9 +101,9 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       return;
     }
     renderer.setSize(width, height);
-    const nativeRatio = Math.min(window.devicePixelRatio || 1, 2);
-    let pixelRatio = nativeRatio;
-    renderer.setPixelRatio(pixelRatio);
+    // 해상도는 처음 한 번만 정합니다. 그린 프레임 사이의 간격으로 기기 속도를 재서 해상도를 낮추면
+    // rate(20)처럼 일부러 느리게 도는 정상 프로그램까지 흐려지고, 녹화·썸네일 해상도도 도중에 바뀝니다.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -292,9 +291,6 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
     // 카메라 제어는 계속 갱신하되 변함없는 장면의 GPU 그리기는 줄입니다.
     let stateUpdateCounter = 0;
     let cameraStateSeq = 0;
-    let previousDraw = 0;
-    let slowFrames = 0;
-    let fastFrames = 0;
     function animate(now = performance.now()) {
       animFrameRef.current = requestAnimationFrame(animate);
 
@@ -305,18 +301,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       camSystem.updateClipPlanes();
       // billboard=True 인 3D 글자를 카메라 쪽으로 돌린다 (Group에는 onBeforeRender가 오지 않는다)
       if (shouldRender(now, camera, renderDirty)) {
-        const interval = now - previousDraw;
-        previousDraw = now;
-        slowFrames = interval > 38 && interval < 130 ? slowFrames + 1 : 0;
-        fastFrames = interval > 0 && interval < 20 ? fastFrames + 1 : 0;
-        if (slowFrames >= 20 || fastFrames >= 120) {
-          const next = Math.min(nativeRatio, Math.max(Math.min(.85, nativeRatio), pixelRatio + (slowFrames ? -.25 : .25)));
-          if (next !== pixelRatio) renderer.setPixelRatio(next);
-          pixelRatio = next;
-          slowFrames = fastFrames = 0;
-        }
         renderDirty = false;
-        updateSphereDetail(scene, camera, renderer.domElement.clientHeight);
         updateBillboards(camera, scene);
         renderer.render(scene, camera);
       }

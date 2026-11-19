@@ -38,3 +38,12 @@ it('코드 문맥이 바뀌면 사라진 단어의 설명을 남기지 않고 HT
 it('기본으로 접고 알겠어요를 누른 단어는 다시 열어도 생략하며 선택해 복구한다',()=>{
  const view=render(<CodeVocabulary code="sphere(radius=0.5)"/>);expect(screen.queryByRole('button',{name:'radius 반지름'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:/단어 뜻/}));fireEvent.click(screen.getByRole('button',{name:'radius 반지름'}));fireEvent.click(screen.getByRole('button',{name:/알겠어요/}));view.unmount();render(<CodeVocabulary initiallyOpen code="sphere(radius=0.5)"/>);expect(screen.queryByRole('button',{name:'radius 반지름'})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'기억한 단어도 보기'}));expect(screen.getByRole('button',{name:'radius 반지름'})).toBeVisible();
 });
+
+it('새 재질·조명·소리 낱말도 한글 뜻을 보여 준다', () => {
+  const ids = vocabularyForCode('sun = sphere(texture=textures.sun, emissive=True)\nlamp = local_light(pos=sun.pos, intensity=30)\nplay_note("C4", 0.5, type="felt", volume=0.4)').map(term => term.id);
+  expect(ids).toEqual(expect.arrayContaining(['texture', 'textures', 'local_light', 'intensity', 'play_note', 'volume']));
+  const word = vocabularyForCode('lamp = local_light()').find(term => term.id === 'local_light');
+  expect(word.meaning).toBe('전구 조명');
+  expect(word.reading).toBeTruthy();
+  expect(word.example).toContain('local_light(');
+});

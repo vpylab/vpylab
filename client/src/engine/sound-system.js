@@ -13,7 +13,7 @@
  */
 
 import { instruments } from '../../../server/shared/instrument-profiles.js';
-import { playFeltSample } from './felt-sample.js';
+import { playFeltSample, warmFeltSamples } from './felt-sample.js';
 
 import { createRoomBus } from './room-audio.js';
 
@@ -26,6 +26,8 @@ let iosMediaUnlockPending = null;
 
 // 모든 수업 음원은 하나의 출력 경로와 같은 음량·음소거 설정을 사용합니다.
 export const MAX_AUDIO_VOICES = 24;
+const MAX_RETIRING_VOICES = 8; // 자리를 내주려고 줄이는 중인 소스의 상한 (한꺼번에 몰려도 노드 수가 늘지 않게)
+let partialBudget = Infinity;  // 화음 한 음이 쓸 수 있는 배음 수 (playChord가 정합니다)
 export const MAX_AUDIO_TIMERS = 256;
 const HEADROOM = 0.45;
 const STOP_FADE = 0.018;
@@ -230,6 +232,7 @@ function getAudioContext() {
   if (!audioCtx || audioCtx.state === 'closed') {
     audioCtx = new AudioContextClass();
     createMasterGraph(audioCtx);
+    warmFeltSamples(audioCtx); // 첫 음부터 같은 음색이 나도록 피아노 녹음을 미리 받습니다
   }
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   return audioCtx;
@@ -366,8 +369,28 @@ export function isAudioUnlocked() {
  * 이전 방식(resume 완료 후 fn 호출)은 모바일에서 타이밍 문제로
  * fn()이 아예 호출되지 않는 버그가 있었음.
  */
+/**
+ * 새 소리가 쓸 자리를 셉니다. 꽉 찼으면 가장 오래된 음 하나를 짧게 줄여 자리를 냅니다.
+ * 예전에는 한도에 닿으면 새 음을 조용히 버려서, 빠르게 연주하면 건반 불빛만 켜지고 소리가 나지 않았습니다.
+ * 방금(같은 순간에) 시작한 음은 줄이지 않습니다. 그래야 한 번에 몰린 요청이 서로를 지우며 노드를 늘리지 않습니다.
+ */
+function freeVoices() {
+  let live = 0, retiring = 0;
+  for (const voice of activeVoices.values()) voice.retiring ? retiring++ : live++;
+  if (live < MAX_AUDIO_VOICES) return MAX_AUDIO_VOICES - live;
+  if (retiring >= MAX_RETIRING_VOICES) return 0;
+  const now = audioCtx?.currentTime || 0;
+  for (const voice of activeVoices.values()) {
+    if (voice.retiring || !voice.note || voice.note.start > now - 0.05) continue;
+    retireVoice(voice);
+    return 1;
+  }
+  return 0;
+}
+
 function withRunningContext(fn) {
-  if (masterMuted || masterVolume === 0 || activeVoices.size >= MAX_AUDIO_VOICES) return;
+  if (masterMuted || masterVolume === 0) return;
+  if (activeVoices.size >= MAX_AUDIO_VOICES + MAX_RETIRING_VOICES || freeVoices() < 1) return;
   const ctx = getAudioContext();
   if (ctx) fn(ctx);
 }
@@ -466,7 +489,9 @@ function scheduleEnvelope(gain, ctx, peak, duration, attack = 0.008, time = ctx.
 
 function richTone(ctx, frequency, duration, timbre, volume, group, time, output) {
   const { partials, tail, attack } = instruments[timbre];
-  if (activeVoices.size >= MAX_AUDIO_VOICES) return;
+  // 자리가 모자라면 기본음부터 냅니다. 배음을 줄여도 음높이는 들립니다.
+  let room = Math.min(freeVoices(), partialBudget);
+  if (room < 1) return;
   if (timbre === 'felt') {
     const voice = playFeltSample(ctx, frequency, duration, volume, time, output);
     if (voice) {
@@ -476,7 +501,8 @@ function richTone(ctx, frequency, duration, timbre, volume, group, time, output)
     }
   }
   for (const [ratio, strength] of partials) {
-    if (activeVoices.size >= MAX_AUDIO_VOICES || frequency * ratio > 18_000) break;
+    if (room < 1 || frequency * ratio > 18_000) break;
+    room -= 1;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     const length = duration + tail / ratio;
@@ -608,7 +634,16 @@ export function playChord(frequencies, duration = 1.0, type = 'sine', volume = 0
     const names = notes.map(freqToNoteName).filter(Boolean);
     if (names.length > 0) _onNotePlay(names.join('+'), duration, type);
   }
-  for (const freq of notes) beep(freq, duration, type, volume / Math.sqrt(notes.length));
+  // 배음이 여러 개인 악기로 큰 화음을 치면 앞의 음들이 자리를 다 써서 뒤의 음이 통째로 빠졌습니다.
+  // 남은 자리를 음 수로 나눠, 모든 음이 적어도 기본음은 내게 합니다.
+  let live = 0;
+  for (const voice of activeVoices.values()) if (!voice.retiring) live++;
+  partialBudget = Math.max(1, Math.floor((MAX_AUDIO_VOICES - live) / notes.length));
+  try {
+    for (const freq of notes) beep(freq, duration, type, volume / Math.sqrt(notes.length));
+  } finally {
+    partialBudget = Infinity;
+  }
 }
 
 /**

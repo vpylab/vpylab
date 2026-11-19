@@ -10,6 +10,7 @@ export function updateSolarGlow(mesh) {
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = 128;
     const ctx = canvas.getContext('2d');
+    if (!ctx) return; // 자원이 부족한 기기에서는 후광만 생략합니다 (예외로 나머지 장면이 멈추지 않게)
     const gradient = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
     for (const [offset, alpha] of [[0,.5],[.30,.38],[.44,.16],[.69,.04],[1,0]]) {
       gradient.addColorStop(offset, `rgba(255,152,57,${alpha})`);

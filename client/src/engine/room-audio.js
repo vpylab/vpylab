@@ -18,5 +18,21 @@ export function createRoomBus(ctx, destination) {
   input.connect(reverb);
   reverb.connect(wet);
   wet.connect(destination);
-  return { input, close() { input.disconnect(); reverb.disconnect(); wet.disconnect(); } };
+  return {
+    input,
+    // 바로 끊으면 직접음과 잔향이 한꺼번에 잘려 '딱' 소리가 납니다. 짧게 줄인 뒤 연결을 풉니다.
+    close() {
+      const time = ctx.currentTime || 0;
+      for (const node of [input, wet]) {
+        try {
+          node.gain.cancelScheduledValues?.(time);
+          node.gain.setValueAtTime(node.gain.value, time);
+          node.gain.linearRampToValueAtTime(0, time + 0.02);
+        } catch { /* 이미 닫힌 오디오 컨텍스트 */ }
+      }
+      setTimeout(() => {
+        for (const node of [input, reverb, wet]) { try { node.disconnect(); } catch { /* 이미 끊김 */ } }
+      }, 60);
+    },
+  };
 }

@@ -222,6 +222,8 @@ describe('수업 음원의 출력 경로와 자연스러운 수명', () => {
     expect(context.sources.at(-1).frequency.value).toBeCloseTo(440 * 5.43);
     expect(reverb.buffer).toBeDefined();
     sound.stopAllSounds();
+    expect(reverb.disconnect).not.toHaveBeenCalled(); // 바로 끊지 않고 짧게 줄인 뒤 해제합니다
+    vi.advanceTimersByTime(100);
     expect(reverb.disconnect).toHaveBeenCalled();
   });
 
@@ -296,5 +298,30 @@ describe('수업 음원의 출력 경로와 자연스러운 수명', () => {
     context.state = 'running';
     expect(await sound.previewInstrument('musicbox')).toBe(true);
     expect(context.createOscillator).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('발음 한도에서 새 음을 버리지 않는다', () => {
+  it('배음 셋인 피아노로 열두 음 화음을 쳐도 모든 음의 기본음이 난다', () => {
+    const hz = [211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271]; // 서로의 배음과 겹치지 않는 값
+    sound.playChord(hz, 2, 'piano', 0.3);
+    const fundamentals = context.sources.map(source => source.frequency.value).filter(value => hz.includes(value));
+    expect(fundamentals).toEqual(hz);
+    expect(context.sources.length).toBeLessThanOrEqual(sound.MAX_AUDIO_VOICES);
+  });
+
+  it('자리가 꽉 찼을 때 새 음은 가장 오래된 음을 줄이고 소리를 낸다', () => {
+    for (let index = 0; index < sound.MAX_AUDIO_VOICES; index++) sound.beep(200 + index, 5, 'sine', 0.2);
+    expect(context.sources).toHaveLength(sound.MAX_AUDIO_VOICES);
+    context.currentTime = 1; // 앞의 음들이 '방금' 시작한 것이 아니게 됩니다
+    sound.beep(880, 0.5, 'sine', 0.2);
+    expect(context.sources.at(-1).frequency.value).toBe(880);
+    expect(context.sources[0].stop).toHaveBeenCalled(); // 가장 오래된 음을 짧게 줄여 멈춥니다
+    expect(sound.getAudioState().voiceCount).toBeLessThanOrEqual(sound.MAX_AUDIO_VOICES);
+  });
+
+  it('같은 순간에 몰린 요청은 서로를 지우지 않아 노드 수가 한도를 넘지 않는다', () => {
+    for (let index = 0; index < 200; index++) sound.beep(300 + index, 1, 'glass', 0.2);
+    expect(context.sources.length).toBeLessThanOrEqual(sound.MAX_AUDIO_VOICES);
   });
 });

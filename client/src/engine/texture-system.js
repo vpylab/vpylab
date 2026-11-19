@@ -68,12 +68,17 @@ export function releaseSurfaceImages(renderer) {
   compressedModule?.then(module => module.releaseEarth(renderer), () => {});
 }
 
+// 지구를 KTX2(압축 텍스처)로 바꿔 끼우는 경로는 끕니다. 변환기(wasm·Worker)가 아이패드에서 검증되지 않았고,
+// 재실행·장면 정리와 겹치면 임시 그림이 남는 경쟁 조건이 있습니다. 다른 천체와 같은 JPEG 경로를 씁니다.
+const USE_COMPRESSED_EARTH = false;
+
 export function surfacePlaceholder(spec, renderer) {
+  if (!USE_COMPRESSED_EARTH) return resolveTexture(spec);
   return spec === 'preset:earth' && renderer?.isWebGLRenderer ? resolveTexture('earth') : resolveTexture(spec);
 }
 
 export function finishSurfaceImage(material, spec, renderer) {
-  if (spec !== 'preset:earth' || !renderer?.isWebGLRenderer) return;
+  if (!USE_COMPRESSED_EARTH || spec !== 'preset:earth' || !renderer?.isWebGLRenderer) return;
   compressedModule ??= import('./compressed-earth.js');
   const placeholder = material.map;
   const ready = compressedModule.then(module => module.loadEarth(renderer))
