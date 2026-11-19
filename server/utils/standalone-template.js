@@ -18,7 +18,7 @@
  *
  * 미지원 (브라우저 IDE에서만 동작):
  * - 2D 그래프 (graph, gcurve, gdots, gvbars, ghbars) — DOM 패널 필요
- * - 이벤트 (scene.bind, scene.mouse) — 양방향 이벤트 채널 필요
+ * - 마우스·터치 이벤트(scene.mouse 등). 장면에 초점을 둔 키 입력은 지원
  * - scene.pause() / scene.waitfor() / input() — 이벤트·입력 채널 필요
  *   학생 코드가 위 기능을 사용하면 콘솔 경고 후 무시.
  *
@@ -997,6 +997,14 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     // VPython API 정의
     await pyodide.runPythonAsync(vpythonApi);
     widgetEvent = pyodide.globals.get('_widget_event');
+    const keyEvent = pyodide.globals.get('_key_event');
+    const canvasElement = renderer.domElement;
+    canvasElement.tabIndex = 0;
+    canvasElement.setAttribute('aria-label', '3D 장면 / 3D scene');
+    for (const name of ['keydown', 'keyup']) {
+      canvasElement.addEventListener(name, event => keyEvent(name, event.key));
+    }
+    canvasElement.addEventListener('blur', () => keyEvent('blur', ''));
 
     // 'vpython' 모듈로 등록 — from vpython import * 가 동작하도록
     await pyodide.runPythonAsync(\`
@@ -1079,6 +1087,7 @@ def _send_commands():
 \`);
 
     loading.classList.add('done');
+    renderer.domElement.focus();
 
     // 학생 코드 실행 — vpython 모듈이 sys.modules에 등록돼 있으므로 import 줄을 그대로 둔다 (줄 번호도 유지된다)
     const filtered = code;
@@ -1188,6 +1197,7 @@ class vector:
         m = self.mag
         return self/m if m else vector(0,0,0)
     def dot(self, o): return self.x*o.x + self.y*o.y + self.z*o.z
+    def norm(self): return self.hat
     def cross(self, o): return vector(self.y*o.z-self.z*o.y, self.z*o.x-self.x*o.z, self.x*o.y-self.y*o.x)
     def to_list(self): return [self.x, self.y, self.z]
     def clone(self): return vector(self.x, self.y, self.z)
@@ -2317,11 +2327,24 @@ class _Scene:
     def caption(self,v):
         self._caption = str(v)
         self._send('caption', self._caption)
-    def bind(self,*args,**kw):
-        print("[scene.bind] standalone HTML export에서는 이벤트가 지원되지 않습니다.")
-        if len(args)==1: return lambda fn: fn
-    def unbind(self,*args,**kw): pass
-    def waitfor(self,*args,**kw): pass
+    def bind(self, events, fn=None):
+        if fn is None:
+            return lambda handler: self.bind(events, handler)
+        for name in events.split():
+            if name in _key_handlers:
+                if fn not in _key_handlers[name]:
+                    _key_handlers[name].append(fn)
+            else:
+                _unsupported_warn("scene.bind(" + name + ")")
+        return fn
+
+    def unbind(self, events, fn=None):
+        for name in events.split():
+            handlers = _key_handlers.get(name, [])
+            if fn is None:
+                handlers.clear()
+            elif fn in handlers:
+                handlers.remove(fn)
     @property
     def mouse(self):
         class _M:
@@ -2333,13 +2356,39 @@ scene = _Scene()
 frame = compound
 
 
-# === UI 위젯 / 2D 그래프 — standalone export 미지원 ===
+# === 입력 위젯과 키보드. 2D 그래프는 독립 HTML에서 미지원 ===
 def _unsupported_warn(name):
     print(f"[{name}] standalone HTML export에서는 이 기능이 지원되지 않습니다.")
 
+from types import SimpleNamespace as _SimpleNamespace
+_key_handlers = {"keydown": [], "keyup": []}
+_pressed_keys = set()
+
 def keysdown():
-    """standalone export에서는 키보드 폴링 미지원 — 빈 리스트 반환"""
-    return []
+    return list(_pressed_keys)
+
+def _dispatch(callback, event):
+    async def invoke():
+        try:
+            result = callback(event)
+            if asyncio.iscoroutine(result):
+                await result
+        except Exception as exc:
+            print(str(exc))
+        finally:
+            _send_commands()
+    asyncio.ensure_future(invoke())
+
+def _key_event(name, key):
+    if name == "blur":
+        _pressed_keys.clear()
+        return
+    if name == "keydown":
+        _pressed_keys.add(key)
+    else:
+        _pressed_keys.discard(key)
+    for handler in list(_key_handlers.get(name, [])):
+        _dispatch(handler, _SimpleNamespace(key=key, event=name, canvas=scene))
 
 _widget_instances = {}
 _widget_values = {}
@@ -2349,16 +2398,7 @@ def _widget_event(widget_id, value):
         return
     _widget_values[widget_id] = value
     if callable(widget._bind):
-        async def dispatch():
-            try:
-                result = widget._bind(widget)
-                if asyncio.iscoroutine(result):
-                    await result
-            except Exception as exc:
-                print(str(exc))
-            finally:
-                _send_commands()
-        asyncio.ensure_future(dispatch())
+        _dispatch(widget._bind, widget)
 
 class _Widget:
     _kind = 'widget'
