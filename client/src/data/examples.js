@@ -3879,7 +3879,7 @@ sun_map = "https://raw.githubusercontent.com/vpylab/vpylab/62e96239c97293d01b891
 for x, name, url in [(-3, "Earth", maps + "earth_atmos_2048.jpg"),
                      (0, "Moon", maps + "moon_1024.jpg"),
                      (3, "Sun", sun_map)]:
-    sphere(pos=vector(x, -4.8, 0), radius=0.85, texture=url, emissive=True, shininess=0)
+    sphere(pos=vector(x, -4.8, 0), radius=0.85, texture=url, shininess=0)
     label(pos=vector(x, -5.9, 0), text=name, height=11,
           color=color.white, background=vector(0, 0, 0))
 rate(1)

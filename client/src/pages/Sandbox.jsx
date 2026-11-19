@@ -4,7 +4,7 @@ import { useUiText, getUiLocale } from "../i18n/ui-text";
 import { readPracticeDraft, writePracticeDraft } from '../utils/practice-drafts';
 import { clearSandboxDraft, readSandboxDraft, writeSandboxDraft } from '../utils/sandbox-draft';
 import { CODE_FILE_REASON_TEXT, CodeFileError, codeFileBaseName, downloadPython, openInVpylabUrl, readCodeFile } from '../utils/code-file';
-import { useState, useRef, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useState, useRef, useCallback, useEffect, useLayoutEffect, lazy, Suspense } from 'react';
 import { Link, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
 import Header from '../components/layout/Header';
@@ -134,6 +134,7 @@ export default function Sandbox() {
   const [activeTab, setActiveTab] = useState('editor');
   const [mobileMore, setMobileMore] = useState(false);
   const toolsButtonRef = useRef(null);
+  const toolsMenuRef = useRef(null);
   const fileInputRef = useRef(null);
   const [shareMsg, setShareMsg] = useState('');
   const [shareDialog, setShareDialog] = useState(null); // { url, id, title, code } | null
@@ -615,6 +616,49 @@ export default function Sandbox() {
       detachDriveSource();
     }
   }, [location.state, repoParam, searchParams, sharedRouteId]);
+
+  useLayoutEffect(() => {
+    if (!mobileMore) return;
+    const menu = toolsMenuRef.current;
+    const anchor = toolsButtonRef.current.parentElement;
+    const toolbar = anchor.parentElement;
+    const viewport = window.visualViewport;
+    function placeMenu() {
+      const gap = 8;
+      const edge = 12;
+      const bounds = anchor.getBoundingClientRect();
+      const left = (viewport?.offsetLeft ?? 0) + edge;
+      const top = (viewport?.offsetTop ?? 0) + edge;
+      const width = viewport?.width ?? document.documentElement.clientWidth;
+      const height = viewport?.height ?? window.innerHeight;
+      menu.style.maxWidth = Math.max(0, width - 2 * edge) + 'px';
+      const menuWidth = menu.offsetWidth;
+      const right = left + width - 2 * edge;
+      const x = Math.max(left, Math.min(bounds.right - menuWidth, right - menuWidth));
+      menu.style.left = (x - bounds.left) + 'px';
+      const below = top + height - 2 * edge - bounds.bottom - gap;
+      const above = bounds.top - top - gap;
+      const opensAbove = below < menu.scrollHeight && above > below;
+      menu.style.top = opensAbove ? 'auto' : 'calc(100% + 8px)';
+      menu.style.bottom = opensAbove ? 'calc(100% + 8px)' : 'auto';
+      menu.style.maxHeight = Math.max(0, opensAbove ? above : below) + 'px';
+    }
+    placeMenu();
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(placeMenu) : null;
+    observer?.observe(toolbar);
+    observer?.observe(anchor);
+    window.addEventListener('resize', placeMenu);
+    window.addEventListener('scroll', placeMenu, true);
+    viewport?.addEventListener('resize', placeMenu);
+    viewport?.addEventListener('scroll', placeMenu);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', placeMenu);
+      window.removeEventListener('scroll', placeMenu, true);
+      viewport?.removeEventListener('resize', placeMenu);
+      viewport?.removeEventListener('scroll', placeMenu);
+    };
+  }, [mobileMore]);
 
   useEffect(() => {
     if (!mobileMore) return;
@@ -1707,7 +1751,7 @@ export default function Sandbox() {
           <button ref={toolsButtonRef} onClick={() => setMobileMore(previous => !previous)} className="toolbar-btn" aria-label={ui("실습 도구")} aria-expanded={mobileMore}>{ui("도구")}<span aria-hidden="true">⌄</span></button>
           {mobileMore && <>
             <button type="button" aria-label={ui("실습 도구 닫기")} className="fixed inset-0 z-40 cursor-default border-0 bg-transparent" onClick={() => setMobileMore(false)} />
-            <div className="absolute right-0 top-full mt-2 w-60 max-h-[calc(100dvh-170px)] overflow-y-auto py-2 z-50 border" style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-md)' }}>
+            <div ref={toolsMenuRef} className="absolute top-full w-60 overflow-y-auto overscroll-contain py-2 z-50 border" style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)', boxShadow: 'var(--shadow-md)' }}>
               {[
                 { label: ui("현재 프로젝트를 내 메인으로 설정"), action: () => setHomePin({code:codeRef.current,title:shareTitle(),thumbnail:lastStartedCode.current===codeRef.current?captureThumbnail(sceneRef.current?._renderer?.domElement,600,.7):null,userId:user?.id}) },
                 { label: ui("초기 코드로 돌아가기"), action: handleReset },
