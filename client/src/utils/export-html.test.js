@@ -73,9 +73,21 @@ function startExport(width, height) {
     navigator: {}, innerWidth: width, innerHeight: height, devicePixelRatio: 1,
     requestAnimationFrame: vi.fn(), console, setTimeout, clearTimeout,
   };
-  runInNewContext(`${script}\nglobalThis.testExport = { camera, controls, processCmd };`, context);
+  runInNewContext(`${script}\nglobalThis.testExport = { camera, controls, processCmd, meshes, scene };`, context);
   return { ...context.testExport, context, listeners };
 }
+
+it('내려받은 HTML은 도형 생성·갱신·배경의 바이트 RGB를 같은 정규화 색으로 그린다', () => {
+  const { processCmd, meshes, scene } = startExport(390, 844);
+  processCmd({ action: 'create', id: 'star', type: 'sphere', pos: [255, 2, 0], color: [255, 2, 0] });
+  const mesh = meshes.get('star');
+  expect(mesh.position.toArray()).toEqual([255, 2, 0]);
+  expect(mesh.material.color.toArray()).toEqual([1, 2 / 255, 0]);
+  processCmd({ action: 'update', id: 'star', color: [1, 0, 0] });
+  expect(mesh.material.color.toArray()).toEqual([1, 0, 0]);
+  processCmd({ action: 'scene', property: 'background', value: [0, 128, 255] });
+  expect(scene.background.toArray()).toEqual([0, 128 / 255, 1]);
+});
 
 describe('공유 페이지의 시야 범위', () => {
   it.each([[1440, 900], [390, 844]])('짧은 변의 절반이 scene.range가 되도록 카메라를 맞춘다 (%i×%i)', (width, height) => {

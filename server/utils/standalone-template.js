@@ -29,6 +29,7 @@
 
 
 
+import { createRenderColorNormalizer } from '../shared/rgb-input.js';
 import { createCompoundAppearanceTools } from '../shared/compound-appearance.js';
 import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
@@ -110,6 +111,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   <script type="module">
   import * as THREE from 'three';
   const primitiveGeometry = (${createPrimitiveGeometry.toString()})(THREE);
+  const normalizeRenderColors = (${createRenderColorNormalizer.toString()})();
   const compoundAppearance = (${createCompoundAppearanceTools.toString()})(THREE);
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
@@ -604,7 +606,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     }
   }
 
-  function processCmd(cmd) {
+  function processCmd(command) {
+    const cmd = normalizeRenderColors(command);
     if (cmd.action === 'create') {
       let mesh;
       const baseColor = toColor(cmd.color || [1,1,1]);

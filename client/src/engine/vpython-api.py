@@ -430,7 +430,10 @@ class _ColorPalette:
     def rgb_to_hsv(c):
         """RGB 벡터 → 색상(h)·채도(s)·명도(v) 벡터 (GlowScript 호환)"""
         c = _coerce_vector(c, vector(0, 0, 0))
-        h, sat, v = colorsys.rgb_to_hsv(c.x, c.y, c.z)
+        channels = c.to_list()
+        if max(channels) > 1 and all(0 <= v <= 255 and v.is_integer() for v in channels):
+            channels = [v / 255 for v in channels]
+        h, sat, v = colorsys.rgb_to_hsv(*channels)
         return vector(h, sat, v)
 
     def __getitem__(self, key):

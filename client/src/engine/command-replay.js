@@ -6,6 +6,7 @@
  * "코드 실행 → 레지스트리 → 채점" 경로를 테스트에서 재현할 수 있다.
  */
 
+import { normalizeRenderColors } from '../../../server/shared/rgb-input.js';
 import {
   registerObject, updateObject, getObject, registerNote, registerSound,
 } from './object-registry';
@@ -20,7 +21,8 @@ import { getRegistryProps, getRegistryUpdates, DEFAULT_OBJECT_PROPS } from './re
 export function applyCommandsToRegistry(commands, options = {}) {
   let t = options.t ?? 0;
 
-  for (const cmd of commands) {
+  for (const command of commands) {
+    const cmd = normalizeRenderColors(command);
     switch (cmd.action) {
       case 'create': {
         if (cmd.type === 'distant_light') {

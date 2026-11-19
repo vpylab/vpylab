@@ -4,6 +4,7 @@
  * 커맨드 배칭: 프레임당 단일 postMessage에서 받은 배치를 처리
  */
 
+import { normalizeRenderColors } from '../../../server/shared/rgb-input.js';
 import * as THREE from 'three';
 import { trackSphere, forgetSphere } from './sphere-detail';
 import { updateSolarGlow } from './solar-glow';
@@ -1187,7 +1188,8 @@ export function processBatch(commands, scene) {
   root._canvasScenes ||= new Map();
   root._canvasScenes.set('scene', root);
   root._canvasPending ||= new Map();
-  for (const cmd of commands) {
+  for (const command of commands) {
+    const cmd = normalizeRenderColors(command);
     const canvasId = cmd.canvas_id || 'scene';
     if (cmd.action === 'canvas_create') {
       root._canvasHost?.create(cmd);
