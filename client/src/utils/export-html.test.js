@@ -40,7 +40,12 @@ describe.skipIf(!hasPython())('교재 작품의 편집기와 공유 HTML 실행 
       const original = editor.get(`${exported.id}:export`);
       expect(exported.error, exported.id).toBeNull();
       expect(finalObjects(exported.commands), exported.id).toEqual(finalObjects(original.commands));
-      const sounds = commands => commands.filter(command => command.action === 'sound');
+      // beatTime은 실행마다 기점이 다른 Worker 단조 시계다. 작품의 음과 연주 순서는 모두 비교한다.
+      const sounds = commands => commands.filter(command => command.action === 'sound').map(command => {
+        const event = { ...command };
+        delete event.beatTime;
+        return event;
+      });
       expect(sounds(exported.commands), exported.id).toEqual(sounds(original.commands));
       const range = commands => commands.filter(command => command.action === 'scene' && command.property === 'range').map(({action,property,value})=>({action,property,value}));
       expect(range(exported.commands), exported.id).toEqual(range(original.commands));
