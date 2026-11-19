@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import useAppStore from '../../stores/appStore';
 import CameraSystem from '../../engine/camera-system';
+import { releaseSurfaceImages } from '../../engine/texture-system';
 import { createRenderGate } from '../../engine/render-gate';
 import AudioNoteIndicator from './AudioNoteIndicator';
 import { postCameraState, postEvent, postMouseState, postPressedKeys } from '../../engine/pyodide-singleton';
@@ -100,7 +101,9 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       return;
     }
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 해상도는 처음 한 번만 정합니다. 그린 프레임 사이의 간격으로 기기 속도를 재서 해상도를 낮추면
+    // rate(20)처럼 일부러 느리게 도는 정상 프로그램까지 흐려지고, 녹화·썸네일 해상도도 도중에 바뀝니다.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -337,6 +340,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       window.removeEventListener('blur', onBlur);
       camSystem.dispose();
       controls.dispose();
+      releaseSurfaceImages(renderer);
       renderer.dispose();
       renderer.forceContextLoss();
       if (container.contains(renderer.domElement)) {

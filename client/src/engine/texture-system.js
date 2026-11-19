@@ -16,7 +16,43 @@ export function whenTexturesReady() { return Promise.all([...textureLoads.values
 const URL_LOADER = new THREE.TextureLoader();
 URL_LOADER.setCrossOrigin('');
 
+// Vite가 파일을 작품과 같은 출처에서 제공하며 실제로 선택한 재질만 내려받습니다.
+const surfaceImages = {
+  jupiter: new URL('../assets/planets/jupiter.jpg', import.meta.url).href,
+  saturn: new URL('../assets/planets/saturn.jpg', import.meta.url).href,
+  sun: new URL('../assets/planets/sun.jpg', import.meta.url).href,
+  earth: new URL('../assets/planets/earth.jpg', import.meta.url).href,
+  moon: new URL('../assets/planets/moon.jpg', import.meta.url).href,
+};
+
 const PRESET_GENERATORS = createTexturePainters();
+
+let compressedModule;
+export function releaseSurfaceImages(renderer) {
+  compressedModule?.then(module => module.releaseEarth(renderer), () => {});
+}
+
+// 지구를 KTX2(압축 텍스처)로 바꿔 끼우는 경로는 끕니다. 변환기(wasm·Worker)가 아이패드에서 검증되지 않았고,
+// 재실행·장면 정리와 겹치면 임시 그림이 남는 경쟁 조건이 있습니다. 다른 천체와 같은 JPEG 경로를 씁니다.
+const USE_COMPRESSED_EARTH = false;
+
+export function surfacePlaceholder(spec, renderer) {
+  if (!USE_COMPRESSED_EARTH) return resolveTexture(spec);
+  return spec === 'preset:earth' && renderer?.isWebGLRenderer ? resolveTexture('earth') : resolveTexture(spec);
+}
+
+export function finishSurfaceImage(material, spec, renderer) {
+  if (!USE_COMPRESSED_EARTH || spec !== 'preset:earth' || !renderer?.isWebGLRenderer) return;
+  compressedModule ??= import('./compressed-earth.js');
+  const placeholder = material.map;
+  const ready = compressedModule.then(module => module.loadEarth(renderer))
+    .catch(() => resolveTexture(spec)).then(texture => {
+      if (!texture || material.map !== placeholder || material.userData.textureSpec !== spec) return;
+      material.map = material.emissiveMap = texture;
+      material.needsUpdate = true;
+    });
+  textureLoads.set('compressed-earth', ready);
+}
 
 export const PRESET_NAMES = Object.keys(PRESET_GENERATORS);
 
@@ -35,6 +71,15 @@ export function resolveTexture(spec) {
   if (spec.startsWith('preset:')) {
     const name = spec.slice(7);
     texture = makeProceduralTexture(name);
+    if (Object.hasOwn(surfaceImages, name)) {
+      textureLoads.set(spec, new Promise(done => {
+        new THREE.ImageLoader().load(surfaceImages[name], image => {
+          texture.image = image;
+          texture.needsUpdate = true;
+          done();
+        }, undefined, done);
+      }));
+    }
   } else if (
     spec.startsWith('http://') ||
     spec.startsWith('https://') ||

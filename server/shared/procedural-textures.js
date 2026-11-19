@@ -1,5 +1,15 @@
 export function createTexturePainters() {
-
+  function drawGasGiant(ctx, size) {
+    for (let y = 0; y < size; y++) {
+      const latitude = y / size;
+      const band = Math.sin(latitude * 63 + .8*Math.sin(latitude*19));
+      const glow = .5 + .5*band;
+      ctx.fillStyle = `rgb(${170+60*glow}, ${117+88*glow}, ${87+86*glow})`;
+      ctx.fillRect(0,y,size,1);
+    }
+    ctx.fillStyle = '#b66a47';
+    ctx.beginPath(); ctx.ellipse(size*.61,size*.61,size*.075,size*.026,.04,0,2*Math.PI); ctx.fill();
+  }
 
   // === 프로시저럴 패턴 ===
 
@@ -454,7 +464,12 @@ export function createTexturePainters() {
       ctx.fillRect(Math.random() * size, Math.random() * size, 2, 2);
     }
   }
+
   return {
+    sun: drawFire,
+    moon: drawGranite,
+    jupiter: drawGasGiant,
+    saturn: drawGasGiant,
     wood: drawWood,
     metal: drawMetal,
     stones: drawStones,

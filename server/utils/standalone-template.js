@@ -35,6 +35,8 @@ import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
 import { createPackageImportTools } from '../shared/package-imports.js';
 
+import { instruments } from '../shared/instrument-profiles.js';
+
 const PYODIDE_VERSION = '0.27.0';
 const THREE_VERSION = '0.183.2';
 
@@ -294,9 +296,18 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   function beep(frequency = 440, duration = 0.3, type = 'sine', volume = 0.3) {
     const ctx = getAudioCtx();
     if (!ctx || !(volume > 0) || !(frequency > 0) || !(duration > 0)) return;
+    const profiles = ${JSON.stringify(instruments)};
+    const instrument = typeof type === "string" ? type.replace(/-room$/, "") : type;
+    if (Object.hasOwn(profiles, instrument)) {
+      const profile = profiles[instrument];
+      for (const [ratio, strength] of profile.partials) {
+        if (frequency * ratio < 18000) beep(frequency * ratio, duration + profile.tail / ratio, 'sine', volume * strength);
+      }
+      return;
+    }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = ['sine', 'square', 'triangle', 'sawtooth'].includes(type) ? type : 'sine';
+    osc.type = ['sine','triangle','sawtooth','square'].includes(type) ? type : 'sine';
     osc.frequency.value = frequency;
     gain.gain.setValueAtTime(volume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
@@ -1284,6 +1295,10 @@ def _bind_vector(owner, attr, value, notify=True):
 
 # === 3D 객체 베이스 클래스 ===
 class _TexturePresets:
+    sun = "preset:sun"
+    moon = "preset:moon"
+    jupiter = "preset:jupiter"
+    saturn = "preset:saturn"
     """VPython textures.* 프리셋 — 프로시저럴 패턴 또는 외부 URL/data URI 사용 가능
 
     예:
