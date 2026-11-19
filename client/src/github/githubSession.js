@@ -218,8 +218,8 @@ function persist() {
 
 async function defaultBuildHtml(code, title, options) {
   // 실행형 HTML 생성기는 무거워서 저장할 때만 불러옵니다.
-  const { generateStandaloneHTML } = await import('../utils/export-html.js');
-  return generateStandaloneHTML(code, title, options);
+  const { generateProjectHTML } = await import('../utils/export-html.js');
+  return generateProjectHTML(code, title, options);
 }
 
 /** GitHub Pages용 index.html을 만드는 함수와, 그 화면에서 VPyLab으로 돌아오는 주소(#code=)를 준비합니다. */

@@ -63,7 +63,7 @@ export default defineConfig({
     },
   },
   server: {
-    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../server/shared/instruments/', import.meta.url))] },
+    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../server/shared/instruments/', import.meta.url)), fileURLToPath(new URL('../server/shared/planets/', import.meta.url))] },
     port: 4033,
     strictPort: true,
     proxy: {

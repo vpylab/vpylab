@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import * as THREE from 'three';
-import { generateStandaloneHTML } from './export-html';
+import { generateProjectHTML, generateStandaloneHTML } from './export-html';
 import course from '../data/light-sound-course';
 import { hasPython, runPythonJobs } from '../test/python-runner';
 import source from '../engine/student-code-transform.py?raw';
@@ -73,9 +73,34 @@ function startExport(width, height) {
     navigator: {}, innerWidth: width, innerHeight: height, devicePixelRatio: 1,
     requestAnimationFrame: vi.fn(), console, setTimeout, clearTimeout,
   };
-  runInNewContext(`${script}\nglobalThis.testExport = { camera, controls, processCmd };`, context);
+  runInNewContext(`${script}\nglobalThis.testExport = { camera, controls, processCmd, scene, meshes };`, context);
   return { ...context.testExport, context, listeners };
 }
+
+it('내려받는 작품이 쓰는 천체만 JPEG로 넣고 지구 관측 자료의 출처를 보인다', async () => {
+  const empty = await generateProjectHTML('sphere()');
+  const earth = await generateProjectHTML('sphere(texture=textures.earth)');
+  expect(empty).not.toContain('data:image/jpeg;base64,');
+  expect(earth.match(/data:image\/jpeg;base64,/g)).toHaveLength(1);
+  expect(earth).toContain('Reto Stöckli, NASA Earth Observatory');
+});
+
+it('작품에 지정한 환경광과 사용자 광원만 켜고 혜성의 입자 시각을 셰이더에 전달한다', () => {
+  const { processCmd, scene, meshes } = startExport(800, 600);
+  processCmd({action: 'create', type: 'local_light', id: 'a'});
+  processCmd({action: 'create', type: 'distant_light', id: 'b'});
+  processCmd({action: 'scene', property: 'ambient', value: [0.2, 0.3, 0.4]});
+  processCmd({action: 'scene', property: 'lights', value: ['a']});
+  expect(scene.children.find(child => child.isAmbientLight).color.toArray()).toEqual([0.2, 0.3, 0.4]);
+  expect(meshes.get('a').visible).toBe(true);
+  expect(scene.children.filter(child => child.isDirectionalLight).every(child => !child.visible)).toBe(true);
+  processCmd({action: 'create', type: 'points', shape: 'plume', id: 'tail', points: [[1, 0, 0]]});
+  processCmd({action: 'update', id: 'tail', flow_time: 1.25});
+  const plume = meshes.get('tail');
+  expect(plume.material.userData.flowTime.value).toBe(1.25);
+  expect(plume.frustumCulled).toBe(false);
+  expect(plume.material.depthWrite).toBe(false);
+});
 
 describe('공유 페이지의 시야 범위', () => {
   it.each([[1440, 900], [390, 844]])('짧은 변의 절반이 scene.range가 되도록 카메라를 맞춘다 (%i×%i)', (width, height) => {

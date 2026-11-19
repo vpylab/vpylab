@@ -1189,9 +1189,9 @@ export default function Sandbox() {
 
   const handleExport = async () => {
     // 내려받은 HTML은 혼자 실행되고, 코드를 품고 있어 "파일 열기"로 VPyLab에 다시 불러올 수 있습니다.
-    const { generateStandaloneHTML, downloadHTML } = await import('../utils/export-html');
+    const { generateProjectHTML, downloadHTML } = await import('../utils/export-html');
     const title = shareTitle();
-    const html = generateStandaloneHTML(codeRef.current, title, { openInVpylabUrl: openInVpylabUrl(codeRef.current) });
+    const html = await generateProjectHTML(codeRef.current, title, { openInVpylabUrl: openInVpylabUrl(codeRef.current) });
     downloadHTML(html, `${codeFileBaseName(title)}.html`);
     addOutput(ui("HTML 파일을 내려받았습니다. 도구 메뉴의 \"파일 열기\"로 이 파일을 다시 불러올 수 있습니다."), 'success');
   };
@@ -1501,8 +1501,8 @@ export default function Sandbox() {
       addOutput(ui("GitHub 인증이 필요합니다."), 'error');
       return;
     }
-    const { generateStandaloneHTML } = await import('../utils/export-html');
-    const htmlContent = generateStandaloneHTML(codeRef.current, editMode.title);
+    const { generateProjectHTML } = await import('../utils/export-html');
+    const htmlContent = await generateProjectHTML(codeRef.current, editMode.title);
     addOutput(ui("GitHub에 업데이트 중..."), 'log');
     const result = await useGalleryStore.getState().updateWork({
       id: editMode.id,

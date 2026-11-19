@@ -1,3 +1,4 @@
+import { usedPlanetPresets } from '../shared/planet-presets.js';
 import { readFileSync } from 'node:fs';
 import { generateStandaloneHTML as generate } from './standalone-template.js';
 
@@ -11,5 +12,9 @@ const feltLayers = ['felt-quiet.mp3', 'felt-loud.mp3'].map(name => {
 });
 
 export function generateStandaloneHTML(code, title = 'VPyLab', options = {}) {
-  return generate(code, title, options, transformSource, feltLayers);
+  const maps = Object.fromEntries(usedPlanetPresets(code).map(name => {
+    const bytes = readFileSync(new URL('../shared/planets/' + name + '.jpg', import.meta.url));
+    return [name, 'data:image/jpeg;base64,' + bytes.toString('base64')];
+  }));
+  return generate(code, title, options, transformSource, feltLayers, maps);
 }

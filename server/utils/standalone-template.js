@@ -28,6 +28,7 @@
 
 
 
+import { configureCometParticles } from '../shared/comet-particles.js';
 import { createWidgetPanel } from '../shared/widget-panel.js';
 import { createTexturePainters } from '../shared/procedural-textures.js';
 import { createCompoundAppearanceTools } from '../shared/compound-appearance.js';
@@ -61,7 +62,7 @@ function escapeHTML(str) {
     .replace(/'/g, '&#39;');
 }
 
-export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, transformSource, feltLayers = []) {
+export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, transformSource, feltLayers = [], planetMaps = {}) {
   if (!transformSource) throw new Error('학생 코드 변환기가 필요합니다.');
   // Base64로 안전하게 코드 임베딩 (모든 특수문자 문제 해결)
   const base64Code = btoa(unescape(encodeURIComponent(code)));
@@ -72,6 +73,10 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   // 명시한 펠트 작품만 두 녹음을 함께 싣습니다. 나머지 음색은 합성합니다.
   const samples = code.includes('felt') ? feltLayers : [];
   const sampleCredit = samples.length ? ' · <a href="https://github.com/sfzinstruments/SalamanderGrandPiano">Piano samples by Alexander Holm</a> (<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>, excerpts converted to mono and filtered)' : '';
+  const planetCredit = [
+    planetMaps.earth && '<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/">Earth · Reto Stöckli, NASA Earth Observatory</a>',
+    Object.keys(planetMaps).some(name => name !== 'earth') && '<a href="https://github.com/vpylab/vpylab">Model surfaces · VPyLab (AGPL-3.0-or-later)</a>',
+  ].filter(Boolean).map(credit => ' · ' + credit).join('');
   const safeTitle = escapeHTML(title);
   const safeOpenInVpylabUrl = options.openInVpylabUrl ? escapeHTML(options.openInVpylabUrl) : '';
   const safeRepoUrl = options.repoUrl ? escapeHTML(options.repoUrl) : 'https://github.com/vpylab/vpylab';
@@ -105,7 +110,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     <div style="font-size:14px">Python 엔진 로딩 중...</div>
     <div class="bar"><div class="fill" id="progress" style="width:0%"></div></div>
   </div>
-  <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}${sampleCredit}</div>
+  <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}${sampleCredit}${planetCredit}</div>
   <button id="stop-playback" type="button" hidden style="position:fixed;right:8px;bottom:8px;min-height:44px;z-index:30">정지 / Stop</button>
   <div id="scene-title" style="position:fixed;left:12px;top:48px;z-index:5"></div>
   <div id="scene-caption" style="position:fixed;left:12px;bottom:56px;z-index:5"></div>
@@ -145,7 +150,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   const cameraSystem = new CameraSystem(camera, controls, scene);
   cameraSystem.onCodeStart();
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+  scene.add(ambientLight);
   const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
   dirLight.position.set(5, 10, 7);
   scene.add(dirLight);
@@ -647,13 +653,18 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     }
   }
 
+  const configureParticles = (${configureCometParticles.toString()});
   const painters = (${createTexturePainters.toString()})();
+  const planetMaps = ${JSON.stringify(planetMaps)};
   const textureCache = new Map();
   function setTexture(material, spec) {
     let map = textureCache.get(spec) || null;
     if (!map && typeof spec === 'string') {
-      const painter = painters[spec.replace(/^preset:/, '')];
-      if (Object.hasOwn(painters, spec.replace(/^preset:/, ''))) {
+      const name = spec.replace(/^preset:/, '');
+      const painter = painters[name];
+      if (Object.hasOwn(planetMaps, name)) {
+        map = new THREE.TextureLoader().load(planetMaps[name], undefined, undefined, () => textureCache.delete(spec));
+      } else if (Object.hasOwn(painters, name)) {
         const canvas = document.createElement('canvas');
         canvas.width = canvas.height = 256;
         painter(canvas.getContext('2d'), 256);
@@ -805,7 +816,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
               transparent: cmd.opacity < 1,
               opacity: cmd.opacity ?? 1,
             });
+            configureParticles(THREE, pmat, cmd);
             mesh = new THREE.Points(geom, pmat);
+            if (cmd.shape === 'plume') mesh.frustumCulled = false;
           }
           mesh.userData = {
             vpType: cmd.type,
@@ -876,6 +889,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       if (cmd.make_trail) createTrail(cmd);
     } else if (cmd.action === 'update') {
       const m = meshes.get(cmd.id); if (!m) return;
+      if (cmd.flow_time !== undefined && m.material?.userData.flowTime) m.material.userData.flowTime.value = cmd.flow_time;
       if ('texture' in cmd && m.material?.isMeshStandardMaterial) setTexture(m.material, cmd.texture);
       if (cmd.pos) m.position.set(cmd.pos[0], cmd.pos[1], cmd.pos[2]);
       if (cmd.color) {
@@ -935,6 +949,15 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     } else if (cmd.action === 'scene') {
       if (cmd.property === 'title' || cmd.property === 'caption') {
         document.getElementById('scene-' + cmd.property).textContent = String(cmd.value);
+      }
+      if (cmd.property === 'ambient') {
+        ambientLight.color = toColor(cmd.value);
+        ambientLight.intensity = 1;
+      }
+      if (cmd.property === 'lights') {
+        dirLight.visible = false;
+        const enabled = new Set(cmd.value);
+        for (const [id, mesh] of meshes) if (mesh.isLight) mesh.visible = enabled.has(id);
       }
       if (cmd.property === 'background') scene.background = toColor(cmd.value);
       if (cmd.property === 'range') cameraSystem.setExplicitRange(cmd.value);
@@ -2172,17 +2195,21 @@ class curve(_PointList):
 class points(_PointList):
     """3D 점 집합 — 작은 점으로 표시.
     size: 픽셀 크기(size_units='pixels', 기본) 또는 radius로 월드 크기(size_units='world')
-    shape: 'round'(기본) 또는 'square'"""
+    shape: 'round'(기본), 'square', VPyLab 확장 'mist'(부드러운 점), 'plume'(방출 입자)"""
     _type = 'points'
 
     def __init__(self, *args, **kwargs):
         self._size = float(kwargs.get('size', 5))
         self._size_units = str(kwargs.get('size_units', 'pixels'))
+        self._flow_time = float(kwargs.get('flow_time', 0))
         self._shape = str(kwargs.get('shape', 'round'))
         super().__init__(*args, **kwargs)
 
     def _extra_create(self, kwargs):
-        return {"size": self._size, "size_units": self._size_units, "shape": self._shape}
+        options = {"size": self._size, "size_units": self._size_units, "shape": self._shape}
+        if self._shape == 'plume':
+            options['flow_time'] = self._flow_time
+        return options
 
     @property
     def size(self):
@@ -2192,6 +2219,16 @@ class points(_PointList):
     def size(self, value):
         self._size = float(value)
         _add_command({"action": "update", "id": self._id, "size": self._size})
+
+    @property
+    def flow_time(self):
+        """plume 입자의 방출 시계(초). 같은 값이면 입자가 같은 위치에 멈춘다."""
+        return self._flow_time
+
+    @flow_time.setter
+    def flow_time(self, value):
+        self._flow_time = float(value)
+        _add_command({"action": "update", "id": self._id, "flow_time": self._flow_time})
 
     @property
     def size_units(self):
@@ -2282,6 +2319,8 @@ class _ExportCamera:
 class _Scene:
     def __init__(self):
         self._background=vector(0.97,0.98,0.98)
+        self._ambient=vector(0.6,0.6,0.6)
+        self._lights=None
         self._range=10.0
         self._center=vector(0,0,0)
         self._forward=vector(0,0,-1)
@@ -2298,6 +2337,18 @@ class _Scene:
             if value is not None: return vector(*value) if isinstance(value,list) else value
         except (NameError,TypeError,ValueError): pass
         return fallback
+    @property
+    def ambient(self): return self._ambient.clone()
+    @ambient.setter
+    def ambient(self,v):
+        self._ambient=v.clone()
+        self._send('ambient',v.to_list())
+    @property
+    def lights(self): return list(_user_lights if self._lights is None else self._lights)
+    @lights.setter
+    def lights(self,value):
+        self._lights=list(value or [])
+        self._send('lights',[light._id for light in self._lights])
     def _distance(self): return self._range/math.tan(self._fov/2)
     @property
     def background(self): return self._background
@@ -2642,11 +2693,13 @@ class ghbars(_GSeriesNoOp): pass
 
 
 # === 조명 ===
+_user_lights = []
 class local_light:
     def __init__(self, **kw):
         self._id = _new_id()
         self._pos = kw.get('pos', vector(0,0,0))
         self._color = kw.get('color', color.white)
+        _user_lights.append(self)
         self._intensity = kw.get('intensity', 1.0)
         _add_command({"action":"create","id":self._id,"type":"local_light","pos":self._pos.to_list(),"color":self._color.to_list(),"intensity":self._intensity})
     @property
@@ -2667,6 +2720,7 @@ class distant_light:
         self._id = _new_id()
         self._direction = kw.get('direction', vector(0,-1,0))
         self._color = kw.get('color', color.white)
+        _user_lights.append(self)
         self._intensity = kw.get('intensity', 1.0)
         _add_command({"action":"create","id":self._id,"type":"distant_light","direction":self._direction.to_list(),"color":self._color.to_list(),"intensity":self._intensity})
     @property
