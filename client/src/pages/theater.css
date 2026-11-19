@@ -90,58 +90,18 @@
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
-  .vp-theater [data-single-canvas] > .vp-widget-panel {
-    display: flex;
-    flex-flow: row wrap;
-    align-content: flex-start;
-    align-items: center;
-    gap: 8px;
-    padding: 8px var(--stage-right) max(8px, env(safe-area-inset-bottom)) var(--stage-left);
-    background: #1b2431;
-    color: var(--stage-ink);
-    border-color: var(--stage-line);
-    scrollbar-width: thin;
-  }
-
-  .vp-theater .vp-widget-panel > [data-widget-kind="menu"] {
-    flex: 1 1 124px;
-    min-width: 0;
-  }
-  .vp-theater .vp-widget-panel select {
-    width: 100%;
-    min-height: 44px;
-    appearance: none;
-    padding: 0 28px 0 12px;
-    color: var(--stage-ink);
-    color-scheme: dark;
-    background-color: #2b3747;
-    background-image: linear-gradient(45deg, transparent 50%, #becedd 50%), linear-gradient(135deg, #becedd 50%, transparent 50%);
-    background-position: right 14px center, right 10px center;
-    background-size: 4px 4px;
-    background-repeat: no-repeat;
-    border: 1px solid var(--stage-line);
-    border-radius: 9px;
-    font: 550 14px/1.4 var(--font-body);
-    text-overflow: ellipsis;
-    cursor: pointer;
-  }
-  .vp-theater .vp-widget-panel > :is([data-widget-kind="slider"], [data-widget-kind="winput"], [data-vpylab-input]) {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-  .vp-theater .vp-widget-panel .vp-slider-label,
-  .vp-theater .vp-widget-panel [data-widget-kind="winput"] > span,
-  .vp-theater .vp-widget-panel [data-vpylab-input] > span {
-    color: var(--stage-ink) !important;
-  }
-  .vp-theater .vp-widget-panel input[type="range"] { accent-color: #8fc6eb; min-height: 44px; }
-  .vp-theater:has(.vp-widget-panel) { --vpylab-caption-bottom: 10px; }
-
-  .vp-theater .vp-widget-panel :is(input[type="text"], input[type="number"], button) { color: #1b2431; }
+/* 감상 화면의 색만 지정하고, 위젯의 크기와 배치는 공통 스타일에서 관리합니다. */
+.vp-theater {
+  --widget-panel: #1b2431;
+  --widget-field: #2b3747;
+  --widget-ink: var(--stage-ink);
+  --widget-line: var(--stage-line);
+  --widget-accent: #8fc6eb;
 }
-
+.vp-theater .vp-widget-panel { color-scheme: dark; }
+@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
+  .vp-theater:has(.vp-widget-panel) { --vpylab-caption-bottom: 10px; }
+}
 @media (forced-colors: active) {
-  .vp-theater .vp-widget-panel select { appearance: auto; }
   .vp-stop-mark { background: ButtonText; }
 }

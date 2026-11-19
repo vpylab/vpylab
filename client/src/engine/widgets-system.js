@@ -70,7 +70,6 @@ export function createWidget(cmd) {
       const label = document.createElement('span');
       label.dataset.widgetValue = 'true';
       label.textContent = String(cmd.value ?? cmd.min ?? 0);
-      label.style.cssText = 'min-width:36px;text-align:right;font-variant-numeric:tabular-nums;';
       inputEl = document.createElement('input');
       inputEl.type = 'range';
       inputEl.id = 'vp_slider_' + cmd.id;
@@ -96,7 +95,6 @@ export function createWidget(cmd) {
       inputEl = document.createElement('button');
       inputEl.type = 'button';
       inputEl.textContent = String(cmd.text ?? 'Button');
-      inputEl.style.cssText = 'padding:6px 12px;border-radius:6px;border:1px solid #999;background:#f5f5f5;cursor:pointer;';
       inputEl.addEventListener('click', () => {
         postEvent({ name: 'widget', widget: cmd.id });
       });
@@ -167,15 +165,17 @@ export function createWidget(cmd) {
     }
 
     case 'winput': {
-      const promptEl = document.createElement('span');
+      const promptEl = document.createElement('label');
+      promptEl.htmlFor = 'vp_input_' + cmd.id;
       promptEl.textContent = String(cmd.prompt ?? '');
-      promptEl.style.cssText = 'min-width:60px;color:#444;';
+      promptEl.className = 'vp-input-label';
       inputEl = document.createElement('input');
-      inputEl.type = cmd.input_type === 'string' ? 'text' : 'number';
-      inputEl.style.cssText = 'flex:1;padding:4px 6px;border-radius:6px;border:1px solid #999;background:#fff;';
+      inputEl.id = promptEl.htmlFor;
+      const isDateTime = cmd.input_type === 'datetime-local';
+      inputEl.type = isDateTime ? 'datetime-local' : cmd.input_type === 'string' ? 'text' : 'number';
       const submit = () => {
         let v = inputEl.value;
-        if (cmd.input_type !== 'string') {
+        if (inputEl.type === 'number') {
           const n = parseFloat(v);
           v = Number.isFinite(n) ? n : null;
         }
@@ -185,7 +185,7 @@ export function createWidget(cmd) {
       };
       inputEl.addEventListener('change', submit);
       inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') submit();
+        if (e.key === 'Enter' && !isDateTime) submit();
       });
       wrap.appendChild(promptEl);
       wrap.appendChild(inputEl);
@@ -217,18 +217,16 @@ export function createInputPrompt(cmd) {
 
   const promptEl = document.createElement('span');
   promptEl.textContent = String(cmd.prompt ?? '') || '입력:';
-  promptEl.style.cssText = 'color:#222;font-weight:600;white-space:pre-wrap;';
+  promptEl.style.whiteSpace = 'pre-wrap';
 
   const row = document.createElement('div');
   row.style.cssText = 'display:flex;align-items:center;gap:6px;';
   const inputEl = document.createElement('input');
   inputEl.type = 'text';
   inputEl.setAttribute('aria-label', String(cmd.prompt ?? '') || '입력');
-  inputEl.style.cssText = 'flex:1;min-width:120px;padding:4px 6px;border-radius:6px;border:1px solid #999;background:#fff;';
   const submitEl = document.createElement('button');
   submitEl.type = 'button';
   submitEl.textContent = '입력';
-  submitEl.style.cssText = 'padding:4px 10px;border-radius:6px;border:1px solid #999;background:#f5f5f5;cursor:pointer;';
 
   let answered = false;
   const submit = () => {
@@ -261,7 +259,7 @@ export function createPauseNotice(cmd) {
   wrap.dataset.widgetId = cmd.id;
   wrap.dataset.vpylabPause = '';
   wrap.textContent = String(cmd.text ?? '') || '▶ 3D 화면을 클릭하면 계속합니다';
-  wrap.style.cssText = 'color:#222;font-weight:600;white-space:pre-wrap;cursor:pointer;';
+  wrap.style.cssText = 'font-weight:600;white-space:pre-wrap;cursor:pointer;';
   // 안내 배너를 눌러도 화면 클릭과 같이 click 이벤트를 보낸다 (scene.pause는 click을 기다린다)
   wrap.addEventListener('click', () => postEvent({ name: 'click', pos: [0, 0, 0], pick: null }));
   panel.appendChild(wrap);
