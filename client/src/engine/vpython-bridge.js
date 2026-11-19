@@ -74,7 +74,7 @@ const curveRegistry = new Map();
 
 // axis·up 기준 좌표계(basis)로 방향을 정하는 객체 종류 — box와 같은 방식으로 회전한다
 // group은 GlowScript 명세대로 Python이 하위 객체를 하나씩 돌리므로 여기 없다 (그룹 자체는 위치만 갖는다)
-const BASIS_TYPES = new Set(['box', 'pyramid', 'ellipsoid', 'compound', 'extrusion', 'text', 'curve', 'points', 'helix']);
+const BASIS_TYPES = new Set(['sphere', 'box', 'pyramid', 'ellipsoid', 'compound', 'extrusion', 'text', 'curve', 'points', 'helix']);
 
 // 기본 재질 설정
 const DEFAULT_MATERIAL_PARAMS = {
@@ -405,6 +405,12 @@ function createObject(cmd, scene) {
       const segments = tex ? 64 : 32;
       geometry = new THREE.SphereGeometry(cmd.radius ?? DEFAULT_OBJECT_PROPS.sphere.radius, segments, segments / 2);
       mesh = new THREE.Mesh(geometry, material);
+      mesh.userData.vpType = 'sphere';
+      if (cmd.axis || cmd.up) {
+        mesh.userData.boxAxis = asVectorArray(cmd.axis, [1, 0, 0]);
+        mesh.userData.boxUp = asVectorArray(cmd.up, [0, 1, 0]);
+        applyBoxOrientation(mesh, mesh.userData.boxAxis, mesh.userData.boxUp);
+      }
       trackSphere(scene, mesh);
       updateSolarGlow(mesh);
       break;

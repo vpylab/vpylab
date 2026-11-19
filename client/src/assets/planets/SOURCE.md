@@ -4,7 +4,7 @@
 |---|---|---|
 | `earth.jpg`, `earth.ktx2` | Three.js r170 예제의 `examples/textures/planets/earth_atmos_2048.jpg` | `earth.ktx2`는 같은 그림을 변환한 것이며 지금은 쓰지 않습니다(`texture-system.js`의 `USE_COMPRESSED_EARTH`). |
 | `moon.jpg` | Three.js r170 예제의 `examples/textures/planets/moon_1024.jpg` | |
-| `sun.jpg` | 이 프로젝트에서 절차적으로 만든 그림 | `scripts/research/cinematic-preview/README.md` |
+| `sun.jpg` | 외부 사진 없이 구면 좌표에서 직접 합성한 광구의 입상반과 흑점 | `scripts/research/cinematic-preview/generate-sun.py` (NumPy, Pillow, 고정 시드 470) |
 | `jupiter.jpg`, `saturn.jpg` | 커밋 11289fc에서 추가. PR 설명은 "위도별 구름 띠와 타원형 폭풍을 합성한 교육용 표면"이라고 적었습니다. | **만든 방법과 원본이 기록되지 않았습니다. 확인이 필요합니다.** |
 
 ## 확인이 필요한 것

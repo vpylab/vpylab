@@ -319,7 +319,7 @@ def _rotate_object(obj, angle, axis=None, origin=None):
     origin 미지정: 객체 자기 위치(자리는 그대로 두고 방향만 돈다).
     axis 미지정: 객체 자신의 axis (GlowScript와 같음). axis가 없는 객체(sphere 등)는 y축."""
     if axis is None:
-        own = getattr(obj, '_axis', None)
+        own = None if getattr(obj, '_type', None) == 'sphere' else getattr(obj, '_axis', None)
         axis = own.clone() if isinstance(own, vector) and own.mag > 0 else vector(0, 1, 0)
     else:
         axis = _coerce_vector(axis, vector(0, 1, 0))
@@ -804,7 +804,27 @@ class _RadiusSize:
 class sphere(_GObject):
     def __init__(self, **kwargs):
         self._radius = kwargs.pop('radius', 1.0)
+        self._axis = _coerce_vector(kwargs.get('axis'), vector(1, 0, 0))
+        self._up = _coerce_vector(kwargs.get('up'), vector(0, 1, 0))
         super().__init__('sphere', radius=self._radius, **kwargs)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @axis.setter
+    def axis(self, value):
+        self._axis = _coerce_vector(value, vector(1, 0, 0))
+        _add_command({"action": "update", "id": self._id, "axis": self._axis.to_list()})
+
+    @property
+    def up(self):
+        return self._up
+
+    @up.setter
+    def up(self, value):
+        self._up = _coerce_vector(value, vector(0, 1, 0))
+        _add_command({"action": "update", "id": self._id, "up": self._up.to_list()})
 
     @property
     def radius(self):
@@ -827,7 +847,7 @@ class sphere(_GObject):
         self.radius = value.x / 2
 
     def _clone_kwargs(self):
-        return {**super()._clone_kwargs(), 'radius': self._radius}
+        return {**super()._clone_kwargs(), 'radius': self._radius, 'axis': self.axis.clone(), 'up': self.up.clone()}
 
 
 simple_sphere = sphere   # GlowScript의 삼각형 수가 적은 구 — 같은 구로 그린다
