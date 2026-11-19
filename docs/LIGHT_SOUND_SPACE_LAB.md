@@ -6,6 +6,10 @@
 
 Paste one example into **Create**, then press **Run**. On a phone, observe it in the **Screen** tab, then return to **Code**. For a first lesson, predict the result, change one value and run it again. Ask students what changed and what stayed the same. Sounds represent events or measurements in the model.
 
+[7번 한영 25분 활동지와 공통 시각 모델 · Bilingual worksheet and shared visual model](../client/public/projects/light-sound-lab/duet.html)
+
+수업 사이트에서는 7번의 활동지 링크를 누르세요. 실습은 현재 호스트에서 열립니다. / On the lesson site, use the worksheet link under activity 7. Its practice opens on the same host.
+
 ## 약 5줄 · First observations
 
 ### 1. 어느 쪽이 낮일까? · Which side is day?
