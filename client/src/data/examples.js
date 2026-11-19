@@ -4,17 +4,17 @@
  */
 import { eclipseViewsCode } from './eclipse-views.js';
 
-import { cometCode, cometCloseupCode, solarStudyCode, timbreCode } from './cinematic-projects.js';
+import { cometCode, cometCloseupCode, solarStudyCode, timbreCode, createCometCode, createSolarStudyCode, createTimbreCode } from './cinematic-projects.js';
 
 const EXAMPLES = [
   { id: 'pyctures-solar-study', title: '다섯 행성과 태양빛', thumbnail: '☀️', category: 'space', level: 2,
-    description: 'Pyctures와 같은 거리·반지름·시야각에서 낮과 밤을 비교합니다.', tags: ['light', 'camera'], code: solarStudyCode },
+    description: '공전 속도를 바꾸고 수성과 목성 중 어느 쪽이 먼저 한 바퀴 도는지 관찰하세요.', tags: ['light', 'camera'], code: solarStudyCode, get codeEn() { return createSolarStudyCode(true); } },
   { id: 'comet-closeup', title: '혜성의 두 꼬리', thumbnail: '☄️', category: 'space', level: 3,
-    description: '혜성과 함께 이동하며 이온 꼬리와 먼지 부채를 확대합니다.', tags: ['light', 'camera'], code: cometCloseupCode },
+    description: '혜성을 따라가다가 핵을 고정해 두 꼬리의 모양과 입자 흐름을 비교하세요.', tags: ['light', 'camera'], code: cometCloseupCode, get codeEn() { return createCometCode(true, true); } },
   { id: 'comet-observatory', title: '지구에서 기다리는 혜성', thumbnail: '☄️', category: 'space', level: 3,
-    description: '여덟 행성 사이에서 혜성의 핵과 두 꼬리를 관찰합니다.', tags: ['light', 'camera', 'gravity'], code: cometCode },
+    description: '같은 혜성을 태양계 전체와 지구 표면에서 번갈아 관찰하세요.', tags: ['light', 'camera', 'gravity'], code: cometCode, get codeEn() { return createCometCode(true); } },
   { id: 'timbre-studio', title: '빛으로 연주하는 다섯 음', thumbnail: '🎹', category: 'sound', level: 2,
-    description: '같은 다섯 음을 펠트 피아노, 마림바, 유리종으로 연주합니다.', tags: ['sound', 'light'], code: timbreCode },
+    description: '같은 건반을 누르고 악기만 바꿔 소리의 차이를 들어 보세요.', tags: ['sound', 'light'], code: timbreCode, get codeEn() { return createTimbreCode(true); } },
   // ═══════════════════════════════════════
   // 🌌 우주/자연 (6개)
   // ═══════════════════════════════════════
@@ -3873,33 +3873,25 @@ for i, name in enumerate(preset_names):
     label(pos=vector(x, y - 1.0, 0), text=name, height=11,
           color=color.white, background=vector(0, 0, 0))
 
-# === 외부 URL 텍스처 예제 ===
-# picsum.photos — CORS 지원 무료 랜덤 이미지
-sphere(pos=vector(-3, -4.8, 0), radius=0.85,
-       texture="https://picsum.photos/seed/vpylab/512/512")
-label(pos=vector(-3, -5.9, 0), text="picsum (랜덤)", height=11,
-      color=color.white, background=vector(0, 0, 0))
-
-# NASA images-assets — 은하 (CORS 지원, 공공 이미지)
-galaxy_url = "https://images-assets.nasa.gov/image/PIA12348/PIA12348~thumb.jpg"
-sphere(pos=vector(0, -4.8, 0), radius=0.85, texture=galaxy_url)
-label(pos=vector(0, -5.9, 0), text="NASA 은하", height=11,
-      color=color.white, background=vector(0, 0, 0))
-
-# Wikimedia Commons — 화성 (직접 링크, CORS 지원)
-mars_url = "https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg"
-sphere(pos=vector(3, -4.8, 0), radius=0.85, texture=mars_url)
-label(pos=vector(3, -5.9, 0), text="화성", height=11,
-      color=color.white, background=vector(0, 0, 0))
-
-# 한 번 flush — 모든 객체 표시 후 종료
+# 외부 서버에서 직접 읽는 표면 지도입니다. 학교망에서 차단되면 textures.earth 등 기본 재질을 써 보세요.
+maps = "https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/textures/planets/"
+sun_map = "https://raw.githubusercontent.com/vpylab/vpylab/62e96239c97293d01b8915527aea9a60c85b6961/client/src/assets/planets/sun.jpg"
+for x, name, url in [(-3, "Earth", maps + "earth_atmos_2048.jpg"),
+                     (0, "Moon", maps + "moon_1024.jpg"),
+                     (3, "Sun", sun_map)]:
+    sphere(pos=vector(x, -4.8, 0), radius=0.85, texture=url, emissive=True, shininess=0)
+    label(pos=vector(x, -5.9, 0), text=name, height=11,
+          color=color.white, background=vector(0, 0, 0))
 rate(1)
-print("✨ 20종 프리셋 + 3종 외부 URL 텍스처 표시 완료")
 `
   },
 ];
 
 export default EXAMPLES;
+
+export function getExampleCode(example, locale) {
+  return locale === 'en' ? (example.codeEn ?? example.code) : example.code;
+}
 
 // 카테고리 필터 헬퍼
 export const EXAMPLE_CATEGORIES = [

@@ -1,4 +1,12 @@
 {
+  "다섯 행성과 태양빛": "Five planets in sunlight",
+  "공전 속도를 바꾸고 수성과 목성 중 어느 쪽이 먼저 한 바퀴 도는지 관찰하세요.": "Change the orbit speed. Which finishes a lap first, Mercury or Jupiter?",
+  "혜성의 두 꼬리": "The two tails of a comet",
+  "혜성을 따라가다가 핵을 고정해 두 꼬리의 모양과 입자 흐름을 비교하세요.": "Follow the comet, then hold its nucleus still to compare its tails and moving grains.",
+  "지구에서 기다리는 혜성": "Comet watch from Earth",
+  "같은 혜성을 태양계 전체와 지구 표면에서 번갈아 관찰하세요.": "Switch between the solar system and the view of the comet from Earth.",
+  "빛으로 연주하는 다섯 음": "Five notes in light",
+  "같은 건반을 누르고 악기만 바꿔 소리의 차이를 들어 보세요.": "Play the same key with different instruments. What changes in the sound?",
   "세션 교환 실패:": "Session exchange failed:",
   "로그인 세션 정리를 완료하지 못했습니다. 새로고침한 뒤 원래 계정으로 로그인해주세요.": "Couldn't finish clearing your login session. Please refresh and log in with your original account.",
   "새로고침": "Refresh",

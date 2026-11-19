@@ -2,6 +2,10 @@
 
 Open [VPyLab in English](https://vpylab.vercel.app/?lang=en), or choose **More → Language → English** (on a phone, **Menu → Language**). Your browser remembers the language. Switching languages keeps your current code and Forge draft.
 
+## A first classroom session
+
+Start with **Which side is day?** in [Nine short light, sound and space experiments](LIGHT_SOUND_SPACE_LAB.md). Ask students to point to the bright side before running the code. Move the light and compare the result with their prediction. Follow with **A star plays two notes** to introduce sound or **Two orbital rhythms** to connect orbit periods with beats.
+
 ## Where to start
 
 - **Training**: start with the eight light and sound lessons. Predict a result, run the code, change one thing, and explain what happened. The four optional project lessons cover saving, GitHub, versions, and sharing.
