@@ -13,7 +13,6 @@
     :focus-visible{outline:3px solid #a24c09;outline-offset:3px}
     @media print{nav,.practice{display:none}pre{white-space:pre-wrap;overflow:visible}details>*{display:block}}
   </style>
-  <script src="./duet.js" defer></script>
 </head>
 <body><main>
 <nav aria-label="활동 탐색 / Activity navigation"><a href="./index.html">아홉 실험 · All experiments</a><a href="#english" lang="en">English worksheet</a><a href="#model">Python</a></nav>
@@ -73,10 +72,10 @@ for frame in range(241):
         scene.caption = str(frame // 20) + " | " + hits
 </code></pre>
 <h3>VPyLab 소리 확장 · <span lang="en">VPyLab sound extension</span></h3>
-<p><code>if phase == 0:</code> 안에 한 줄을 더하세요. 두 음색과 위치를 비교하고, 시점은 <code>scene.forward</code>로 바꿔 보세요.</p>
-<p lang="en">Add this line inside <code>if phase == 0:</code>. Compare the two timbres and positions. Try changing the viewpoint with <code>scene.forward</code>.</p>
+<p>Web VPython 3.2에는 소리 재생 API가 없습니다. 이 부분은 VPyLab에서 실행하세요. <code>if phase == 0:</code> 안에 한 줄을 더하세요. 두 음색과 위치를 비교하고, 시점은 <code>scene.forward</code>로 바꿔 보세요.</p>
+<p lang="en">Web VPython 3.2 has no sound playback API. Run this extension in VPyLab. Add this line inside <code>if phase == 0:</code>. Compare the two timbres and positions. Try changing the viewpoint with <code>scene.forward</code>.</p>
 <pre tabindex="0"><code id="sound">            play_note(["C4", "G4"][i], 0.3, type=["sine", "triangle"][i], volume=0.25)</code></pre>
-<nav class="practice" aria-label="실습 / Practice"><a id="ko-run" href="/sandbox?lang=ko">소리 확장 실습</a><a id="en-run" href="/sandbox?lang=en" lang="en">Run the sound extension</a></nav>
+<nav class="practice" aria-label="실습 / Practice"><a id="ko-run" href="/sandbox?view=run&amp;lang=ko#b64=ZnJvbSB2cHl0aG9uIGltcG9ydCAqCnBlcmlvZHMgPSBbMiwgM10KcmFkaWkgPSBbMS40LCAyLjRdCnNjZW5lLnJhbmdlID0gMy4yCnBsYW5ldHMgPSBbXQpmb3IgciBpbiByYWRpaToKICAgIHJpbmcoYXhpcz12ZWN0b3IoMCwgMCwgMSksIHJhZGl1cz1yLCB0aGlja25lc3M9MC4wMTIpCiAgICBzcGhlcmUocG9zPXZlY3RvcihyLCAwLCAwKSwgcmFkaXVzPTAuMDcpCiAgICBwbGFuZXRzLmFwcGVuZChzcGhlcmUocmFkaXVzPTAuMTksIGNvbG9yPWNvbG9yLmN5YW4pKQpmb3IgZnJhbWUgaW4gcmFuZ2UoMjQxKToKICAgIHJhdGUoMjApCiAgICBoaXRzID0gIiIKICAgIGZvciBpIGluIHJhbmdlKDIpOgogICAgICAgIGxhcCA9IDIwICogcGVyaW9kc1tpXQogICAgICAgIHBoYXNlID0gZnJhbWUgJSBsYXAKICAgICAgICBhbmdsZSA9IDIgKiBwaSAqIHBoYXNlIC8gbGFwCiAgICAgICAgcGxhbmV0c1tpXS5wb3MgPSByYWRpaVtpXSAqIHZlY3Rvcihjb3MoYW5nbGUpLCBzaW4oYW5nbGUpLCAwKQogICAgICAgIGlmIHBoYXNlID09IDA6CiAgICAgICAgICAgIHBsYXlfbm90ZShbIkM0IiwgIkc0Il1baV0sIDAuMywgdHlwZT1bInNpbmUiLCAidHJpYW5nbGUiXVtpXSwgdm9sdW1lPTAuMjUpCiAgICAgICAgICAgIGhpdHMgPSBoaXRzICsgWyJJIiwgIk8iXVtpXQogICAgaWYgaGl0czoKICAgICAgICBzY2VuZS5jYXB0aW9uID0gc3RyKGZyYW1lIC8vIDIwKSArICIgfCAiICsgaGl0cwo">소리 확장 실습</a><a id="en-run" href="/sandbox?view=run&amp;lang=en#b64=ZnJvbSB2cHl0aG9uIGltcG9ydCAqCnBlcmlvZHMgPSBbMiwgM10KcmFkaWkgPSBbMS40LCAyLjRdCnNjZW5lLnJhbmdlID0gMy4yCnBsYW5ldHMgPSBbXQpmb3IgciBpbiByYWRpaToKICAgIHJpbmcoYXhpcz12ZWN0b3IoMCwgMCwgMSksIHJhZGl1cz1yLCB0aGlja25lc3M9MC4wMTIpCiAgICBzcGhlcmUocG9zPXZlY3RvcihyLCAwLCAwKSwgcmFkaXVzPTAuMDcpCiAgICBwbGFuZXRzLmFwcGVuZChzcGhlcmUocmFkaXVzPTAuMTksIGNvbG9yPWNvbG9yLmN5YW4pKQpmb3IgZnJhbWUgaW4gcmFuZ2UoMjQxKToKICAgIHJhdGUoMjApCiAgICBoaXRzID0gIiIKICAgIGZvciBpIGluIHJhbmdlKDIpOgogICAgICAgIGxhcCA9IDIwICogcGVyaW9kc1tpXQogICAgICAgIHBoYXNlID0gZnJhbWUgJSBsYXAKICAgICAgICBhbmdsZSA9IDIgKiBwaSAqIHBoYXNlIC8gbGFwCiAgICAgICAgcGxhbmV0c1tpXS5wb3MgPSByYWRpaVtpXSAqIHZlY3Rvcihjb3MoYW5nbGUpLCBzaW4oYW5nbGUpLCAwKQogICAgICAgIGlmIHBoYXNlID09IDA6CiAgICAgICAgICAgIHBsYXlfbm90ZShbIkM0IiwgIkc0Il1baV0sIDAuMywgdHlwZT1bInNpbmUiLCAidHJpYW5nbGUiXVtpXSwgdm9sdW1lPTAuMjUpCiAgICAgICAgICAgIGhpdHMgPSBoaXRzICsgWyJJIiwgIk8iXVtpXQogICAgaWYgaGl0czoKICAgICAgICBzY2VuZS5jYXB0aW9uID0gc3RyKGZyYW1lIC8vIDIwKSArICIgfCAiICsgaGl0cwo" lang="en">Run the sound extension</a></nav>
 <details><summary>기본 모델의 귀환 기록 · Return transcript for the initial model</summary><p>I = 안쪽 / inner. O = 바깥쪽 / outer. IO = 함께 / together.</p>
 <p>0 IO · 2 I · 3 O · 4 I · 6 IO · 8 I · 9 O · 10 I · 12 IO</p></details>
 </section>
