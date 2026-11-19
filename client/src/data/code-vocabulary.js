@@ -25,8 +25,8 @@ export const codeVocabulary = [
   // 재질·빛·소리 (시네마틱 예제에서 처음 만나는 낱말)
   word('texture', '표면 그림', '텍스처', '도형의 겉에 입히는 무늬나 사진이에요. 나무, 돌, 행성의 표면처럼 보이게 해 줘요.', 'sphere(texture=textures.earth)', 'A picture or pattern wrapped around a shape.'),
   word('textures', '재질 모음', '텍스처스', '미리 준비한 표면 그림 모음이에요. 뒤에 점을 찍으면 고를 수 있는 재질과 뜻이 나와요.', 'sphere(texture=textures.moon)', 'The built-in set of surfaces. Type a dot after it to choose one.'),
-  word('local_light', '전구 조명', '로컬 라이트', '전구처럼 한 자리에서 사방으로 빛을 비춰요. 가까운 쪽은 밝고 먼 쪽은 어두워져서 낮과 밤이 생겨요.', 'local_light(pos=vector(0, 2, 0), color=color.white)', 'A light that shines in all directions from one place.'),
-  word('intensity', '빛의 세기', '인텐시티', '조명이 얼마나 밝은지 정해요. 숫자가 클수록 멀리까지 밝게 비춰요.', 'lamp.intensity = 20', 'How bright a light is.'),
+  word('local_light', '전구 조명', '로컬 라이트', '전구처럼 한 자리에서 사방으로 빛을 비춰요. 공에서 빛을 향한 쪽은 밝고 반대쪽은 어두워서 낮과 밤이 생겨요.', 'local_light(pos=vector(0, 2, 0), color=color.white)', 'A light that shines in all directions from one place.'),
+  word('intensity', '빛의 세기', '인텐시티', '조명이 얼마나 밝은지 정해요. 숫자가 클수록 같은 자리가 더 밝아져요.', 'lamp.intensity = 20', 'How bright a light is.'),
   word('shininess', '반짝임', '샤이니니스', '표면이 빛을 받아 반짝이는 정도예요. 0에 가까우면 매트하고 1에 가까우면 매끈해요.', 'sphere(shininess=0.2)', 'How glossy a surface looks, from 0 to 1.'),
   word('play_note', '음 연주하기', '플레이 노트', '음 이름과 길이를 정해 소리를 내요. type으로 악기 소리를 고를 수 있어요.', 'play_note("C4", 0.5, type="marimba")', 'Play a note by name. Choose an instrument with type.'),
   word('volume', '소리 크기', '볼륨', '소리가 얼마나 큰지 정해요. 0은 소리 없음, 1은 가장 큰 소리예요.', 'play_note("C4", 0.5, volume=0.5)', 'Loudness from 0 to 1.'),
@@ -37,14 +37,29 @@ export const codeVocabulary = [
   word('slider', '조절 막대', '슬라이더', '끌어서 숫자를 바꾸는 막대를 만들어요. 값은 .value로 읽어요.', 'speed = slider(min=0, max=3, value=1)', 'A slider for choosing a number. Read it with .value.'),
   word('menu', '고르기 메뉴', '메뉴', '여러 항목 가운데 하나를 고르는 메뉴를 만들어요. 고른 항목은 .selected로 읽어요.', 'view = menu(choices=["전체", "가까이"])', 'A menu for choosing one item. Read it with .selected.'),
   word('checkbox', '체크 상자', '체크박스', '눌러서 켜고 끄는 상자를 만들어요. 켜졌는지는 .checked로 읽어요.', 'echo = checkbox(text="울림")', 'A box you can tick. Read it with .checked.'),
-  word('norm', '방향만 남기기', '놈', '화살표의 방향은 그대로 두고 길이를 1로 맞춰요. 방향만 필요할 때 써요.', 'away = norm(comet.pos)', 'A vector of length 1 in the same direction.'),
+  word('norm', '방향만 남기기', '놈', '화살표의 방향은 그대로 두고 길이를 1로 맞춰요. 방향만 필요할 때 써요. 길이가 0인 화살표는 그대로예요.', 'away = norm(comet.pos)', 'A vector of length 1 in the same direction.'),
   word('mag', '벡터의 길이', '매그 · magnitude', '화살표의 길이, 곧 원점에서 그 위치까지의 거리를 구해요.', 'distance = mag(comet.pos)', 'The length of a vector.'),
+  word('flow_time', '입자 시계', '플로 타임', 'shape가 "plume"인 점 모음에서 입자가 얼마나 흘러갔는지 정하는 시간(초)이에요. 값을 키우면 입자가 흘러가고, 그대로 두면 멈춰요.', 'tail.flow_time = t', 'The clock (seconds) that moves plume particles along.'),
 ];
+
+// 흔한 변수 이름과 겹치는 낱말은 그 뜻으로 쓰인 자리에서만 고릅니다.
+// (volume = width * height, points = 10, menu = [...] 같은 줄에 소리·도형의 뜻이 붙지 않게)
+const wordContexts = {
+  volume: /[(,]\s*volume\s*=(?!=)/,
+  points: /\bpoints\s*\(/,
+  menu: /\bmenu\s*\(/,
+  slider: /\bslider\s*\(/,
+  checkbox: /\bcheckbox\s*\(/,
+  camera: /\bscene\s*\.\s*camera\b/,
+  norm: /\bnorm\s*\(/,
+  mag: /\bmag\s*\(|\.mag\b/,
+  flow_time: /\.\s*flow_time\b|[(,]\s*flow_time\s*=/,
+};
 
 export function vocabularyForCode(code = '') {
   // 주석·문자열에 우연히 등장한 단어는 안내 대상으로 고르지 않습니다.
   const source = String(code).slice(0, 100_000).replace(/"""[\s\S]*?(?:"""|$)|'''[\s\S]*?(?:'''|$)|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|#[^\n]*/g, match => ' '.repeat(match.length));
-  return codeVocabulary.map(term => ({ term, index: source.search(new RegExp('\\b' + term.id + '\\b')) }))
+  return codeVocabulary.map(term => ({ term, index: source.search(wordContexts[term.id] || new RegExp('\\b' + term.id + '\\b')) }))
     .filter(item => item.index >= 0).sort((a, b) => a.index - b.index).map(item => vocabularyWord(item.term.id, source.slice(0,item.index+item.term.id.length)));
 }
 

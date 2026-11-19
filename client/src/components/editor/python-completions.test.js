@@ -40,3 +40,10 @@ it('textures. 뒤에는 재질 이름과 한글 뜻을 보여 주고, 엔진의 
  expect(presets.length).toBeGreaterThan(20);
  expect(choices.map(x=>x.name).sort()).toEqual([...presets].sort());
 });
+
+it('textures라는 이름을 학생이 직접 만들었거나 다른 객체의 속성이면 재질 목록을 내지 않는다',()=>{
+ expect(names('textures = []\ntextures.')).toContain('append');
+ expect(names('textures = []\ntextures.')).not.toContain('jupiter');
+ expect(names('items[0].textures.')).not.toContain('jupiter');
+ expect(names('ball = sphere(texture=textures.')).toContain('jupiter');
+});

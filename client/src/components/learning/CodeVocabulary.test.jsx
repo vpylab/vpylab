@@ -47,3 +47,10 @@ it('새 재질·조명·소리 낱말도 한글 뜻을 보여 준다', () => {
   expect(word.reading).toBeTruthy();
   expect(word.example).toContain('local_light(');
 });
+
+it('흔한 변수 이름에는 소리·도형의 뜻을 붙이지 않는다', () => {
+  const ids = vocabularyForCode('volume = width * 2\npoints = 10\nmenu = ["파일"]\ncamera = 0\nnorm = 3\nmag = 1').map(term => term.id);
+  for (const id of ['volume', 'points', 'menu', 'camera', 'norm', 'mag']) expect(ids).not.toContain(id);
+  const used = vocabularyForCode('play_note("C4", 0.5, volume=0.4)\nstars = points(pos=[])\nview = menu(choices=[])\nscene.camera.pos = vector(0, 1, 2)\nd = mag(ball.pos)').map(term => term.id);
+  expect(used).toEqual(expect.arrayContaining(['volume', 'points', 'menu', 'camera', 'mag']));
+});

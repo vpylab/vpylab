@@ -137,7 +137,7 @@ export function openRecordingAudioStream() {
 function connectOutput(node) { node.connect(masterGain); }
 
 function trackOsc(source, gain, duration = 10, nodes = [], group = 'lesson', note = null) {
-  const voice = { source, gain, nodes, group, note, retiring: false, timer: null };
+  const voice = { source, gain, nodes, group, note, start: note?.start ?? audioCtx?.currentTime ?? 0, retiring: false, timer: null };
   const cleanup = () => {
     if (!activeVoices.has(source)) return;
     clearTimeout(voice.timer);
@@ -374,23 +374,26 @@ export function isAudioUnlocked() {
  * 예전에는 한도에 닿으면 새 음을 조용히 버려서, 빠르게 연주하면 건반 불빛만 켜지고 소리가 나지 않았습니다.
  * 방금(같은 순간에) 시작한 음은 줄이지 않습니다. 그래야 한 번에 몰린 요청이 서로를 지우며 노드를 늘리지 않습니다.
  */
-function freeVoices() {
+function freeVoices(group = 'lesson') {
   let live = 0, retiring = 0;
   for (const voice of activeVoices.values()) voice.retiring ? retiring++ : live++;
-  if (live < MAX_AUDIO_VOICES) return MAX_AUDIO_VOICES - live;
-  if (retiring >= MAX_RETIRING_VOICES) return 0;
+  // 줄이는 중인 소스까지 합친 전체 수도 넘지 않게 합니다 (정지 직후 다시 연주하는 경우).
+  const total = MAX_AUDIO_VOICES + MAX_RETIRING_VOICES - activeVoices.size;
+  if (live < MAX_AUDIO_VOICES) return Math.max(0, Math.min(MAX_AUDIO_VOICES - live, total));
+  // 배경음악은 미리 예약하는 소리라, 지금 울리는 학생의 음을 밀어내지 않고 자기 음을 건너뜁니다.
+  if (group === 'bgm' || retiring >= MAX_RETIRING_VOICES || total < 1) return 0;
   const now = audioCtx?.currentTime || 0;
   for (const voice of activeVoices.values()) {
-    if (voice.retiring || !voice.note || voice.note.start > now - 0.05) continue;
+    if (voice.retiring || voice.start > now - 0.05) continue;
     retireVoice(voice);
     return 1;
   }
   return 0;
 }
 
-function withRunningContext(fn) {
+function withRunningContext(fn, group = 'lesson') {
   if (masterMuted || masterVolume === 0) return;
-  if (activeVoices.size >= MAX_AUDIO_VOICES + MAX_RETIRING_VOICES || freeVoices() < 1) return;
+  if (freeVoices(group) < 1) return;
   const ctx = getAudioContext();
   if (ctx) fn(ctx);
 }
@@ -490,7 +493,7 @@ function scheduleEnvelope(gain, ctx, peak, duration, attack = 0.008, time = ctx.
 function richTone(ctx, frequency, duration, timbre, volume, group, time, output) {
   const { partials, tail, attack } = instruments[timbre];
   // 자리가 모자라면 기본음부터 냅니다. 배음을 줄여도 음높이는 들립니다.
-  let room = Math.min(freeVoices(), partialBudget);
+  let room = Math.min(freeVoices(group), partialBudget);
   if (room < 1) return;
   if (timbre === 'felt') {
     const voice = playFeltSample(ctx, frequency, duration, volume, time, output);
@@ -537,7 +540,7 @@ export function beep(frequency = 440, duration = 0.3, type = 'sine', volume = 0.
     osc.connect(gain); connectOutput(gain);
     osc.start(time); osc.stop(time + length);
     trackOsc(osc, gain, time - ctx.currentTime + length, [], group, { name: freqToNoteName(pitch), start: time, end: time + length });
-  });
+  }, group);
 }
 
 /** 명시적인 클릭에서만 실행하는 짧은 오리지널 음색 예제입니다. */
@@ -638,11 +641,12 @@ export function playChord(frequencies, duration = 1.0, type = 'sine', volume = 0
   // 남은 자리를 음 수로 나눠, 모든 음이 적어도 기본음은 내게 합니다.
   let live = 0;
   for (const voice of activeVoices.values()) if (!voice.retiring) live++;
+  const outerBudget = partialBudget;
   partialBudget = Math.max(1, Math.floor((MAX_AUDIO_VOICES - live) / notes.length));
   try {
     for (const freq of notes) beep(freq, duration, type, volume / Math.sqrt(notes.length));
   } finally {
-    partialBudget = Infinity;
+    partialBudget = outerBudget;
   }
 }
 

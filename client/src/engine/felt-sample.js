@@ -9,6 +9,8 @@ const contexts = new WeakMap();
 export function warmFeltSamples(ctx) {
   if (!ctx?.decodeAudioData || !ctx.createBufferSource || typeof fetch !== 'function') return null;
   let samples = contexts.get(ctx);
+  // 받다가 실패했으면(잠깐 끊긴 연결 등) 조금 뒤에 다시 받습니다. 그러지 않으면 그 뒤로 계속 합성음만 납니다.
+  if (samples?.failedAt && Date.now() - samples.failedAt > 15_000) samples = null;
   if (!samples) {
     samples = [];
     contexts.set(ctx, samples);
@@ -17,7 +19,7 @@ export function warmFeltSamples(ctx) {
         if (!response.ok) throw new Error('음원 로딩 실패');
         return response.arrayBuffer();
       }).then(data => ctx.decodeAudioData(data)).then(buffer => { samples[index] = buffer; })
-        .catch(() => {}); // 오프라인이면 합성 음색을 계속 사용합니다.
+        .catch(() => { samples.failedAt = Date.now(); }); // 오프라인이면 합성 음색을 쓰고 나중에 다시 받습니다.
     });
   }
   return samples;

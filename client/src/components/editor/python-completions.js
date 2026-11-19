@@ -50,12 +50,13 @@ function declarations(masked){
  }
  return result;
 }
-function receiverType(receiver,declared){if(receiver==='scene'||receiver==='color'||receiver==='textures')return receiver;if(/\.(pos|axis|up|size|color|velocity|center|forward)$/.test(receiver))return'vector';return declared.get(receiver);}
+function receiverType(receiver,declared){if(receiver==='scene'||receiver==='color')return receiver;if(/\.(pos|axis|up|size|color|velocity|center|forward)$/.test(receiver))return'vector';return declared.get(receiver);}
 function typeMembers(type){if(type==='vector'||type==='list'||type==='scene'||type==='color')return members[type];if(shapes.has(type))return[...new Set([...(type==='label'?['visible','delete']:type==='curve'?['visible','append','modify','clear','point','npoints','pop','shift','unshift']:members.object),...(functions.get(type)?.params||[]).map(p=>p.name)])];return[];}
 export function completionChoices(source,locale='ko'){
  const context=pythonContext(source);if(context.blocked||/(?:^|[^\p{L}\p{N}_])\d+\.$/u.test(context.masked))return[];const declared=declarations(context.masked),member=context.masked.match(/([\p{L}_][\p{L}\p{N}_.]*)\.([\p{L}\p{N}_]*)$/u),ko=locale==='ko';
  const choice=(name,detail,description,kind='property',insertText=name)=>({name,detail,description,kind,insertText});
- if(member&&receiverType(member[1],declared)==='textures')return texturePresets.map(p=>choice(p.name,ko?p.desc.ko:p.desc.en,ko?`sphere(texture=textures.${p.name})처럼 도형의 표면에 입혀요.`:`Use it as a surface: sphere(texture=textures.${p.name})`));
+ // 학생이 textures라는 이름을 직접 만들었거나(textures = []) 다른 객체의 속성(a.textures.)이면 재질 목록을 내지 않습니다.
+ if(member&&member[1]==='textures'&&!declared.has('textures')&&!/[.\])]$/.test(context.masked.slice(0,member.index).trimEnd()))return texturePresets.map(p=>choice(p.name,ko?p.desc.ko:p.desc.en,ko?`sphere(texture=textures.${p.name})처럼 도형의 표면에 입혀요.`:`Use it as a surface: sphere(texture=textures.${p.name})`));
  if(member){const type=receiverType(member[1],declared);return typeMembers(type).map(name=>choice(name,ko?(word(name,member[1]+'.'+name)?.meaning||'속성·동작'):'Property / method',ko?(word(name,member[1]+'.'+name)?.explanation||'현재 객체에서 사용할 수 있는 이름입니다.'):(word(name)?.english||'A member of this object.')));}
  if(/\.[\p{L}\p{N}_]*$/u.test(context.masked))return[];
  const values=[...[...declared].filter(([name])=>identifier.test(name)&&!functions.has(name)&&!extras[name]).map(([name])=>choice(name,ko?'내 코드의 이름':'Name in this code',ko?'이 코드에서 정의한 이름입니다.':'A name defined in this code.','variable')),...[...functions].map(([name,d])=>choice(name,ko?(word(name)?.meaning||docText(d.title,locale)):(d.title?.en||name),docText(d.description,locale),'function')),...Object.entries(extras).map(([name,meaning])=>choice(name,ko?meaning:'Python',ko?meaning:name,'keyword'))];
