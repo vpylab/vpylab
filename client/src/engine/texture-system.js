@@ -62,10 +62,13 @@ export function resolveTexture(spec) {
   ) {
     let complete;
     const ready = new Promise(resolve => { complete = resolve; });
-    textureLoads.set(spec, ready);
-    texture = URL_LOADER.load(spec, () => complete(), undefined, err => {
+    textureLoads.set(spec, ready.then(loaded => {
+      if (!loaded) TEXTURE_CACHE.delete(spec);
+      textureLoads.delete(spec);
+    }));
+    texture = URL_LOADER.load(spec, () => complete(true), undefined, err => {
       console.warn(`[texture] 로드 실패: ${spec}`, err?.message || err);
-      complete();
+      complete(false);
     });
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = THREE.RepeatWrapping;
