@@ -6137,7 +6137,11 @@ def _new_student_namespace():
 
 
 async def _standard_wait(seconds):
+    has_output = bool(_command_buffer or _dirty_mesh_faces)
     _before_wait()
+    if has_output and hasattr(js, '_waitForPresentation'):
+        await js._waitForPresentation()
+        _raise_if_stopped()
     await _sleep_chunked(seconds)
     _raise_if_stopped()
 
