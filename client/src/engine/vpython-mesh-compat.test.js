@@ -14,6 +14,18 @@ const run = code => runPythonJobs([{ id: 'mesh', label: 'case', code: `from vpyt
 afterEach(() => clearScene(scene));
 
 describe.skipIf(!hasPython())('VPython 공유 정점·나선 실제 지오메트리', () => {
+  it('방출 입자의 시계는 기존 점 지오메트리를 유지하며 움직임과 정지를 제어한다', () => {
+    const result = run('p=points(pos=[vec(3,1,0)], shape="plume")\np.flow_time=1.5');
+    expect(result.error).toBeNull();
+    const create = result.commands.find(cmd => cmd.type === 'points');
+    processBatch([create], scene);
+    const mesh = getMesh(create.id);
+    const geometry = mesh.geometry;
+    processBatch(result.commands.filter(cmd => cmd.flow_time !== undefined && cmd.action === 'update'), scene);
+    expect(mesh.material.userData.flowTime.value).toBe(1.5);
+    expect(mesh.geometry).toBe(geometry);
+  });
+
   it('구의 자전축을 보내면 표면 좌표계가 회전하고 반지름과 중심은 유지된다', () => {
     const result = run('s = sphere(pos=vec(2,0,0), radius=3)\ns.axis = vec(0,0,-1)');
     expect(result.error).toBeNull();

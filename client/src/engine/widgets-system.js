@@ -1,3 +1,4 @@
+import './widgets.css';
 /**
  * VPyLab — UI 위젯 시스템
  * Python에서 생성한 slider/button/checkbox/radio/menu/winput을
@@ -25,18 +26,7 @@ function ensurePanel(canvasId = 'scene') {
   panelEl.setAttribute('data-vpylab-widgets', '');
   panelEl.dataset.canvasId = canvasId;
   panels.set(canvasId, panelEl);
-  panelEl.style.cssText = [
-    // 오른쪽 위에는 3D 화면 조작부(전체 화면·화면에 맞추기·자동 맞춤·XYZ)가 있으므로 그 왼쪽에 둔다
-    'position:absolute', 'top:8px', 'right:108px',
-    'max-width:min(280px, calc(100% - 124px))', 'max-height:60%',
-    'overflow:auto', 'z-index:10',
-    'padding:10px 12px', 'border-radius:8px',
-    'background:rgba(255,255,255,0.92)',
-    'box-shadow:0 2px 8px rgba(0,0,0,0.15)',
-    'font:13px/1.4 "DM Sans", "Noto Sans KR", sans-serif',
-    'color:#222',
-    'display:flex', 'flex-direction:column', 'gap:8px',
-  ].join(';');
+  panelEl.className = 'vp-widget-panel';
 
   // 3D 뷰포트 컨테이너 안에 부착 (없으면 body)
   const host = document.querySelector(`[data-vpylab-canvas-id="${canvasId}"]`) || document.querySelector('[data-vpylab-viewport]') || document.body;
@@ -63,6 +53,7 @@ export function createWidget(cmd) {
   const panel = ensurePanel(cmd.canvas_id);
   const wrap = document.createElement('div');
   wrap.dataset.widgetId = cmd.id;
+  wrap.dataset.widgetKind = cmd.kind;
   wrap.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
   let inputEl = null;
@@ -70,9 +61,10 @@ export function createWidget(cmd) {
   switch (cmd.kind) {
     case 'slider': {
       if (cmd.text) {
-        const name = document.createElement('span');
+        const name = document.createElement('label');
+        name.htmlFor = 'vp_slider_' + cmd.id;
         name.textContent = String(cmd.text);
-        name.style.cssText = 'min-width:72px;color:#444;font-weight:600;';
+        name.className = 'vp-slider-label';
         wrap.appendChild(name);
       }
       const label = document.createElement('span');
@@ -81,6 +73,7 @@ export function createWidget(cmd) {
       label.style.cssText = 'min-width:36px;text-align:right;font-variant-numeric:tabular-nums;';
       inputEl = document.createElement('input');
       inputEl.type = 'range';
+      inputEl.id = 'vp_slider_' + cmd.id;
       inputEl.min = String(cmd.min ?? 0);
       inputEl.max = String(cmd.max ?? 1);
       inputEl.step = String(cmd.step ?? 0.01);

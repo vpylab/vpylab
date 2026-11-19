@@ -37,7 +37,11 @@ function drawGasGiant(ctx, size) {
 }
 
 const PRESET_GENERATORS = {
-  sun: drawFire,
+  sun(ctx, size) {
+    // 느린 연결에서도 광구 전체에 같은 바탕색을 표시합니다.
+    ctx.fillStyle = '#f7c46f';
+    ctx.fillRect(0, 0, size, size);
+  },
   moon: drawGranite,
   jupiter: drawGasGiant,
   saturn: drawGasGiant,
@@ -110,6 +114,9 @@ export function resolveTexture(spec) {
     if (Object.hasOwn(surfaceImages, name)) {
       textureLoads.set(spec, new Promise(done => {
         new THREE.ImageLoader().load(surfaceImages[name], image => {
+          // 작은 임시 캔버스를 이미 그렸다면 GPU 저장소가 그 크기로 고정돼 있습니다.
+          // 같은 재질 참조를 유지하면서 최종 이미지 크기로 다시 할당합니다.
+          texture.dispose();
           texture.image = image;
           texture.needsUpdate = true;
           done();
