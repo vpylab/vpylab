@@ -1,0 +1,147 @@
+.vp-theater {
+  --stage-edge: 12px;
+  --stage-top: max(var(--stage-edge), env(safe-area-inset-top));
+  --stage-left: max(var(--stage-edge), env(safe-area-inset-left));
+  --stage-right: max(var(--stage-edge), env(safe-area-inset-right));
+  --stage-line: rgb(255 255 255 / 17%);
+  --stage-glass: rgb(24 31 43 / 94%);
+  --stage-ink: #f4f6f9;
+  --vpylab-title-top: calc(var(--stage-top) + 50px);
+  --vpylab-caption-bottom: max(10px, env(safe-area-inset-bottom));
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  background: #000;
+}
+
+.vp-theater-actions {
+  position: absolute;
+  z-index: 11;
+  top: var(--stage-top);
+  left: var(--stage-left);
+  display: flex;
+  align-items: center;
+}
+
+.vp-theater-actions,
+.vp-theater .vp-view-toggle,
+.vp-theater .vp-view-tools {
+  color: var(--stage-ink);
+  background: var(--stage-glass);
+  border: 1px solid var(--stage-line);
+  border-radius: 14px;
+}
+
+.vp-theater-actions button,
+.vp-theater .vp-view-toggle {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  color: var(--stage-ink);
+  font: 600 13px/1.2 var(--font-body);
+  cursor: pointer;
+}
+
+.vp-theater-actions button + button { position: relative; }
+.vp-theater-actions button + button::before {
+  position: absolute;
+  left: 0;
+  height: 16px;
+  border-left: 1px solid var(--stage-line);
+  content: "";
+}
+.vp-code-mark { color: #acc5df; font: 600 13px/1 var(--font-mono); }
+.vp-stop-mark { width: 8px; height: 8px; border-radius: 2px; background: #ff998d; }
+.vp-theater :is(button, select, input):focus-visible {
+  outline: 2px solid #81caff;
+  outline-offset: -3px;
+}
+
+.vp-theater .vp-view-control { top: var(--stage-top); right: var(--stage-right); z-index: 12; }
+.vp-theater .vp-view-tools[data-open="false"] { display: none; }
+.vp-theater .vp-view-tools {
+  align-items: stretch;
+  padding: 4px;
+  gap: 0;
+  box-shadow: 0 6px 20px #0003;
+}
+.vp-theater .vp-view-tools :is(button, label) {
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--stage-ink) !important;
+  border: none !important;
+  background: transparent !important;
+  text-align: start;
+}
+.vp-theater .vp-view-tools input { accent-color: #8fc6eb; }
+
+.vp-theater [data-vpylab-caption] {
+  left: var(--stage-left);
+  max-width: calc(100% - var(--stage-left) - var(--stage-right));
+  padding: 5px 9px;
+  border-radius: 6px !important;
+  color: #ecf2f8 !important;
+  background: rgb(20 27 37 / 84%) !important;
+  font: 500 12px/1.45 var(--font-body);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
+  .vp-theater [data-single-canvas] > .vp-widget-panel {
+    display: flex;
+    flex-flow: row wrap;
+    align-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    padding: 8px var(--stage-right) max(8px, env(safe-area-inset-bottom)) var(--stage-left);
+    background: #1b2431;
+    color: var(--stage-ink);
+    border-color: var(--stage-line);
+    scrollbar-width: thin;
+  }
+
+  .vp-theater .vp-widget-panel > [data-widget-kind="menu"] {
+    flex: 1 1 124px;
+    min-width: 0;
+  }
+  .vp-theater .vp-widget-panel select {
+    width: 100%;
+    min-height: 44px;
+    appearance: none;
+    padding: 0 28px 0 12px;
+    color: var(--stage-ink);
+    color-scheme: dark;
+    background-color: #2b3747;
+    background-image: linear-gradient(45deg, transparent 50%, #becedd 50%), linear-gradient(135deg, #becedd 50%, transparent 50%);
+    background-position: right 14px center, right 10px center;
+    background-size: 4px 4px;
+    background-repeat: no-repeat;
+    border: 1px solid var(--stage-line);
+    border-radius: 9px;
+    font: 550 14px/1.4 var(--font-body);
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  .vp-theater .vp-widget-panel > :is([data-widget-kind="slider"], [data-widget-kind="winput"], [data-vpylab-input]) {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .vp-theater .vp-widget-panel .vp-slider-label,
+  .vp-theater .vp-widget-panel [data-widget-kind="winput"] > span,
+  .vp-theater .vp-widget-panel [data-vpylab-input] > span {
+    color: var(--stage-ink) !important;
+  }
+  .vp-theater .vp-widget-panel input[type="range"] { accent-color: #8fc6eb; min-height: 44px; }
+  .vp-theater:has(.vp-widget-panel) { --vpylab-caption-bottom: 10px; }
+
+  .vp-theater .vp-widget-panel :is(input[type="text"], input[type="number"], button) { color: #1b2431; }
+}
+
+@media (forced-colors: active) {
+  .vp-theater .vp-widget-panel select { appearance: auto; }
+  .vp-stop-mark { background: ButtonText; }
+}

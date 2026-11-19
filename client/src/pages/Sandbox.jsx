@@ -1,3 +1,4 @@
+import './theater.css';
 import { localizeLessonCode } from '../i18n/owned-content';
 import { getDefaultCode } from '../data/default-code';
 import { useUiText, getUiLocale } from "../i18n/ui-text";
@@ -1537,8 +1538,7 @@ export default function Sandbox() {
     const theaterPreparing = !theaterWaiting && !playStartRequired && ['idle', 'loading', 'error'].includes(engineStatus);
 
     return (
-      // 왼쪽 위 [코드 보기]·왼쪽 아래 [정지] 단추가 scene.title·caption을 가리지 않게 글자를 안쪽으로 옮깁니다.
-      <div className="h-screen w-screen relative" style={{ backgroundColor: '#000', '--vpylab-title-top': '4rem', '--vpylab-caption-bottom': '4rem' }}>
+      <div className="vp-theater">
         {draftGuard}
         <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: handleRun, onStop: handleStop, isRunning:isRunning||audio.playing, isReady }} />
 
@@ -1572,40 +1572,19 @@ export default function Sandbox() {
           </div>
         )}
 
-        {/* 좌상단: 코드 보기 버튼 */}
         {!theaterWaiting && (
-          <button
-            onClick={() => { handleStop(); setTheaterMode(false); }}
-            className="text-[13px] pointer-coarse:text-[15px] pointer-coarse:min-h-11"
-            style={{
-              position: 'fixed', top: 16, left: 16, zIndex: 100,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-              border: 'none', borderRadius: 10,
-              color: 'white', padding: '8px 14px', fontWeight: 600,
-              cursor: 'pointer', transition: 'opacity 0.2s',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          >
-            {'</>'}{ui("코드 보기")}</button>
-        )}
-
-        {/* 좌하단: 정지 버튼 (실행 중일 때만) */}
-        {(isRunning||audio.playing) && (
-          <button
-            onClick={handleStop}
-            className="text-[13px] pointer-coarse:text-[15px] pointer-coarse:min-h-11"
-            style={{
-              position: 'fixed', bottom: 16, left: 16, zIndex: 100,
-              background: 'rgba(239,68,68,0.8)', backdropFilter: 'blur(8px)',
-              border: 'none', borderRadius: 10,
-              color: 'white', padding: '8px 14px', fontWeight: 600,
-              cursor: 'pointer', transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,1)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.8)'}
-          >{ui("⏹ 정지")}</button>
+          <div className="vp-theater-actions">
+            <button type="button" onClick={() => { handleStop(); setTheaterMode(false); }}>
+              <span className="vp-code-mark" aria-hidden="true">&lt;/&gt;</span>
+              {ui("코드 보기")}
+            </button>
+            {(isRunning || audio.playing) && (
+              <button type="button" onClick={handleStop}>
+                <span className="vp-stop-mark" aria-hidden="true" />
+                {t('editor.stop')}
+              </button>
+            )}
+          </div>
         )}
       </div>
     );

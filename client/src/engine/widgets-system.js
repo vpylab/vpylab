@@ -149,7 +149,6 @@ export function createWidget(cmd) {
 
     case 'menu': {
       inputEl = document.createElement('select');
-      inputEl.style.cssText = 'padding:4px 6px;border-radius:6px;border:1px solid #999;background:#fff;';
       for (const choice of (cmd.choices || [])) {
         const opt = document.createElement('option');
         opt.value = String(choice);

@@ -17,6 +17,14 @@
   font: 13px/1.4 "DM Sans", "Noto Sans KR", sans-serif;
 }
 
+/* 편집기에서도 브라우저의 기본 선택 메뉴를 유지합니다. */
+.vp-widget-panel select {
+  padding: 4px 6px;
+  border: 1px solid #999;
+  border-radius: 6px;
+  background: white;
+}
+
 .vp-slider-label {
   min-width: 72px;
   color: #444;
