@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import process from 'node:process'
+import { fileURLToPath } from 'node:url'
 import { pyodideAssets } from './scripts/pyodide-assets.mjs'
 import { serviceWorker } from './scripts/service-worker-plugin.mjs'
 
@@ -62,6 +63,7 @@ export default defineConfig({
     },
   },
   server: {
+    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../server/shared/instruments/', import.meta.url))] },
     port: 4033,
     strictPort: true,
     proxy: {

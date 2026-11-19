@@ -35,6 +35,8 @@ import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
 import { createPackageImportTools } from '../shared/package-imports.js';
 
+import { playSampleVoice } from '../shared/instruments/play-sample.js';
+import { createRoomBus } from '../shared/instruments/room-audio.js';
 import { instruments } from '../shared/instrument-profiles.js';
 
 const PYODIDE_VERSION = '0.27.0';
@@ -59,7 +61,7 @@ function escapeHTML(str) {
     .replace(/'/g, '&#39;');
 }
 
-export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, transformSource) {
+export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, transformSource, feltLayers = []) {
   if (!transformSource) throw new Error('학생 코드 변환기가 필요합니다.');
   // Base64로 안전하게 코드 임베딩 (모든 특수문자 문제 해결)
   const base64Code = btoa(unescape(encodeURIComponent(code)));
@@ -67,6 +69,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   const base64Transform = btoa(unescape(encodeURIComponent(transformSource)));
 
   // 보안: 제목을 HTML 엔티티로 이스케이프 (저장형 XSS 방지)
+  // 명시한 펠트 작품만 두 녹음을 함께 싣습니다. 나머지 음색은 합성합니다.
+  const samples = code.includes('felt') ? feltLayers : [];
+  const sampleCredit = samples.length ? ' · <a href="https://github.com/sfzinstruments/SalamanderGrandPiano">Piano samples by Alexander Holm</a> (<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>, excerpts converted to mono and filtered)' : '';
   const safeTitle = escapeHTML(title);
   const safeOpenInVpylabUrl = options.openInVpylabUrl ? escapeHTML(options.openInVpylabUrl) : '';
   const safeRepoUrl = options.repoUrl ? escapeHTML(options.repoUrl) : 'https://github.com/vpylab/vpylab';
@@ -100,7 +105,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     <div style="font-size:14px">Python 엔진 로딩 중...</div>
     <div class="bar"><div class="fill" id="progress" style="width:0%"></div></div>
   </div>
-  <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}</div>
+  <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}${sampleCredit}</div>
   <button id="stop-playback" type="button" hidden style="position:fixed;right:8px;bottom:8px;min-height:44px;z-index:30">정지 / Stop</button>
   <div id="scene-title" style="position:fixed;left:12px;top:48px;z-index:5"></div>
   <div id="scene-caption" style="position:fixed;left:12px;bottom:56px;z-index:5"></div>
@@ -177,6 +182,12 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   let iosMediaUnlockPending = null;
   let silentMediaDataUri = null;
   let audioBus = null;
+  let roomBus = null;
+  let feltBuffers = null;
+  const createRoom = (${createRoomBus.toString()});
+  const playSample = (${playSampleVoice.toString()});
+  const encodedLayers = ${JSON.stringify(samples)};
+
   function getAudioCtx() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return null;
@@ -192,6 +203,12 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       audioBus.gain.value = 0.6 * 0.45;
       audioBus.connect(limiter);
       limiter.connect(audioCtx.destination);
+      if (encodedLayers.length === 2) {
+        Promise.all(encodedLayers.map(layer => {
+          const data = atob(layer.slice(layer.indexOf(',') + 1));
+          return audioCtx.decodeAudioData(Uint8Array.from(data, c => c.charCodeAt(0)).buffer);
+        })).then(buffers => { feltBuffers = buffers; }).catch(() => {});
+      }
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
@@ -293,15 +310,22 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     evts.forEach(e=>document.addEventListener(e,unlock,true));
   })();
 
-  function beep(frequency = 440, duration = 0.3, type = 'sine', volume = 0.3) {
+  function beep(frequency = 440, duration = 0.3, type = 'sine', volume = 0.3, destination = null) {
     const ctx = getAudioCtx();
     if (!ctx || !(volume > 0) || !(frequency > 0) || !(duration > 0)) return;
     const profiles = ${JSON.stringify(instruments)};
     const instrument = typeof type === "string" ? type.replace(/-room$/, "") : type;
+    if (!destination) {
+      if (typeof type === 'string' && type.endsWith('-room')) roomBus ??= createRoom(ctx, audioBus);
+      destination = type !== instrument ? roomBus.input : audioBus;
+    }
+    if (instrument === 'felt' && feltBuffers) {
+      if (playSample(feltBuffers, ctx, frequency, duration, volume, ctx.currentTime, destination)) return;
+    }
     if (Object.hasOwn(profiles, instrument)) {
       const profile = profiles[instrument];
       for (const [ratio, strength] of profile.partials) {
-        if (frequency * ratio < 18000) beep(frequency * ratio, duration + profile.tail / ratio, 'sine', volume * strength);
+        if (frequency * ratio < 18000) beep(frequency * ratio, duration + profile.tail / ratio, 'sine', volume * strength, destination);
       }
       return;
     }
@@ -312,7 +336,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     gain.gain.setValueAtTime(volume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
     osc.connect(gain);
-    gain.connect(audioBus);
+    gain.connect(destination);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration);
   }
@@ -2896,6 +2920,7 @@ async def 악기(instrument, name, duration=0.5, volume=None):
     stopButton.hidden = false;
     stopButton.addEventListener('click', () => {
       stopBgm();
+      roomBus?.close();
       audioCtx?.close();
       window.location.reload();
     }, { once: true });
