@@ -5,7 +5,8 @@ import { clearScene, getMesh, processBatch } from './vpython-bridge';
 
 vi.mock('./texture-system', async () => {
   const three = await import('three');
-  return { resolveTexture: vi.fn(spec => spec ? new three.DataTexture(new Uint8Array([255,255,255,255]),1,1) : null) };
+  const resolveTexture = vi.fn(spec => spec ? new three.DataTexture(new Uint8Array([255,255,255,255]),1,1) : null);
+  return { resolveTexture, surfacePlaceholder: resolveTexture, finishSurfaceImage: vi.fn() };
 });
 
 const scene = new THREE.Scene();

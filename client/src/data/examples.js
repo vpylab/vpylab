@@ -4,7 +4,17 @@
  */
 import { eclipseViewsCode } from './eclipse-views.js';
 
+import { cometCode, cometCloseupCode, solarStudyCode, timbreCode } from './cinematic-projects.js';
+
 const EXAMPLES = [
+  { id: 'pyctures-solar-study', title: '다섯 행성과 태양빛', thumbnail: '☀️', category: 'space', level: 2,
+    description: 'Pyctures와 같은 거리·반지름·시야각에서 낮과 밤을 비교합니다.', tags: ['light', 'camera'], code: solarStudyCode },
+  { id: 'comet-closeup', title: '혜성의 두 꼬리', thumbnail: '☄️', category: 'space', level: 3,
+    description: '혜성과 함께 이동하며 이온 꼬리와 먼지 부채를 확대합니다.', tags: ['light', 'camera'], code: cometCloseupCode },
+  { id: 'comet-observatory', title: '지구에서 기다리는 혜성', thumbnail: '☄️', category: 'space', level: 3,
+    description: '여덟 행성 사이에서 혜성의 핵과 두 꼬리를 관찰합니다.', tags: ['light', 'camera', 'gravity'], code: cometCode },
+  { id: 'timbre-studio', title: '빛으로 연주하는 다섯 음', thumbnail: '🎹', category: 'sound', level: 2,
+    description: '같은 다섯 음을 펠트 피아노, 마림바, 유리종으로 연주합니다.', tags: ['sound', 'light'], code: timbreCode },
   // ═══════════════════════════════════════
   // 🌌 우주/자연 (6개)
   // ═══════════════════════════════════════

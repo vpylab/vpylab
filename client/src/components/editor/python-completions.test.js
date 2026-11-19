@@ -25,3 +25,25 @@ it('위치 인자는 변수로 완성하고 함수 인자를 지역 변수로 �
 it('scene.width는 화면 픽셀 크기로 설명한다',()=>{expect(completionChoices('scene.').find(x=>x.name==='width').detail).toBe('화면 가로 크기');});
 
 it('여러 변수·연쇄 대입·세미콜론의 이름도 값 후보로 보존한다',()=>{expect(names('x,y=1,2\nvector(x, y')).toContain('y');expect(names('a=b=vector(1,2,3)\nb.')).toContain('x');expect(names('a=b=0\npr')).toEqual(expect.arrayContaining(['a','b']));expect(names('a=1; b=2\npr')).toEqual(expect.arrayContaining(['a','b']));});
+
+it('textures. 뒤에는 재질 이름과 한글 뜻을 보여 주고, 엔진의 재질 목록과 어긋나지 않는다',async()=>{
+ const choices=completionChoices('ball = sphere(texture=textures.');
+ const sun=choices.find(x=>x.name==='sun');
+ expect(sun.detail).toContain('태양');
+ expect(choices.find(x=>x.name==='jupiter').detail).toContain('목성');
+ expect(completionChoices('textures.',"en").find(x=>x.name==='moon').detail).toContain('Moon');
+ // 엔진(vpython-api.py)에 있는 재질은 모두 자동 완성에 나와야 합니다. GlowScript 호환 별칭 두 개는 문서에 싣지 않습니다.
+ const {readFileSync}=await import('node:fs');const {resolve}=await import('node:path');const {default:process}=await import('node:process');
+ const api=readFileSync(resolve(process.cwd(),'src/engine/vpython-api.py'),'utf8');
+ const block=api.slice(api.indexOf('class _TexturePresets'),api.indexOf('textures = _TexturePresets()'));
+ const presets=[...block.matchAll(/^ {4}(\w+) = "preset:/gm)].map(m=>m[1]).filter(n=>!['rock','wood_old'].includes(n));
+ expect(presets.length).toBeGreaterThan(20);
+ expect(choices.map(x=>x.name).sort()).toEqual([...presets].sort());
+});
+
+it('textures라는 이름을 학생이 직접 만들었거나 다른 객체의 속성이면 재질 목록을 내지 않는다',()=>{
+ expect(names('textures = []\ntextures.')).toContain('append');
+ expect(names('textures = []\ntextures.')).not.toContain('jupiter');
+ expect(names('items[0].textures.')).not.toContain('jupiter');
+ expect(names('ball = sphere(texture=textures.')).toContain('jupiter');
+});

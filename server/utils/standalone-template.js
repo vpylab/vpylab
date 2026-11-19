@@ -34,6 +34,8 @@ import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
 import { createPackageImportTools } from '../shared/package-imports.js';
 
+import { instruments } from '../shared/instrument-profiles.js';
+
 const PYODIDE_VERSION = '0.27.0';
 const THREE_VERSION = '0.183.2';
 
@@ -276,9 +278,18 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
 
   function beep(frequency = 440, duration = 0.3, type = 'sine', volume = 0.3) {
     const ctx = getAudioCtx();
+    const profiles = ${JSON.stringify(instruments)};
+    const instrument = typeof type === "string" ? type.replace(/-room$/, "") : type;
+    if (Object.hasOwn(profiles, instrument)) {
+      const profile = profiles[instrument];
+      for (const [ratio, strength] of profile.partials) {
+        if (frequency * ratio < 18000) beep(frequency * ratio, duration + profile.tail / ratio, 'sine', volume * strength);
+      }
+      return;
+    }
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = type;
+    osc.type = ['sine','triangle','sawtooth','square'].includes(type) ? type : 'sine';
     osc.frequency.value = frequency;
     gain.gain.setValueAtTime(volume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
