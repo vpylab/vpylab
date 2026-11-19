@@ -53,3 +53,20 @@
 - 실행 링크: `/sandbox?view=run#b64=<base64url 코드>`, 예제 링크: `/sandbox?example=<id>`.
 - iOS 판정(`sound-system.js`의 `isIOSDevice`)은 `MacIntel` + 터치 점 2개 이상도 iOS로 봅니다. 데스크톱의 휴대폰 흉내로 iOS 경로를 탈 수 있지만 실제 기기 확인을 대신하지는 못합니다.
 - `main`에 병합하면 운영 두 사이트에 자동 배포됩니다. 병합은 관리자가 승인한 뒤에만 합니다.
+
+## 휴대폰에서 감상하고 편집하기 · Viewing and editing on a phone
+
+공유된 실행 링크를 열고 시작 단추를 한 번 누르면 소리와 장면을 함께 실행합니다. 감상 중에는 편집기를 내려받지 않습니다. **코드 보기**를 누르면 같은 작품을 편집할 수 있습니다. 인터넷 없이 다시 편집할 계획이라면 연결된 동안 한 번 코드 보기를 열어 편집기까지 준비하세요. 학교 기기에서는 수업 전에 소리, 파일 내려받기와 재실행을 확인하세요.
+
+Open the shared run link and tap Start once to enable audio and run the scene. The editor downloads when you choose **View code**. For a later offline class, open the editor once while connected. Check sound, file downloads and rerunning on the school's devices before the lesson.
+
+| 맥의 Chromium 터치 모사 · Chrome touch emulation on Mac | main 1e6be2b | 변경 후 · After |
+|---|---:|---:|
+| 첫 장면까지 중앙값 · Median navigation to first scene | 3,979 ms | 2,522 ms |
+| 첫 탭에서 첫 장면까지 중앙값 · Median tap to first scene | 2,777 ms | 1,962 ms |
+| 첫 장면까지 응답 본문 바이트 중앙값 · Median HTTP response body bytes by first scene | 8,000,689 | 6,966,449 |
+| 코드 보기 전 편집기 JS·CSS·워커 요청 수 · Editor requests before View code | 3 / run | 0 / run |
+
+각 빌드에서 새 브라우저 컨텍스트로 5회씩 실행했습니다. 같은 맥과 Chrome, 390 × 844 터치 화면 모사, 같은 로컬 HTTP 서버, gzip 레벨 6, LAN 글꼴 설정의 오픈소스 빌드를 사용했습니다. 구 하나와 C4 한 음이 있는 작품의 첫 생성 명령 뒤 첫 WebGL 그리기 호출을 장면 시작으로 기록했습니다. 바이트에는 서비스 워커와 Python 엔진을 포함한 서버 응답 본문이 들어갑니다. 실물 휴대폰·학교 네트워크의 소요 시간은 별도 측정해야 합니다.
+
+Five fresh browser contexts per build used the same Mac, Chrome, emulated 390 × 844 touch screen, local HTTP server, gzip level 6 and open build with local fonts. The first WebGL draw following the first Python object-creation batch marked scene onset. Byte counts include completed response bodies for the page, workers and Python engine. Physical-device and school-network timings remain unmeasured.

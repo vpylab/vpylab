@@ -7,7 +7,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 describe('Python 전용 Monaco', () => {
   it('편집기는 모든 언어를 담은 monaco-editor 진입점 대신 Python 전용 모듈을 불러온다', () => {
-    const editor = readFileSync(resolve(here, 'CodeEditor.jsx'), 'utf8');
+    const editor = readFileSync(resolve(here, 'MonacoEditor.jsx'), 'utf8');
     expect(editor).not.toMatch(/from 'monaco-editor'/);
     expect(editor).toMatch(/from '\.\/monaco-python'/);
   });

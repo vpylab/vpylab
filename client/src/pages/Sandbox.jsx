@@ -1,5 +1,5 @@
 import { localizeLessonCode } from '../i18n/owned-content';
-import { getDefaultCode } from '../data/default-code';
+import { DEFAULT_CODE, getDefaultCode } from '../data/default-code';
 import { useUiText, getUiLocale } from "../i18n/ui-text";
 import { readPracticeDraft, writePracticeDraft } from '../utils/practice-drafts';
 import { clearSandboxDraft, readSandboxDraft, writeSandboxDraft } from '../utils/sandbox-draft';
@@ -8,7 +8,7 @@ import { useState, useRef, useCallback, useEffect, useLayoutEffect, lazy, Suspen
 import { Link, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
 import Header from '../components/layout/Header';
-import CodeEditor, { DEFAULT_CODE } from '../components/editor/CodeEditor';
+import CodeEditor from '../components/editor/CodeEditor';
 import SoundSettings from '../components/editor/SoundSettings';
 import Viewport3D from '../components/viewport/Viewport3D';
 import OutputConsole from '../components/console/OutputConsole';
@@ -331,6 +331,11 @@ export default function Sandbox() {
   // /s/:id 주소로 열면 공유 코드를 직접 불러옵니다. 주소창은 /s/이름 그대로 둡니다.
   const { id: sharedRouteId } = useParams();
   const loadedSharedRouteId = useRef(null);
+  // 공유 코드 조회 중인 첫 렌더가 숨은 편집기를 먼저 내려받지 않게 합니다.
+  const [editorEntry, setEditorEntry] = useState(null);
+  const awaitsTheater = sharedRouteId || (location.state?.sharedCode && location.state?.autoPlay)
+    || (runViewParam && (repoParam || /^(#b64=|#code=)/.test(window.location.hash)));
+  const showCodeEditor = !awaitsTheater || editorEntry === location.key;
 
   // 자유 코딩 초안 되살리기: 빈 만들기 화면으로 들어왔고 이 브라우저에 남은 코드가 있으면 이어서 엽니다.
   // 새로 고침 전에 드라이브 파일을 열어 두었으면 아래의 드라이브 연결 복구가 그 파일을 엽니다.
@@ -441,6 +446,7 @@ export default function Sandbox() {
     loadSharedCode(sharedRouteId).then(({ code: sharedCode, title, error }) => {
       if (cancelled) return;
       if (error || !sharedCode) {
+        setEditorEntry(location.key);
         setOutputs([{ text: tRef.current('sharedCode.notFound'), type: 'warning', id: Date.now() }]);
         return;
       }
@@ -454,7 +460,7 @@ export default function Sandbox() {
       setTheaterWaiting(true);
     });
     return () => { cancelled = true; };
-  }, [sharedRouteId, updateCode]);
+  }, [sharedRouteId, updateCode, location.key]);
 
   // 예전 방식(location.state로 넘어온 공유 코드) 로드
   useEffect(() => {
@@ -524,6 +530,7 @@ export default function Sandbox() {
               return;
             }
           }
+          setEditorEntry(location.key);
           setRepoLoadStatus('error');
           setOutputs([{ text: e.message || ui("GitHub 프로젝트 코드를 불러오지 못했습니다."), type: 'error', id: Date.now() }]);
         }
@@ -549,8 +556,10 @@ export default function Sandbox() {
       if (isExternal) {
         setOutputs([{ text: location.state?.homeDraft ? ui("내 메인의 코드 사본을 열었습니다. 수정 후 다시 내 메인으로 설정해 주세요.") : tRef.current('share.externalCode'), type: 'warning', id: Date.now() }]);
       }
+    } else if (runViewParam && !sharedRouteId) {
+      setEditorEntry(location.key);
     }
-  }, [location.state?.sharedCode, location.state?.sharedTitle, location.state?.autoPlay, location.state?.homeDraft, location.key, repoAutorun, repoParam, playParam, runViewParam, updateCode, ui]);
+  }, [sharedRouteId, location.state?.sharedCode, location.state?.sharedTitle, location.state?.autoPlay, location.state?.homeDraft, location.key, repoAutorun, repoParam, playParam, runViewParam, updateCode, ui]);
 
   // 자동 저장: 코드 변경 시 2초 debounce
   // 활성 프로젝트가 있으면 GitHub commit 흐름(수동 저장)을 사용하므로 자동 저장은 건너뜁니다.
@@ -1574,7 +1583,7 @@ export default function Sandbox() {
         {/* 좌상단: 코드 보기 버튼 */}
         {!theaterWaiting && (
           <button
-            onClick={() => { handleStop(); setTheaterMode(false); }}
+            onClick={() => { handleStop(); setEditorEntry(location.key); setTheaterMode(false); }}
             className="text-[13px] pointer-coarse:text-[15px] pointer-coarse:min-h-11"
             style={{
               position: 'fixed', top: 16, left: 16, zIndex: 100,
@@ -1789,7 +1798,7 @@ export default function Sandbox() {
           className={`${activeTab === 'editor' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[45%] md:min-w-[300px]`}
           style={{ borderRight: '1px solid var(--color-border)' }}
         >
-          <CodeEditor code={code} readOnly={restoringRevision} onChange={(val) => { if (!useRevisionStore.getState().restoring) updateCode(val || ''); }} />
+          {showCodeEditor && <CodeEditor code={code} readOnly={restoringRevision} onChange={(val) => { if (!useRevisionStore.getState().restoring) updateCode(val || ''); }} />}
         </div>
 
         {/* 리사이저 (데스크톱) */}

@@ -29,3 +29,11 @@ export function warmPyodideCache(base) {
     registration.active?.postMessage({ type: 'WARM_PYODIDE', base });
   }).catch(() => {});
 }
+
+/** 편집기를 실제로 연 뒤에만 해당 청크와 워커를 오프라인 캐시에 보관합니다. */
+export function warmEditorCache() {
+  if (!canUseServiceWorker()) return;
+  navigator.serviceWorker.ready.then(registration => {
+    registration.active?.postMessage({ type: 'WARM_EDITOR' });
+  }).catch(() => {});
+}

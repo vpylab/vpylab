@@ -57,6 +57,10 @@ describe('PWA 설치 파일', () => {
     // public/ 파일은 Vite 번들에 없으므로 플러그인이 디스크에서 읽어 넣는다
     const manifestEntries = buildPrecacheManifest({
       'index.html': { type: 'asset', source: '<html></html>' },
+      'assets/monaco-abcdef123456.js': { type: 'chunk', code: '' },
+      'assets/monaco-abcdef123456.css': { type: 'asset', source: '' },
+      'assets/editor.worker-abcdef123456.js': { type: 'chunk', code: '' },
+      'assets/MonacoEditor-abcdef123456.js': { type: 'chunk', code: '' },
       'icon-192.png': { type: 'asset', source: Buffer.alloc(4) },
       'assets/app-abcdef123456.js': { type: 'chunk', code: '' },
     });
@@ -64,6 +68,10 @@ describe('PWA 설치 파일', () => {
     expect(entry).toBeTruthy();
     expect(entry.revision).toMatch(/^[0-9a-f]{16}$/);
     const urls = manifestEntries.map((item) => item.url);
+    expect(manifestEntries.filter(item => item.editor).map(item => item.url)).toEqual([
+      'assets/editor.worker-abcdef123456.js', 'assets/monaco-abcdef123456.css',
+      'assets/monaco-abcdef123456.js', 'assets/MonacoEditor-abcdef123456.js',
+    ].sort((a, b) => a.localeCompare(b)));
     expect(urls).toContain('index.html');
     expect(urls).not.toContain('icon-192.png');
   });
