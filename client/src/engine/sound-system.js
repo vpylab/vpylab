@@ -23,7 +23,6 @@ let audioUnlocked = false;
 let audioUnlockPending = null;
 let iosMediaUnlocked = false;
 let iosMediaUnlockPending = null;
-let silentMediaDataUri = null;
 
 // 모든 수업 음원은 하나의 출력 경로와 같은 음량·음소거 설정을 사용합니다.
 export const MAX_AUDIO_VOICES = 24;
@@ -261,45 +260,10 @@ export function isTouchPlaybackEnvironment() {
   return false;
 }
 
-function writeWavString(view, offset, value) {
-  for (let i = 0; i < value.length; i++) {
-    view.setUint8(offset + i, value.charCodeAt(i));
-  }
-}
-
-function getSilentMediaDataUri() {
-  if (silentMediaDataUri) return silentMediaDataUri;
-
-  const sampleRate = 8000;
-  const durationSeconds = 0.2;
-  const sampleCount = Math.floor(sampleRate * durationSeconds);
-  const dataSize = sampleCount * 2;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  writeWavString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeWavString(view, 8, 'WAVE');
-  writeWavString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeWavString(view, 36, 'data');
-  view.setUint32(40, dataSize, true);
-
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-
-  silentMediaDataUri = `data:audio/wav;base64,${btoa(binary)}`;
-  return silentMediaDataUri;
-}
+// iOS는 무음 스위치가 켜져 있으면 Web Audio가 들리지 않습니다. 사용자 탭 안에서 <audio>를 한 번 재생하면 풀립니다.
+// 무음 파일은 같은 출처의 정적 파일로 둡니다. data: 주소는 보안 정책(default-src 'self')에 막혀 재생되지 않았고,
+// 그러면 isAudioUnlocked()가 iOS에서 끝내 참이 되지 못했습니다.
+export const SILENT_MEDIA_URL = `${import.meta.env?.BASE_URL || '/'}silent.wav`;
 
 async function ensureIOSMediaPlayback() {
   if (!isIOSDevice()) return true;
@@ -309,7 +273,7 @@ async function ensureIOSMediaPlayback() {
     iosMediaUnlockPending = (async () => {
       try {
         const audio = document.createElement('audio');
-        audio.src = getSilentMediaDataUri();
+        audio.src = SILENT_MEDIA_URL;
         audio.preload = 'auto';
         audio.playsInline = true;
         audio.setAttribute('playsinline', '');

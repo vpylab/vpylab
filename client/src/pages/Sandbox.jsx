@@ -13,6 +13,7 @@ import SoundSettings from '../components/editor/SoundSettings';
 import Viewport3D from '../components/viewport/Viewport3D';
 import OutputConsole from '../components/console/OutputConsole';
 import RuntimeStatus from '../components/shared/RuntimeStatus';
+import { needsTapBeforeAutoStart } from '../engine/pending-start';
 import useAudioState from '../hooks/useAudioState';
 import usePyodide from '../hooks/usePyodide';
 import { getStatus as getPythonStatus } from '../engine/pyodide-singleton';
@@ -202,6 +203,7 @@ export default function Sandbox() {
   const practiceContextRef = useRef(null);
   const draftWriteFailedRef = useRef(false);
   const pendingPlayRef = useRef(null); // 자동 실행할 코드
+  const userStartedRef = useRef(false); // 사용자가 시작을 눌렀는데 엔진이 아직 준비되지 않아 기다리는 중
   const loadedRepoParamRef = useRef(null);
   const handledTeamInviteRef = useRef('');
   const waitingTeamInviteRef = useRef('');
@@ -888,6 +890,7 @@ export default function Sandbox() {
     // 이전 코드의 잔존음 + BGM + 3D 객체를 모두 정리
     stopAllSounds();
     if(getPythonStatus()!=='ready'){pendingPlayRef.current=sourceCode;stopExecution();return;}
+    userStartedRef.current = false;
     if (sceneRef.current) clearScene(sceneRef.current);
     clearRegistry();
     if (sceneRef.current?._cameraSystem) {
@@ -907,6 +910,7 @@ export default function Sandbox() {
   const handleRun = () => {
     if (!isReady || repoLoadStatus === 'loading') return;
     setPlayStartRequired(false);
+    userStartedRef.current = true;
     resumeAndRun(() => startProgram(codeRef.current));
   };
 
@@ -914,7 +918,8 @@ export default function Sandbox() {
   useEffect(() => {
     if (isReady && pendingPlayRef.current) {
       const playCode = pendingPlayRef.current;
-      if (isTouchPlaybackEnvironment() && !isAudioUnlocked()) {
+      // 사용자가 이미 시작을 눌렀다면 다시 탭을 요구하지 않습니다 (엔진을 받는 동안 누른 경우).
+      if (needsTapBeforeAutoStart({ touch: isTouchPlaybackEnvironment(), audioUnlocked: isAudioUnlocked(), userStarted: userStartedRef.current })) {
         setPlayStartRequired(true);
         return;
       }
@@ -929,6 +934,7 @@ export default function Sandbox() {
     const playCode = pendingPlayRef.current || codeRef.current;
     setPlayStartRequired(false);
     pendingPlayRef.current = null;
+    userStartedRef.current = true;
     resumeAndRun(() => startProgram(playCode));
   };
 
@@ -936,7 +942,7 @@ export default function Sandbox() {
 
   const handleStop = () => {
     stopExecution();
-    playEpoch.current++;pendingPlayRef.current=null;setPlayStartRequired(false);
+    playEpoch.current++;pendingPlayRef.current=null;userStartedRef.current=false;setPlayStartRequired(false);
     stopAllSounds();
     // 정지 시 코드 에디터로 복귀. 모바일 전체 화면(CSS 대체 모드) 중에는 탭을 바꾸면 전체 화면이 풀리므로 유지합니다.
     if (!isViewportFullscreen()) setActiveTab('editor');
@@ -1477,9 +1483,13 @@ export default function Sandbox() {
   if (theaterMode) {
     const handleTheaterStart = () => {
       setTheaterWaiting(false);
+      setPlayStartRequired(false);
       pendingPlayRef.current = null;
+      userStartedRef.current = true;
       resumeAndRun(() => startProgram(codeRef.current));
     };
+    // 시작을 누른 뒤 엔진을 기다리는 동안 빈 화면만 보이지 않게 준비 상태를 알립니다.
+    const theaterPreparing = !theaterWaiting && !playStartRequired && ['idle', 'loading', 'error'].includes(engineStatus);
 
     return (
       // 왼쪽 위 [코드 보기]·왼쪽 아래 [정지] 단추가 scene.title·caption을 가리지 않게 글자를 안쪽으로 옮깁니다.
@@ -1487,8 +1497,8 @@ export default function Sandbox() {
         {draftGuard}
         <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: handleRun, onStop: handleStop, isRunning:isRunning||audio.playing, isReady }} />
 
-        {/* 클릭하여 시작 오버레이 */}
-        {theaterWaiting && (
+        {/* 클릭하여 시작 오버레이 — 탭이 한 번 더 필요한 경우(playStartRequired)에도 같은 단추를 보여 줍니다 */}
+        {(theaterWaiting || playStartRequired) && (
           <button type="button"
             onClick={handleTheaterStart}
             style={{
@@ -1503,6 +1513,18 @@ export default function Sandbox() {
               <div style={{ fontSize: 18, fontWeight: 600 }}>{ui("클릭하여 시작")}</div>
             </div>
           </button>
+        )}
+
+        {theaterPreparing && (
+          <div
+            style={{
+              position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 150,
+              background: 'rgba(0,0,0,0.7)', color: 'white', borderRadius: 12, padding: '12px 18px',
+              fontSize: 15, fontWeight: 600, boxShadow: '0 2px 12px rgba(0,0,0,0.35)',
+            }}
+          >
+            <RuntimeStatus status={engineStatus} progress={progress} message={progressMessage} onRetry={initWorker} locale={locale} />
+          </div>
         )}
 
         {/* 좌상단: 코드 보기 버튼 */}

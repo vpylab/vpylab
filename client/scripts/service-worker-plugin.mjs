@@ -12,7 +12,7 @@ const clientRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE = resolve(clientRoot, 'src/sw/service-worker.js');
 
 /** public/에서 그대로 복사되는 파일 가운데 함께 미리 저장할 것. 번들 밖이라 따로 넣습니다. */
-export const PUBLIC_PRECACHE = ['manifest.webmanifest'];
+export const PUBLIC_PRECACHE = ['manifest.webmanifest', 'silent.wav'];
 
 function revisionOf(source) {
   return createHash('sha256').update(typeof source === 'string' ? source : Buffer.from(source)).digest('hex').slice(0, 16);
