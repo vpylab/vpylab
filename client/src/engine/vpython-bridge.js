@@ -225,6 +225,11 @@ function cloneThreeColor(color) {
 
 const CELESTIAL_SURFACES = new Set(['sun', 'moon', 'jupiter', 'saturn']);
 
+// 지구 지도나 사진은 발광을 켰을 때 같은 이미지를 발광색으로도 사용합니다.
+function isImageSurface(spec) {
+  return spec === 'preset:earth' || spec === 'earth' || /^(?:https?:|data:image\/)/.test(spec);
+}
+
 // 조명 및 사용자 shininess가 바뀌어도 동일한 재질 규칙을 사용합니다.
 function applySurface(material, spec, texture) {
   if (!material || !('roughness' in material)) return;
@@ -235,7 +240,8 @@ function applySurface(material, spec, texture) {
   material.metalness = DEFAULT_MATERIAL_PARAMS.metalness;
   material.bumpMap = name === 'moon' ? texture : null;
   material.bumpScale = name === 'moon' ? .018 : 0;
-  material.emissiveMap = celestial ? texture : null;
+  const emitImage = material.emissiveIntensity > 0 && isImageSurface(spec);
+  material.emissiveMap = celestial || emitImage ? texture : null;
   material.needsUpdate = true;
 }
 
@@ -243,6 +249,7 @@ function setMaterialEmissive(material, enabled) {
   if (!material || !('emissive' in material)) return;
   material.emissive = enabled ? cloneThreeColor(material.color) : new THREE.Color(0, 0, 0);
   material.emissiveIntensity = enabled ? 0.8 : 0;
+  if (isImageSurface(material.userData?.textureSpec)) material.emissiveMap = enabled ? material.map : null;
   material.needsUpdate = true;
 }
 

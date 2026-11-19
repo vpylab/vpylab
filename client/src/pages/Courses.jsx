@@ -269,6 +269,14 @@ function CourseDetail({ courseId, lessonId }) {
                   {activeLesson.summary}
                 </p>
               </div>
+              {activeLesson.practice && (
+                <dl className="px-5 py-4 text-sm leading-relaxed space-y-3">
+                  <div><dt className="font-semibold">{lang === 'ko' ? '이번에 추가한 코드' : 'New in this step'}</dt>
+                    <dd><code className="break-words">{activeLesson.practice.line}</code><p>{activeLesson.practice.meaning}</p></dd></div>
+                  <div><dt className="font-semibold">{lang === 'ko' ? '하나만 바꿔 보기' : 'Change one thing'}</dt><dd>{activeLesson.practice.change}</dd></div>
+                  <div><dt className="font-semibold">{lang === 'ko' ? '관찰하고 설명하기' : 'Observe and explain'}</dt><dd>{activeLesson.practice.observe}</dd></div>
+                </dl>
+              )}
               <pre
                 className="text-[11.5px] leading-[1.6] p-4 m-0"
                 style={{
