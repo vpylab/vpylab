@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { I18nProvider } from '../i18n';
 import Sandbox from './Sandbox';
@@ -53,4 +53,14 @@ it('저장소를 불러오지 못하면 실행 화면으로 가지 않고 편집
   openSandbox('?repo=greatsong/missing-repo&view=run');
   expect(await screen.findByText(/GitHub main\.py 로드 실패 \(404\)/)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /클릭하여 시작/ })).toBeNull();
+});
+
+it('감상 링크의 원격 코드를 기다리는 동안에도 편집기를 마운트하지 않는다', async () => {
+  let finish;
+  globalThis.fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  openSandbox('?repo=greatsong/dugun-curling&view=run');
+  expect(screen.queryByRole('textbox', { name: '편집기' })).toBeNull();
+  await act(async () => finish(new Response(REPO_CODE, { status: 200 })));
+  expect(await screen.findByRole('button', { name: /클릭하여 시작/ })).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '편집기' })).toBeNull();
 });
