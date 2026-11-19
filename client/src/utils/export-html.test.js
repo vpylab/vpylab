@@ -128,3 +128,32 @@ it.skipIf(!hasPython())('독립 HTML의 vector(v)는 새 복사본이며 모듈 
  const jobs=[{id:'copy',code:'from vpython import *\na=vec(1,2,3)\nb=vector(a)\nb.x+=5\nassert a==vec(1,2,3) and b==vec(6,2,3)\nassert vector(b-a)==vec(5,0,0)\nassert vector([1,2,3])==a\n'}];
  const result=spawnSync('python3',['-I','src/test/run-export-python.py'],{input:JSON.stringify({api:exportedApi(generateStandaloneHTML(jobs[0].code)),transform:source,jobs})+'\n',encoding:'utf8'});expect(result.status,result.stderr).toBe(0);expect(JSON.parse(result.stdout)[0].error).toBeNull();
 });
+
+it.skipIf(!hasPython())('공유 HTML이 점 목록, 텍스처, 위젯 콜백과 음 이름 화음을 실행한다', () => {
+  const code = `from vpython import *
+ball = sphere(texture=textures.checker)
+dots = points(pos=[dict(pos=vec(0,0,0), color=color.red)], radius=0.1)
+dots.splice(0, 1, [vec(1,2,3)])
+dots.modify(0, x=2)
+assert dots.npoints == 1 and dots.point(0)["pos"] == vec(2,2,3)
+def change(control):
+    ball.texture = textures.earth
+pace = slider(min=0, max=3, value=1, step=1, bind=change)
+change(pace)
+play_chord(["C4", "미4", "G4"], 0.15)
+play_note("B4", 0.15, volume=0)
+`;
+  const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+    input: JSON.stringify({ api: exportedApi(generateStandaloneHTML(code)), transform: source, jobs: [{ id: 'export', code }] }) + '\n',
+    encoding: 'utf8', timeout: 15000,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  const [run] = JSON.parse(result.stdout);
+  expect(run.error).toBeNull();
+  expect(run.commands).toContainEqual(expect.objectContaining({ action: 'widget_create', kind: 'slider', value: 1 }));
+  expect(run.commands).toContainEqual(expect.objectContaining({ action: 'curve_set', points: [[2,2,3]] }));
+  expect(run.commands).toContainEqual(expect.objectContaining({ action: 'update', texture: 'preset:earth' }));
+  const [chord, silent] = run.commands.filter(command => command.action === 'sound');
+  expect(chord.frequencies.map(Math.round)).toEqual([262,330,392]);
+  expect(silent.volume).toBe(0);
+});

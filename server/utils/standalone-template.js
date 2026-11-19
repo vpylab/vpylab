@@ -17,7 +17,6 @@
  *   rate()·sleep()과 global 선언이 편집기에서와 같이 동작한다.
  *
  * 미지원 (브라우저 IDE에서만 동작):
- * - UI 위젯 (slider, button, checkbox, radio, menu, winput) — Worker 채널 필요
  * - 2D 그래프 (graph, gcurve, gdots, gvbars, ghbars) — DOM 패널 필요
  * - 이벤트 (scene.bind, scene.mouse) — 양방향 이벤트 채널 필요
  * - scene.pause() / scene.waitfor() / input() — 이벤트·입력 채널 필요
@@ -29,6 +28,8 @@
 
 
 
+import { createWidgetPanel } from '../shared/widget-panel.js';
+import { createTexturePainters } from '../shared/procedural-textures.js';
 import { createCompoundAppearanceTools } from '../shared/compound-appearance.js';
 import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
@@ -98,6 +99,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     <div class="bar"><div class="fill" id="progress" style="width:0%"></div></div>
   </div>
   <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}</div>
+  <button id="stop-playback" type="button" hidden style="position:fixed;right:8px;bottom:8px;min-height:44px;z-index:30">정지 / Stop</button>
+  <div id="scene-title" style="position:fixed;left:12px;top:48px;z-index:5"></div>
+  <div id="scene-caption" style="position:fixed;left:12px;bottom:56px;z-index:5"></div>
   <div id="viewport"></div>
   <div id="console"></div>
 
@@ -170,10 +174,23 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   let iosMediaUnlocked = false;
   let iosMediaUnlockPending = null;
   let silentMediaDataUri = null;
+  let audioBus = null;
   function getAudioCtx() {
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     if (!AudioContextClass) return null;
-    if (!audioCtx) audioCtx = new AudioContextClass();
+    if (!audioCtx) {
+      audioCtx = new AudioContextClass();
+      const limiter = audioCtx.createDynamicsCompressor();
+      limiter.threshold.value = -18;
+      limiter.knee.value = 12;
+      limiter.ratio.value = 12;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.18;
+      audioBus = audioCtx.createGain();
+      audioBus.gain.value = 0.6 * 0.45;
+      audioBus.connect(limiter);
+      limiter.connect(audioCtx.destination);
+    }
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
@@ -276,14 +293,15 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
 
   function beep(frequency = 440, duration = 0.3, type = 'sine', volume = 0.3) {
     const ctx = getAudioCtx();
+    if (!ctx || !(volume > 0) || !(frequency > 0) || !(duration > 0)) return;
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = type;
+    osc.type = ['sine', 'square', 'triangle', 'sawtooth'].includes(type) ? type : 'sine';
     osc.frequency.value = frequency;
     gain.gain.setValueAtTime(volume, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
     osc.connect(gain);
-    gain.connect(ctx.destination);
+    gain.connect(audioBus);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + duration);
   }
@@ -308,36 +326,37 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
 
   function playNote(name, duration, type, volume) {
     const freq = noteToFreq(name);
-    if (freq) beep(freq, duration || 0.5, type || 'sine', volume || 0.4);
+    if (freq) beep(freq, duration || 0.5, type || 'sine', volume ?? 0.4);
   }
 
   function playChord(frequencies, duration, type, volume) {
     if (!frequencies) return;
-    for (const freq of frequencies) beep(freq, duration || 1.0, type || 'sine', volume || 0.25);
+    const notes = frequencies.slice(0, 24);
+    for (const freq of notes) beep(freq, duration || 1.0, type || 'sine', (volume ?? 0.25) / Math.sqrt(notes.length));
   }
 
   function playSequence(notes) {
     if (!notes) return;
     let delay = 0;
     for (const n of notes) {
-      if (delay === 0) beep(n.freq, n.duration, n.type||'sine', n.volume||0.4);
-      else { const d = delay; setTimeout(() => beep(n.freq, n.duration, n.type||'sine', n.volume||0.4), d); }
+      if (delay === 0) beep(n.freq, n.duration, n.type||'sine', n.volume??0.4);
+      else { const d = delay; setTimeout(() => beep(n.freq, n.duration, n.type||'sine', n.volume??0.4), d); }
       delay += n.duration * 1000;
     }
   }
 
   // SFX 함수들
-  function sfxJump() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='square'; o.frequency.setValueAtTime(300,c.currentTime); o.frequency.exponentialRampToValueAtTime(600,c.currentTime+0.15); g.gain.setValueAtTime(0.2,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.2); o.connect(g); g.connect(c.destination); o.start(c.currentTime); o.stop(c.currentTime+0.2); }
+  function sfxJump() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='square'; o.frequency.setValueAtTime(300,c.currentTime); o.frequency.exponentialRampToValueAtTime(600,c.currentTime+0.15); g.gain.setValueAtTime(0.2,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.2); o.connect(g); g.connect(audioBus); o.start(c.currentTime); o.stop(c.currentTime+0.2); }
   function sfxCoin() { beep(988,0.06,'square',0.2); setTimeout(()=>beep(1319,0.12,'square',0.2),60); }
   function sfxPowerUp() { [523,659,784,988,1175,1319].forEach((f,i)=>setTimeout(()=>beep(f,0.08,'square',0.15),i*50)); }
   function sfxDeath() { [494,466,440,370,311,247].forEach((f,i)=>setTimeout(()=>beep(f,0.15,'square',0.15),i*100)); }
-  function sfxFireball() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(900,c.currentTime); o.frequency.exponentialRampToValueAtTime(150,c.currentTime+0.15); g.gain.setValueAtTime(0.15,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.15); o.connect(g); g.connect(c.destination); o.start(c.currentTime); o.stop(c.currentTime+0.15); }
-  function sfxPipe() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='square'; o.frequency.setValueAtTime(500,c.currentTime); o.frequency.exponentialRampToValueAtTime(100,c.currentTime+0.2); o.frequency.exponentialRampToValueAtTime(400,c.currentTime+0.4); g.gain.setValueAtTime(0.15,c.currentTime); g.gain.linearRampToValueAtTime(0.15,c.currentTime+0.3); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.4); o.connect(g); g.connect(c.destination); o.start(c.currentTime); o.stop(c.currentTime+0.4); }
+  function sfxFireball() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(900,c.currentTime); o.frequency.exponentialRampToValueAtTime(150,c.currentTime+0.15); g.gain.setValueAtTime(0.15,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.15); o.connect(g); g.connect(audioBus); o.start(c.currentTime); o.stop(c.currentTime+0.15); }
+  function sfxPipe() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='square'; o.frequency.setValueAtTime(500,c.currentTime); o.frequency.exponentialRampToValueAtTime(100,c.currentTime+0.2); o.frequency.exponentialRampToValueAtTime(400,c.currentTime+0.4); g.gain.setValueAtTime(0.15,c.currentTime); g.gain.linearRampToValueAtTime(0.15,c.currentTime+0.3); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.4); o.connect(g); g.connect(audioBus); o.start(c.currentTime); o.stop(c.currentTime+0.4); }
   function sfx1Up() { [659,784,988,784,988,1319].forEach((f,i)=>setTimeout(()=>beep(f,0.1,'square',0.18),i*80)); }
   function sfxSelect() { beep(660,0.05,'square',0.12); }
   function sfxWarning() { beep(440,0.15,'square',0.2); setTimeout(()=>beep(440,0.15,'square',0.2),250); setTimeout(()=>beep(440,0.15,'square',0.2),500); }
-  function sfxExplosion() { const c=getAudioCtx(); const bs=c.sampleRate*0.4; const buf=c.createBuffer(1,bs,c.sampleRate); const d=buf.getChannelData(0); for(let i=0;i<bs;i++)d[i]=Math.random()*2-1; const n=c.createBufferSource(); n.buffer=buf; const g=c.createGain(); g.gain.setValueAtTime(0.3,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.4); const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(1000,c.currentTime); f.frequency.exponentialRampToValueAtTime(100,c.currentTime+0.4); n.connect(f); f.connect(g); g.connect(c.destination); n.start(c.currentTime); n.stop(c.currentTime+0.4); }
-  function sfxLaser() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(1500,c.currentTime); o.frequency.exponentialRampToValueAtTime(200,c.currentTime+0.2); g.gain.setValueAtTime(0.15,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.2); o.connect(g); g.connect(c.destination); o.start(c.currentTime); o.stop(c.currentTime+0.2); }
+  function sfxExplosion() { const c=getAudioCtx(); const bs=c.sampleRate*0.4; const buf=c.createBuffer(1,bs,c.sampleRate); const d=buf.getChannelData(0); for(let i=0;i<bs;i++)d[i]=Math.random()*2-1; const n=c.createBufferSource(); n.buffer=buf; const g=c.createGain(); g.gain.setValueAtTime(0.3,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.4); const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.setValueAtTime(1000,c.currentTime); f.frequency.exponentialRampToValueAtTime(100,c.currentTime+0.4); n.connect(f); f.connect(g); g.connect(audioBus); n.start(c.currentTime); n.stop(c.currentTime+0.4); }
+  function sfxLaser() { const c=getAudioCtx(),o=c.createOscillator(),g=c.createGain(); o.type='sawtooth'; o.frequency.setValueAtTime(1500,c.currentTime); o.frequency.exponentialRampToValueAtTime(200,c.currentTime+0.2); g.gain.setValueAtTime(0.15,c.currentTime); g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+0.2); o.connect(g); g.connect(audioBus); o.start(c.currentTime); o.stop(c.currentTime+0.2); }
   function sfxSuccess() { beep(523,0.15,'sine',0.2); setTimeout(()=>beep(659,0.15,'sine',0.2),100); setTimeout(()=>beep(784,0.3,'sine',0.2),200); }
   function sfxError() { beep(200,0.3,'square',0.15); }
   function sfxLevelUp() { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.2,'sine',0.2),i*120)); }
@@ -382,9 +401,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   // 사운드 커맨드 처리
   function processSoundCmd(cmd) {
     switch (cmd.method) {
-      case 'beep': beep(cmd.frequency||440, cmd.duration||0.3, cmd.type||'sine', cmd.volume||0.3); break;
-      case 'note': playNote(cmd.name, cmd.duration||0.5, cmd.type||'sine', cmd.volume||0.4); break;
-      case 'chord': playChord(cmd.frequencies||[], cmd.duration||1.0, cmd.type||'sine', cmd.volume||0.25); break;
+      case 'beep': beep(cmd.frequency||440, cmd.duration||0.3, cmd.type||'sine', cmd.volume??0.3); break;
+      case 'note': playNote(cmd.name, cmd.duration||0.5, cmd.type||'sine', cmd.volume??0.4); break;
+      case 'chord': playChord(cmd.frequencies||[], cmd.duration||1.0, cmd.type||'sine', cmd.volume??0.25); break;
       case 'sequence': playSequence(cmd.notes||[]); break;
       case 'sfx': playSfx(cmd.name); break;
       case 'bgm_start': startBgm(cmd.name, cmd.loop); break;
@@ -593,7 +612,50 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     }
   }
 
+  const painters = (${createTexturePainters.toString()})();
+  const textureCache = new Map();
+  function setTexture(material, spec) {
+    let map = textureCache.get(spec) || null;
+    if (!map && typeof spec === 'string') {
+      const painter = painters[spec.replace(/^preset:/, '')];
+      if (Object.hasOwn(painters, spec.replace(/^preset:/, ''))) {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 256;
+        painter(canvas.getContext('2d'), 256);
+        map = new THREE.CanvasTexture(canvas);
+      } else if (spec.startsWith('data:image/')) {
+        map = new THREE.TextureLoader().load(spec, undefined, undefined, () => textureCache.delete(spec));
+      } else if (spec.startsWith('https:') || spec.startsWith('http:')) {
+        logToConsole('외부 그림은 온라인 편집기에서 여세요. / Open external image textures in the online editor.');
+      }
+      if (map) {
+        map.colorSpace = THREE.SRGBColorSpace;
+        map.wrapS = map.wrapT = THREE.RepeatWrapping;
+        textureCache.set(spec, map);
+      }
+    }
+    material.map = map;
+    material.emissiveMap = map;
+    material.needsUpdate = true;
+  }
+
+  let widgetEvent;
+  const widgets = (${createWidgetPanel.toString()})(
+    event => widgetEvent?.(event.widget, event.value ?? null),
+    () => {}, () => {}
+  );
+
+  function refreshCurveGeometry(entry) {
+    const geometry = entry.line.geometry;
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(entry.positions, 3));
+    geometry.setAttribute('color', new THREE.Float32BufferAttribute(entry.colors, 3));
+    geometry.computeBoundingSphere();
+  }
+
   function processCmd(cmd) {
+    if (cmd.action === 'widget_create') return widgets.createWidget(cmd);
+    if (cmd.action === 'widget_update') return widgets.updateWidget(cmd);
+    if (cmd.action === 'widget_delete') return widgets.deleteWidget(cmd);
     if (cmd.action === 'create') {
       let mesh;
       const baseColor = toColor(cmd.color || [1,1,1]);
@@ -603,6 +665,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
         emissiveIntensity: cmd.emissive ? 0.8 : 0,
         transparent: (cmd.opacity ?? 1) < 1, opacity: cmd.opacity ?? 1,
       });
+      if (cmd.texture) setTexture(mat, cmd.texture);
       switch (cmd.type) {
         case 'sphere': mesh = new THREE.Mesh(new THREE.SphereGeometry(cmd.radius || 1, 32, 16), mat); break;
         case 'box': { const s = cmd.size || [cmd.length||1, cmd.height||1, cmd.width||1]; mesh = new THREE.Mesh(new THREE.BoxGeometry(s[0],s[1],s[2]), mat); break; }
@@ -675,20 +738,54 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
           mesh.scale.set((tw/th)*ws, ws, 1);
           break;
         }
-        case 'curve': {
-          const pts = (cmd.points||[]).flat();
-          const g = new THREE.BufferGeometry();
-          g.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
-          mesh = new THREE.Line(g, new THREE.LineBasicMaterial({color: baseColor, transparent:(cmd.opacity??1)<1, opacity:cmd.opacity??1}));
-          curves.set(cmd.id, {line: mesh, positions: pts.slice()});
-          break;
-        }
+        case 'curve':
         case 'points': {
-          const pts = (cmd.points||[]).flat();
-          const g = new THREE.BufferGeometry();
-          g.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
-          mesh = new THREE.Points(g, new THREE.PointsMaterial({color: baseColor, size:(cmd.size??5)*0.02, sizeAttenuation:true, transparent:(cmd.opacity??1)<1, opacity:cmd.opacity??1}));
-          curves.set(cmd.id, {line: mesh, positions: pts.slice()});
+          // 점마다 색을 가진 폴리라인/점 집합 — 재질 색은 흰색으로 두고 정점 색으로 그린다
+          mat.dispose();
+          const pointList = cmd.points || [];
+          const baseColor = cmd.color || [1, 1, 1];
+          const initialPoints = pointList.flat();
+          const initialColors = (Array.isArray(cmd.colors) && cmd.colors.length === pointList.length)
+            ? cmd.colors.flat()
+            : pointList.flatMap(() => baseColor);
+          const geom = new THREE.BufferGeometry();
+          geom.setAttribute('position', new THREE.Float32BufferAttribute(initialPoints, 3));
+          geom.setAttribute('color', new THREE.Float32BufferAttribute(initialColors, 3));
+          if (cmd.type === 'curve') {
+            const cmat = new THREE.LineBasicMaterial({
+              vertexColors: true,
+              transparent: cmd.opacity < 1,
+              opacity: cmd.opacity ?? 1,
+            });
+            mesh = new THREE.Line(geom, cmat);
+          } else {
+            // size_units='world'면 점마다의 radius(평균)로 크기를 정하고, 기본은 픽셀 크기(size)
+            const radii = Array.isArray(cmd.radii) ? cmd.radii.filter((r) => r > 0) : [];
+            const avgRadius = radii.length ? radii.reduce((a, b) => a + b, 0) / radii.length : (cmd.radius || 0);
+            const worldUnits = cmd.size_units === 'world';
+            const pmat = new THREE.PointsMaterial({
+              vertexColors: true,
+              size: worldUnits ? Math.max(2 * (avgRadius || 0.02), 1e-3) : (cmd.size ?? 5) * 0.02,
+              sizeAttenuation: true,
+              transparent: cmd.opacity < 1,
+              opacity: cmd.opacity ?? 1,
+            });
+            mesh = new THREE.Points(geom, pmat);
+          }
+          mesh.userData = {
+            vpType: cmd.type,
+            boxAxis: cmd.axis || [1,0,0],
+            boxUp: cmd.up || [0,1,0],
+          };
+          applyBoxOrientation(mesh);
+          if (Array.isArray(cmd.origin)) mesh.position.set(cmd.origin[0], cmd.origin[1], cmd.origin[2]);
+          curves.set(cmd.id, {
+            line: mesh,
+            positions: initialPoints.slice(),
+            colors: initialColors.slice(),
+            kind: cmd.type,
+            baseColor,
+          });
           break;
         }
         case 'triangle':
@@ -744,6 +841,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       if (cmd.make_trail) createTrail(cmd);
     } else if (cmd.action === 'update') {
       const m = meshes.get(cmd.id); if (!m) return;
+      if ('texture' in cmd && m.material?.isMeshStandardMaterial) setTexture(m.material, cmd.texture);
       if (cmd.pos) m.position.set(cmd.pos[0], cmd.pos[1], cmd.pos[2]);
       if (cmd.color) {
         if (m.isLight) m.color = toColor(cmd.color);
@@ -773,7 +871,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
         else if(m.geometry.type==='TorusGeometry') ng=new THREE.TorusGeometry(cmd.radius,m.geometry.parameters?.tube||0.1,16,48);
         if(ng){m.geometry.dispose();m.geometry=ng;}
       }
-      if (cmd.size !== undefined && m.geometry) {
+      if (m.isPoints && cmd.size !== undefined) m.material.size = cmd.size * 0.02;
+      if (cmd.origin) m.position.fromArray(cmd.origin);
+      if (!m.isPoints && cmd.size !== undefined && m.geometry) {
         const s=cmd.size;
         if(m.userData?.vpType==='pyramid'){m.geometry.dispose();m.geometry=primitiveGeometry.pyramid(s);}
         else if (m.geometry.type==='SphereGeometry') { m.scale.set(s[0],s[1],s[2]); } // ellipsoid: sphere+scale — 상자로 바꾸지 않음
@@ -782,7 +882,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       if (cmd.thickness !== undefined && m.geometry?.type==='TorusGeometry') { const r=m.geometry.parameters?.radius||1; const ng=new THREE.TorusGeometry(r,cmd.thickness,16,48); m.geometry.dispose(); m.geometry=ng; }
       if (cmd.axis !== undefined || cmd.up !== undefined) {
         const vpType = m.userData?.vpType;
-        if (['box','pyramid','ellipsoid','compound'].includes(vpType)) {
+        if (['box','pyramid','ellipsoid','compound','curve','points'].includes(vpType)) {
           if (cmd.axis) m.userData.boxAxis = cmd.axis;
           if (cmd.up) m.userData.boxUp = cmd.up;
           applyBoxOrientation(m);
@@ -798,6 +898,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
         }
       }
     } else if (cmd.action === 'scene') {
+      if (cmd.property === 'title' || cmd.property === 'caption') {
+        document.getElementById('scene-' + cmd.property).textContent = String(cmd.value);
+      }
       if (cmd.property === 'background') scene.background = toColor(cmd.value);
       if (cmd.property === 'range') cameraSystem.setExplicitRange(cmd.value);
       if (cmd.property === 'center') cameraSystem.setExplicitCenter(...cmd.value);
@@ -815,12 +918,16 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       if (t) { t.positions.length = 0; t.line.geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3)); t.line.geometry.computeBoundingSphere(); }
     } else if (cmd.action === 'trail_attach') {
       if (!trails.has(cmd.id) && meshes.has(cmd.id)) createTrail({id:cmd.id, pos: cmd.pos||[0,0,0], color:[1,1,1], trail_color: cmd.trail_color});
-    } else if (cmd.action === 'curve_append') {
-      const c = curves.get(cmd.id);
-      if (c) { c.positions.push(cmd.pos[0], cmd.pos[1], cmd.pos[2]); c.line.geometry.setAttribute('position', new THREE.Float32BufferAttribute(c.positions, 3)); c.line.geometry.computeBoundingSphere(); }
-    } else if (cmd.action === 'curve_clear') {
-      const c = curves.get(cmd.id);
-      if (c) { c.positions.length = 0; c.line.geometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3)); c.line.geometry.computeBoundingSphere(); }
+    } else if (['curve_append', 'curve_set', 'curve_clear'].includes(cmd.action)) {
+      const curve = curves.get(cmd.id);
+      if (!curve) return;
+      if (cmd.action !== 'curve_append') {
+        curve.positions.length = 0;
+        curve.colors.length = 0;
+      }
+      for (const pos of cmd.points || []) curve.positions.push(...pos);
+      for (const color of cmd.colors || []) curve.colors.push(...color);
+      refreshCurveGeometry(curve);
     } else if (cmd.action === 'compound') {
       const group = new THREE.Group();
       for (const subId of (cmd.sub_ids||[])) {
@@ -889,6 +996,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
 
     // VPython API 정의
     await pyodide.runPythonAsync(vpythonApi);
+    widgetEvent = pyodide.globals.get('_widget_event');
 
     // 'vpython' 모듈로 등록 — from vpython import * 가 동작하도록
     await pyodide.runPythonAsync(\`
@@ -901,6 +1009,7 @@ _vpython_names = [
     'vertex', 'triangle', 'quad', 'extrusion',
     'scene', 'keysdown', 'canvas', 'group', 'shapes', 'paths', 'wtext', 'attach_trail', 'attach_light',
     'local_light', 'distant_light',
+    'slider', 'button', 'checkbox', 'radio', 'menu', 'winput',
     'rate', 'sleep', 'scene_background',
     'mag', 'mag2', 'hat', 'dot', 'cross', 'norm',
     'play_sound', 'play_note', 'play_note_and_wait', 'play_chord', 'play_sequence',
@@ -1007,6 +1116,7 @@ def _send_commands():
   const vpythonApi = \`
 import json
 import asyncio
+import re
 import math
 from math import *
 
@@ -1163,6 +1273,48 @@ def _bind_vector(owner, attr, value, notify=True):
     if notify: changed()
 
 # === 3D 객체 베이스 클래스 ===
+class _TexturePresets:
+    """VPython textures.* 프리셋 — 프로시저럴 패턴 또는 외부 URL/data URI 사용 가능
+
+    예:
+        box(texture=textures.wood)
+        sphere(texture="https://example.com/img.jpg")
+        ground = box(texture=textures.checker, size=vector(20, 0.1, 20))
+    """
+    wood = "preset:wood"
+    metal = "preset:metal"
+    stones = "preset:stones"
+    granite = "preset:granite"
+    gravel = "preset:gravel"
+    rough = "preset:rough"
+    rug = "preset:rug"
+    stucco = "preset:stucco"
+    flower = "preset:flower"
+    earth = "preset:earth"
+    brick = "preset:brick"
+    checker = "preset:checker"
+    grid = "preset:grid"
+    galaxy = "preset:galaxy"
+    nebula = "preset:nebula"
+    water = "preset:water"
+    lava = "preset:lava"
+    ice = "preset:ice"
+    circuit = "preset:circuit"
+    fire = "preset:fire"
+    # GlowScript 문서에 있는 이름 — 가장 가까운 프리셋으로 그린다
+    rock = "preset:granite"
+    wood_old = "preset:wood"
+
+    def __repr__(self):
+        names = [k for k in dir(self) if not k.startswith('_') and isinstance(getattr(self, k), str)]
+        return f"<텍스처 프리셋 {len(names)}종 — textures.wood, textures.metal 등>"
+
+
+textures = _TexturePresets()
+텍스처 = textures  # 한글 별칭
+
+
+
 class _GObject:
     def __init__(self, obj_type, **kwargs):
         self._id = _new_id()
@@ -1174,6 +1326,7 @@ class _GObject:
         self._visible = kwargs.get('visible', True)
         self._opacity = kwargs.get('opacity', 1.0)
         self._emissive = kwargs.get('emissive', False)
+        self._texture = kwargs.get('texture')
         self._velocity = kwargs.get('velocity', vector(0,0,0))
         _add_command({
             "action":"create","id":self._id,"type":obj_type,
@@ -1185,6 +1338,12 @@ class _GObject:
             **{k:v.to_list() for k,v in kwargs.items() if k not in ('pos','color','visible','opacity','velocity') and isinstance(v,vector)},
             **{k:list(v) for k,v in kwargs.items() if k not in ('pos','color','visible','opacity','velocity') and isinstance(v,(list,tuple))},
         })
+    @property
+    def texture(self): return self._texture
+    @texture.setter
+    def texture(self, spec):
+        self._texture = spec
+        _add_command({'action':'update', 'id':self._id, 'texture':spec})
     @property
     def pos(self): return self._pos
     @pos.setter
@@ -1570,51 +1729,428 @@ class label:
                       "border": float(kw.get('border', 0))})
 text = label
 
-class curve:
-    def __init__(self, **kw):
-        self._id = _new_id()
-        self._color = kw.get('color', color.white)
-        self._radius = float(kw.get('radius', 0))
-        self._visible = kw.get('visible', True)
-        self._points = []
-        initial = kw.get('pos', None)
-        if initial is not None:
-            if isinstance(initial, vector): self._points.append(initial.clone())
-            else:
-                for p in initial: self._points.append(p.clone() if isinstance(p, vector) else vector(*p))
-        _add_command({"action":"create","id":self._id,"type":"curve",
-                      "color":self._color.to_list(),"radius":self._radius,
-                      "visible":self._visible,"points":[p.to_list() for p in self._points]})
-    def append(self, pos):
-        v = pos.clone() if isinstance(pos, vector) else vector(*pos)
-        self._points.append(v)
-        _add_command({"action":"curve_append","id":self._id,"pos":v.to_list()})
-    def clear(self):
-        self._points = []
-        _add_command({"action":"curve_clear","id":self._id})
+def _coerce_vector(value, default=None):
+    """vector, list, tuple을 vector로 맞춘다."""
+    if isinstance(value, vector):
+        # 사용자 벡터와 내부 상태 공유(aliasing) 방지 — 복제본 반환
+        return value.clone()
+    if isinstance(value, (list, tuple)) and len(value) >= 3:
+        return vector(value[0], value[1], value[2])
+    if isinstance(default, vector):
+        return default.clone()
+    return default
 
-class points:
-    def __init__(self, **kw):
-        self._id = _new_id()
-        self._color = kw.get('color', color.white)
-        self._size = float(kw.get('size', 5))
-        self._visible = kw.get('visible', True)
-        self._points = []
-        initial = kw.get('pos', None)
-        if initial is not None:
-            if isinstance(initial, vector): self._points.append(initial.clone())
+
+def _as_point(value):
+    """vector 또는 (x, y, z)를 새 vector로"""
+    if isinstance(value, vector):
+        return value.clone()
+    if isinstance(value, (list, tuple)) and len(value) == 3 and all(isinstance(c, (int, float)) for c in value):
+        return vector(*value)
+    raise TypeError(f"점은 vector 또는 (x, y, z) 형식이어야 합니다: {value!r}")
+
+
+def _point_items(args):
+    """curve/points의 생성자·append 인자를 점 항목 목록으로 편다.
+    벡터 하나, (x, y, z), {'pos': v, 'color': c, 'radius': r}, 그리고 이들의 리스트와 여러 위치 인자를 모두 받는다."""
+    items = []
+    for a in args:
+        if a is None:
+            continue
+        if isinstance(a, (vector, dict)):
+            items.append(a)
+        elif isinstance(a, (list, tuple)):
+            if len(a) == 3 and all(isinstance(c, (int, float)) for c in a):
+                items.append(vector(*a))
             else:
-                for p in initial: self._points.append(p.clone() if isinstance(p, vector) else vector(*p))
-        _add_command({"action":"create","id":self._id,"type":"points",
-                      "color":self._color.to_list(),"size":self._size,
-                      "visible":self._visible,"points":[p.to_list() for p in self._points]})
-    def append(self, pos):
-        v = pos.clone() if isinstance(pos, vector) else vector(*pos)
-        self._points.append(v)
-        _add_command({"action":"curve_append","id":self._id,"pos":v.to_list()})
+                items.extend(_point_items(a))
+        else:
+            raise TypeError(f"점은 vector, (x, y, z) 또는 {{'pos': ...}} 형식이어야 합니다: {a!r}")
+    return items
+
+
+class _PointList:
+    """curve와 points의 공통 구현. 점마다 pos·color·radius를 저장하고 브릿지에 목록으로 보낸다."""
+    _vector_attrs = ('color', 'origin', 'axis', 'up')
+    _type = 'curve'
+
+    def __init__(self, *args, **kwargs):
+        self._id = _new_id()
+        self._color = _coerce_vector(kwargs.get('color'), color.white)
+        self._radius = float(kwargs.get('radius', 0))
+        self._visible = bool(kwargs.get('visible', True))
+        self._opacity = float(kwargs.get('opacity', 1.0))
+        self._emissive = bool(kwargs.get('emissive', False))
+        self._retain = int(kwargs.get('retain', -1))
+        self._origin = _coerce_vector(kwargs.get('origin'), vector(0, 0, 0))
+        self._axis = _coerce_vector(kwargs.get('axis'), vector(1, 0, 0))
+        self._up = _coerce_vector(kwargs.get('up'), vector(0, 1, 0))
+        self._pos_list = []
+        self._color_list = []
+        self._radius_list = []
+        for item in _point_items(list(args) + [kwargs.get('pos')]):
+            self._store(item)
+        self._trim_retain()
+
+        cmd = {
+            "action": "create",
+            "id": self._id,
+            "type": self._type,
+            "color": self._color.to_list(),
+            "radius": self._radius,
+            "visible": self._visible,
+            "opacity": self._opacity,
+            "emissive": self._emissive,
+            "origin": self._origin.to_list(),
+            "axis": self._axis.to_list(),
+            "up": self._up.to_list(),
+            "points": [p.to_list() for p in self._pos_list],
+            "colors": [c.to_list() for c in self._color_list],
+            "radii": list(self._radius_list),
+        }
+        cmd.update(self._extra_create(kwargs))
+        _add_command(cmd)
+
+    def _extra_create(self, kwargs):
+        return {}
+
+    def _store(self, item, index=None):
+        """점 항목 하나를 (pos, color, radius)로 나눠 저장한다."""
+        if isinstance(item, dict):
+            if 'pos' not in item:
+                raise ValueError("점 dict에는 'pos'가 있어야 합니다. 예: {'pos': vector(0,0,0), 'color': color.red}")
+            pos = _as_point(item['pos'])
+            col = _coerce_vector(item.get('color'), self._color)
+            rad = float(item.get('radius', self._radius))
+        else:
+            pos = _as_point(item)
+            col = self._color.clone()
+            rad = self._radius
+        if index is None:
+            self._pos_list.append(pos)
+            self._color_list.append(col)
+            self._radius_list.append(rad)
+        else:
+            self._pos_list[index] = pos
+            self._color_list[index] = col
+            self._radius_list[index] = rad
+
+    def _send_all(self):
+        """점 목록 전체를 다시 보낸다 (modify·pop·shift 등 뒤)."""
+        _add_command({
+            "action": "curve_set",
+            "id": self._id,
+            "points": [p.to_list() for p in self._pos_list],
+            "colors": [c.to_list() for c in self._color_list],
+            "radii": list(self._radius_list),
+        })
+
+    def _trim_retain(self):
+        if self._retain > 0 and len(self._pos_list) > self._retain:
+            cut = len(self._pos_list) - self._retain
+            del self._pos_list[:cut]
+            del self._color_list[:cut]
+            del self._radius_list[:cut]
+            return True
+        return False
+
+    # --- 점 추가·수정 ---
+    def append(self, *args, **kwargs):
+        """점 추가 — append(v), append(v1, v2), append([v1, v2]), append(pos=v, color=c, radius=r), append({'pos': v})"""
+        if 'retain' in kwargs:
+            self._retain = int(kwargs.pop('retain'))
+        items = _point_items(args)
+        if 'pos' in kwargs:
+            pos_arg = kwargs['pos']
+            if isinstance(pos_arg, (list, tuple)) and not (
+                len(pos_arg) == 3 and all(isinstance(c, (int, float)) for c in pos_arg)
+            ):
+                # append(pos=[v1, v2, ...]) — 점 목록
+                pos_items = _point_items([pos_arg])
+            else:
+                pos_items = [pos_arg]
+            for p in pos_items:
+                spec = dict(p) if isinstance(p, dict) else {'pos': p}
+                for key in ('color', 'radius'):
+                    if key in kwargs:
+                        spec[key] = kwargs[key]
+                items.append(spec)
+        elif kwargs:
+            # append(v, color=c) — 위치 인자 점에 색·반지름을 적용
+            styled = []
+            for it in items:
+                spec = dict(it) if isinstance(it, dict) else {'pos': it}
+                for key in ('color', 'radius'):
+                    if key in kwargs:
+                        spec[key] = kwargs[key]
+                styled.append(spec)
+            items = styled
+        if not items:
+            return
+        start = len(self._pos_list)
+        for it in items:
+            self._store(it)
+        if self._trim_retain():
+            self._send_all()
+            return
+        _add_command({
+            "action": "curve_append",
+            "id": self._id,
+            "points": [p.to_list() for p in self._pos_list[start:]],
+            "colors": [c.to_list() for c in self._color_list[start:]],
+            "radii": list(self._radius_list[start:]),
+        })
+
+    def push(self, *args, **kwargs):
+        """append와 같다 (GlowScript 별칭)"""
+        self.append(*args, **kwargs)
+
+    def _build_items(self, items):
+        """점 항목들을 (pos 목록, color 목록, radius 목록)으로 만든다 (기존 목록은 건드리지 않는다)."""
+        saved = (self._pos_list, self._color_list, self._radius_list)
+        self._pos_list, self._color_list, self._radius_list = [], [], []
+        try:
+            for it in items:
+                self._store(it)
+            built = (self._pos_list, self._color_list, self._radius_list)
+        finally:
+            self._pos_list, self._color_list, self._radius_list = saved
+        return built
+
+    def unshift(self, *args):
+        """맨 앞에 점을 끼워 넣는다."""
+        new_pos, new_col, new_rad = self._build_items(_point_items(args))
+        self._pos_list[0:0] = new_pos
+        self._color_list[0:0] = new_col
+        self._radius_list[0:0] = new_rad
+        self._trim_retain()
+        self._send_all()
+
+    def modify(self, index, *args, **kwargs):
+        """index번째 점을 바꾼다 — modify(i, pos=v), modify(i, color=c), modify(i, x=1.5), modify(i, vector)"""
+        n = len(self._pos_list)
+        if not -n <= index < n:
+            raise IndexError(f"점 번호 {index}이(가) 범위를 벗어났습니다 (점 {n}개)")
+        spec = {}
+        if args:
+            first = args[0]
+            if isinstance(first, dict):
+                spec.update(first)
+            else:
+                spec['pos'] = first
+        spec.update(kwargs)
+        pos = _as_point(spec['pos']) if 'pos' in spec else self._pos_list[index].clone()
+        for comp in ('x', 'y', 'z'):
+            if comp in spec:
+                setattr(pos, comp, float(spec[comp]))
+        self._pos_list[index] = pos
+        if 'color' in spec:
+            self._color_list[index] = _coerce_vector(spec['color'], self._color)
+        if 'radius' in spec:
+            self._radius_list[index] = float(spec['radius'])
+        self._send_all()
+
+    def point(self, index):
+        """index번째 점의 정보 dict — {'pos', 'color', 'radius', 'visible'}"""
+        return {
+            'pos': self._pos_list[index].clone(),
+            'color': self._color_list[index].clone(),
+            'radius': self._radius_list[index],
+            'visible': self._visible,
+        }
+
+    def slice(self, start, end=None):
+        """start부터 end 앞까지의 점 정보 dict 목록"""
+        rng = range(len(self._pos_list))[start:end]
+        return [self.point(i) for i in rng]
+
+    def pop(self, index=-1):
+        """점 하나를 빼서 dict로 돌려준다 (기본: 마지막 점)."""
+        info = self.point(index)
+        del self._pos_list[index]
+        del self._color_list[index]
+        del self._radius_list[index]
+        self._send_all()
+        return info
+
+    def shift(self):
+        """첫 점을 빼서 dict로 돌려준다."""
+        return self.pop(0)
+
+    def splice(self, start, howmany, *items):
+        """start부터 howmany개를 지우고 그 자리에 items를 넣는다. 음수 start는 끝에서 센다 (JavaScript splice와 같음)."""
+        n = len(self._pos_list)
+        start = int(start)
+        if start < 0:
+            start = max(n + start, 0)
+        start = min(start, n)
+        end = min(start + max(int(howmany), 0), n)
+        new_pos, new_col, new_rad = self._build_items(_point_items(items))
+        self._pos_list[start:end] = new_pos
+        self._color_list[start:end] = new_col
+        self._radius_list[start:end] = new_rad
+        self._trim_retain()
+        self._send_all()
+
     def clear(self):
-        self._points = []
-        _add_command({"action":"curve_clear","id":self._id})
+        """모든 점 지우기"""
+        self._pos_list = []
+        self._color_list = []
+        self._radius_list = []
+        _add_command({"action": "curve_clear", "id": self._id})
+
+    def rotate(self, angle, axis=None, origin=None):
+        """origin을 지나는 axis(기본: 자기 axis) 축으로 전체를 회전한다 (점 좌표는 그대로 두고 방향만 바꾼다)."""
+        if axis is None:
+            axis = self._axis.clone() if self._axis.mag > 0 else vector(0, 1, 0)
+        axis = _coerce_vector(axis, vector(0, 1, 0))
+        origin = _coerce_vector(origin, vector(0, 0, 0)) if origin is not None else self._origin
+        rel = self._origin - origin
+        self._origin = origin + rel.rotate(angle, axis=axis)
+        self._axis = self._axis.rotate(angle, axis=axis)
+        self._up = self._up.rotate(angle, axis=axis)
+        _add_command({
+            "action": "update", "id": self._id,
+            "origin": self._origin.to_list(), "axis": self._axis.to_list(), "up": self._up.to_list(),
+        })
+
+    # --- 속성 ---
+    @property
+    def npoints(self):
+        return len(self._pos_list)
+
+    def __len__(self):
+        return len(self._pos_list)
+
+    @property
+    def origin(self):
+        return self._origin
+
+    @origin.setter
+    def origin(self, value):
+        self._origin = _coerce_vector(value, vector(0, 0, 0))
+        _add_command({"action": "update", "id": self._id, "origin": self._origin.to_list()})
+
+    # GlowScript에서 curve.pos는 origin과 같은 뜻이다
+    pos = origin
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @axis.setter
+    def axis(self, value):
+        self._axis = _coerce_vector(value, vector(1, 0, 0))
+        _add_command({"action": "update", "id": self._id, "axis": self._axis.to_list(), "up": self._up.to_list()})
+
+    @property
+    def up(self):
+        return self._up
+
+    @up.setter
+    def up(self, value):
+        self._up = _coerce_vector(value, vector(0, 1, 0))
+        _add_command({"action": "update", "id": self._id, "axis": self._axis.to_list(), "up": self._up.to_list()})
+
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, value):
+        """전체 색 — 점마다 준 색도 모두 이 색으로 바뀐다 (GlowScript와 같음)"""
+        self._color = _coerce_vector(value, color.white)
+        self._color_list = [self._color.clone() for _ in self._color_list]
+        _add_command({"action": "update", "id": self._id, "color": self._color.to_list()})
+
+    @property
+    def radius(self):
+        return self._radius
+
+    @radius.setter
+    def radius(self, value):
+        self._radius = float(value)
+        self._radius_list = [self._radius for _ in self._radius_list]
+        _add_command({"action": "update", "id": self._id, "radius": self._radius})
+
+    @property
+    def retain(self):
+        return self._retain
+
+    @retain.setter
+    def retain(self, value):
+        self._retain = int(value)
+        if self._trim_retain():
+            self._send_all()
+
+    @property
+    def visible(self):
+        return self._visible
+
+    @visible.setter
+    def visible(self, value):
+        self._visible = bool(value)
+        _add_command({"action": "update", "id": self._id, "visible": self._visible})
+
+    @property
+    def opacity(self):
+        return self._opacity
+
+    @opacity.setter
+    def opacity(self, value):
+        self._opacity = float(value)
+        _add_command({"action": "update", "id": self._id, "opacity": self._opacity})
+
+    @property
+    def emissive(self):
+        return self._emissive
+
+    @emissive.setter
+    def emissive(self, value):
+        self._emissive = bool(value)
+        _add_command({"action": "update", "id": self._id, "emissive": self._emissive})
+
+
+class curve(_PointList):
+    """3D 폴리라인 — 점을 누적해 선을 그린다.
+    c = curve(color=color.red); c.append(pos)
+    c = curve(v1, v2, v3)                      # 위치 인자로 점 여러 개
+    c = curve(pos=[{'pos': v, 'color': c}])    # 점마다 색·반지름
+    c.npoints, c.point(i), c.modify(i, pos=v), c.rotate(angle=, axis=)"""
+    _type = 'curve'
+
+
+class points(_PointList):
+    """3D 점 집합 — 작은 점으로 표시.
+    size: 픽셀 크기(size_units='pixels', 기본) 또는 radius로 월드 크기(size_units='world')
+    shape: 'round'(기본) 또는 'square'"""
+    _type = 'points'
+
+    def __init__(self, *args, **kwargs):
+        self._size = float(kwargs.get('size', 5))
+        self._size_units = str(kwargs.get('size_units', 'pixels'))
+        self._shape = str(kwargs.get('shape', 'round'))
+        super().__init__(*args, **kwargs)
+
+    def _extra_create(self, kwargs):
+        return {"size": self._size, "size_units": self._size_units, "shape": self._shape}
+
+    @property
+    def size(self):
+        return self._size
+
+    @size.setter
+    def size(self, value):
+        self._size = float(value)
+        _add_command({"action": "update", "id": self._id, "size": self._size})
+
+    @property
+    def size_units(self):
+        return self._size_units
+
+    @property
+    def shape(self):
+        return self._shape
 
 
 # === 저수준 메시 ===
@@ -1770,13 +2306,17 @@ class _Scene:
         self._autoscale=bool(v)
         self._send('autoscale',bool(v))
     @property
-    def title(self): return ''
+    def title(self): return getattr(self, '_title', '')
     @title.setter
-    def title(self,v): print(f"[scene.title] {v}")
+    def title(self,v):
+        self._title = str(v)
+        self._send('title', self._title)
     @property
-    def caption(self): return ''
+    def caption(self): return getattr(self, '_caption', '')
     @caption.setter
-    def caption(self,v): print(f"[scene.caption] {v}")
+    def caption(self,v):
+        self._caption = str(v)
+        self._send('caption', self._caption)
     def bind(self,*args,**kw):
         print("[scene.bind] standalone HTML export에서는 이벤트가 지원되지 않습니다.")
         if len(args)==1: return lambda fn: fn
@@ -1801,47 +2341,205 @@ def keysdown():
     """standalone export에서는 키보드 폴링 미지원 — 빈 리스트 반환"""
     return []
 
-class _NoOpWidget:
-    def __init__(self, *args, **kw):
-        _unsupported_warn(self.__class__.__name__)
-        self._value = kw.get('value', None)
-    @property
-    def value(self): return self._value
-    @value.setter
-    def value(self, v): self._value = v
-    @property
-    def disabled(self): return False
-    @disabled.setter
-    def disabled(self, v): pass
-    def delete(self): pass
+_widget_instances = {}
+_widget_values = {}
+def _widget_event(widget_id, value):
+    widget = _widget_instances.get(widget_id)
+    if widget is None or widget.disabled:
+        return
+    _widget_values[widget_id] = value
+    if callable(widget._bind):
+        async def dispatch():
+            try:
+                result = widget._bind(widget)
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception as exc:
+                print(str(exc))
+            finally:
+                _send_commands()
+        asyncio.ensure_future(dispatch())
 
-class slider(_NoOpWidget): pass
-class button(_NoOpWidget):
-    def __init__(self, text='', **kw): super().__init__(**kw); self._text = text
+class _Widget:
+    _kind = 'widget'
+
+    def __init__(self, **kwargs):
+        self._id = _new_id()
+        _widget_instances[self._id] = self
+        self._bind = kwargs.pop('bind', None)
+        self._visible = kwargs.pop('visible', True)
+        self._disabled = kwargs.pop('disabled', False)
+        # bind 핸들러 등록 (id 기반)
+        _widget_values[self._id] = kwargs.get('value', None)
+
+    def _emit_create(self, extra):
+        cmd = {
+            "action": "widget_create",
+            "id": self._id,
+            "kind": self._kind,
+            "visible": self._visible,
+            "disabled": self._disabled,
+        }
+        cmd.update(extra)
+        _add_command(cmd)
+
     @property
-    def text(self): return self._text
+    def value(self):
+        return _widget_values.get(self._id)
+
+    @value.setter
+    def value(self, v):
+        _widget_values[self._id] = v
+        _add_command({"action": "widget_update", "id": self._id, "value": v})
+
+    @property
+    def disabled(self):
+        return self._disabled
+
+    @disabled.setter
+    def disabled(self, v):
+        self._disabled = bool(v)
+        _add_command({"action": "widget_update", "id": self._id, "disabled": self._disabled})
+
+    def delete(self):
+        _widget_instances.pop(self._id, None)
+        _widget_values.pop(self._id, None)
+        _add_command({"action": "widget_delete", "id": self._id})
+
+
+class slider(_Widget):
+    _kind = 'slider'
+
+    def __init__(self, min=0, max=1, step=0.01, value=None, length=200, text='', **kwargs):
+        self._min = float(min)
+        self._max = float(max)
+        self._step = float(step)
+        self._value = float(value) if value is not None else self._min
+        self._length = int(length)
+        self._text = str(text)
+        super().__init__(value=self._value, **kwargs)
+        self._emit_create({
+            "min": self._min, "max": self._max, "step": self._step,
+            "value": self._value, "length": self._length, "text": self._text,
+        })
+
+
+class button(_Widget):
+    _kind = 'button'
+
+    def __init__(self, text='Button', **kwargs):
+        self._text = str(text)
+        super().__init__(**kwargs)
+        self._emit_create({"text": self._text})
+
+    @property
+    def text(self):
+        return self._text
+
     @text.setter
-    def text(self, v): self._text = v
-class checkbox(_NoOpWidget): pass
-class radio(_NoOpWidget): pass
-class menu(_NoOpWidget):
-    """조작은 지원하지 않지만 처음 선택한 항목은 읽을 수 있어 menu를 사용하는 작품이 멈추지 않는다."""
-    def __init__(self, choices=None, selected=None, **kw):
-        super().__init__(**kw)
+    def text(self, v):
+        self._text = str(v)
+        _add_command({"action": "widget_update", "id": self._id, "text": self._text})
+
+
+class checkbox(_Widget):
+    _kind = 'checkbox'
+
+    def __init__(self, text='', checked=False, **kwargs):
+        self._text = str(text)
+        self._checked = bool(checked)
+        super().__init__(value=self._checked, **kwargs)
+        self._emit_create({"text": self._text, "checked": self._checked})
+
+    @property
+    def checked(self):
+        return bool(self.value)
+
+    @checked.setter
+    def checked(self, v):
+        self.value = bool(v)
+
+
+class radio(_Widget):
+    _kind = 'radio'
+
+    def __init__(self, text='', name='radio_group', value=None, checked=False, **kwargs):
+        self._text = str(text)
+        self._name = str(name)
+        self._radio_value = value
+        self._checked = bool(checked)
+        super().__init__(value=value if checked else None, **kwargs)
+        self._emit_create({
+            "text": self._text, "name": self._name,
+            "radio_value": self._radio_value, "checked": self._checked,
+        })
+
+
+class menu(_Widget):
+    _kind = 'menu'
+
+    def __init__(self, choices=None, selected=None, **kwargs):
         self._choices = list(choices) if choices else []
-        if selected is None and self._choices: selected = self._choices[0]
-        self._value = selected
+        self._selected = selected if selected is not None else (self._choices[0] if self._choices else None)
+        super().__init__(value=self._selected, **kwargs)
+        self._emit_create({"choices": self._choices, "selected": self._selected})
+
     @property
-    def choices(self): return list(self._choices)
+    def choices(self):
+        return list(self._choices)
+
     @property
-    def selected(self): return self._value
+    def selected(self):
+        """현재 선택된 항목 (GlowScript 호환, value와 같다)"""
+        return self.value
+
     @selected.setter
-    def selected(self, v): self._value = v
+    def selected(self, v):
+        self.value = v
+
     @property
-    def index(self): return self._choices.index(self._value) if self._value in self._choices else -1
+    def index(self):
+        """선택된 항목의 번호. 목록에 없으면 -1"""
+        v = self.value
+        return self._choices.index(v) if v in self._choices else -1
+
     @index.setter
-    def index(self, i): self._value = self._choices[int(i)]
-class winput(_NoOpWidget): pass
+    def index(self, i):
+        self.value = self._choices[int(i)]
+
+
+class winput(_Widget):
+    """텍스트/숫자 입력 — Enter 키 또는 blur 시 bind 호출"""
+    _kind = 'winput'
+
+    def __init__(self, prompt='', type='numeric', **kwargs):
+        self._prompt = str(prompt)
+        self._type = str(type)
+        super().__init__(**kwargs)
+        self._emit_create({"prompt": self._prompt, "input_type": self._type})
+
+    @property
+    def text(self):
+        """입력 칸의 글자 (GlowScript 호환). 아직 입력이 없으면 빈 문자열"""
+        v = self.value
+        return '' if v is None else str(v)
+
+    @text.setter
+    def text(self, v):
+        self.value = str(v)
+
+    @property
+    def number(self):
+        """입력값을 숫자로 바꾼 값. 숫자가 아니면 None"""
+        t = self.text.strip()
+        if not t:
+            return None
+        try:
+            return float(t)
+        except ValueError:
+            return None
+
+
 
 class graph:
     def __init__(self, **kw):
@@ -1921,6 +2619,10 @@ async def rate(fps, callback=None):
         return
     await asyncio.sleep(1.0/fps)
 
+async def play_note_and_wait(name, duration=0.5, type='sine', volume=0.4):
+    play_note(name, duration, type, volume)
+    await sleep(duration)
+
 async def sleep(seconds):
     _send_commands()
     await asyncio.sleep(seconds)
@@ -1946,7 +2648,8 @@ _KOREAN_NOTE_MAP = {
 }
 def _resolve_note_name(name):
     if not name: return name
-    for kr, en in _KOREAN_NOTE_MAP.items():
+    for kr in sorted(_KOREAN_NOTE_MAP, key=len, reverse=True):
+        en = _KOREAN_NOTE_MAP[kr]
         if name.startswith(kr):
             rest = name[len(kr):]
             if not rest or not rest[0].isdigit(): rest = '4' + rest
@@ -1964,8 +2667,31 @@ def play_note(name, duration=0.5, type='sine', volume=0.4):
     resolved = _resolve_note_name(name)
     _add_command({"action":"sound","method":"note","name":resolved,"duration":duration,"type":type,"volume":volume})
 
+def _note_frequency(name):
+    """음 이름을 숫자 주파수로 바꾸어 실행 화면과 HTML 내보내기에서 함께 사용합니다."""
+    match = re.fullmatch(r'([A-G])([#b]?)(-?[0-9]+)', _resolve_note_name(name))
+    if not match:
+        raise ValueError(f'음 이름을 확인해주세요: {name}')
+    letter, accidental, octave = match.groups()
+    pitch = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}[letter]
+    pitch += 1 if accidental == '#' else -1 if accidental == 'b' else 0
+    return 440 * 2 ** (((int(octave) - 4) * 12 + pitch - 9) / 12)
+
+
 def play_chord(frequencies, duration=1.0, type='sine', volume=0.25):
-    _add_command({"action":"sound","method":"chord","frequencies":list(frequencies),"duration":duration,"type":type,"volume":volume})
+    """
+    여러 주파수를 동시에 재생 (화음)
+    frequencies: 주파수 또는 음 이름 리스트 [261.63, '미4', 'G4']
+    """
+    _add_command({
+        "action": "sound",
+        "method": "chord",
+        "frequencies": [_note_frequency(value) if isinstance(value, str) else value for value in frequencies],
+        "duration": duration,
+        "type": type,
+        "volume": volume,
+    })
+
 
 def play_sequence(notes):
     note_list = []
@@ -2096,7 +2822,8 @@ async def 악기(instrument, name, duration=0.5, volume=None):
 \`;
 
   // 사용자 클릭 후 실행 (Chrome autoplay 정책 — 사운드 재생에 필요)
-  const startBtn = document.createElement('div');
+  const startBtn = document.createElement('button');
+  startBtn.type = 'button';
   startBtn.id = 'start-overlay';
   startBtn.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(13,17,23,0.95);z-index:200;cursor:pointer;flex-direction:column;gap:16px;';
   const startIcon = document.createElement('div');
@@ -2104,14 +2831,21 @@ async def 악기(instrument, name, duration=0.5, volume=None):
   startIcon.textContent = '▶';
   const startLabel = document.createElement('div');
   startLabel.style.cssText = 'font-size:16px;color:#8b949e';
-  startLabel.textContent = '클릭하여 시작';
+  startLabel.textContent = '클릭하여 시작 / Start';
   startBtn.appendChild(startIcon);
   startBtn.appendChild(startLabel);
   document.body.appendChild(startBtn);
   startBtn.addEventListener('click', async () => {
     startBtn.remove();
+    const stopButton = document.getElementById('stop-playback');
+    stopButton.hidden = false;
+    stopButton.addEventListener('click', () => {
+      stopBgm();
+      audioCtx?.close();
+      window.location.reload();
+    }, { once: true });
     await ensureAudioReady();
-    run();
+    run().catch(error => { loading.classList.add('done'); logToConsole(String(error)); });
   }, { once: true });
   </script>
 </body>
