@@ -14,6 +14,7 @@ import asyncio
 import colorsys
 import random as _random_module
 import time as _time_module
+from weakref import WeakKeyDictionary as _WeakKeyDictionary
 from typing import Optional
 from math import *   # GlowScript처럼 from vpython import * 가 sin, cos, pi, sqrt 등 math 이름을 함께 제공한다
 
@@ -5535,10 +5536,34 @@ async def rate(fps, callback=None):
     await _sleep_chunked(delay)
 
 
+# 콜백과 학생 본문은 각자의 박자를 따른다. 끝난 태스크가 남지 않게 약한 참조로 보관한다.
+_music_deadlines = _WeakKeyDictionary()
+_beat_clock = _time_module.monotonic
+
+
 async def sleep(seconds):
-    """비동기 sleep + 이벤트 디스패치. 긴 대기도 0.5초마다 하트비트·정지 확인을 한다."""
+    """음 바로 뒤의 VPyLab 대기는 박자를 유지한다. 일반 대기는 호출할 때부터 센다."""
+    notes = [cmd for cmd in _command_buffer
+             if cmd.get('action') == 'sound' and cmd.get('method') in ('note', 'chord', 'beep')]
+    task = asyncio.current_task()
+    if not notes:
+        _music_deadlines.pop(task, None)
+        _before_wait()
+        await _sleep_chunked(seconds)
+        return
+
+    interval = max(0.0, float(seconds))
+    now = _beat_clock()
+    beat = _music_deadlines.get(task, now)
+    # 긴 계산·입력·백그라운드 탭에서 돌아오면 밀린 음을 몰아 재생하지 않는다.
+    if abs(now - beat) > min(interval, 0.032):
+        beat = now
+    for cmd in notes:
+        cmd['beatTime'] = beat
+    deadline = beat + interval
+    _music_deadlines[task] = deadline
     _before_wait()
-    await _sleep_chunked(seconds)
+    await _sleep_chunked(max(0.0, deadline - _beat_clock()))
 
 
 # === 씬 제어 ===
@@ -5918,8 +5943,7 @@ async def 음표(name, duration=0.5, type='sine', volume=0.4):
     변환기가 await를 붙이며, 기다리는 동안 하트비트·정지 확인·이벤트 디스패치를 합니다.
     """
     play_note(_resolve_note_name(name), duration, type, volume)
-    _before_wait()
-    await _sleep_chunked(duration)
+    await sleep(duration)
 
 # 대기형 영문 명령. 기존 play_note는 즉시 반환하는 동작을 유지합니다.
 play_note_and_wait = 음표
@@ -5941,8 +5965,7 @@ async def 화음(frequencies, duration=1.0, type='sine', volume=0.25):
     음표와 같이 duration 만큼 기다려 다음 화음과 분리됩니다. 변환기가 await를 붙입니다.
     """
     play_chord(frequencies, duration, type, volume)
-    _before_wait()
-    await _sleep_chunked(duration)
+    await sleep(duration)
 
 
 # ===================================================================
@@ -6079,8 +6102,7 @@ async def 악기(instrument, name, duration=0.5, volume=None):
     예: 악기("피아노", "도"), 악기("기타", "솔4", 0.8)
     """
     play_instrument(instrument, name, duration, volume)
-    _send_commands()
-    await _sleep_chunked(duration)
+    await sleep(duration)
 
 
 # === input() — 화면 입력 위젯으로 받는다 ===
@@ -6182,6 +6204,7 @@ def _reset_runtime_state():
     global _command_buffer, _object_counter
     _command_buffer = []
     _object_counter = 0
+    _music_deadlines.clear()
     _active_graphs.clear()
     _event_handlers.clear()
     _widget_values.clear()

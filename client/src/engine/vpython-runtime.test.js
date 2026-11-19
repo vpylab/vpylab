@@ -13,6 +13,23 @@ const pythonAvailable = hasPython();
 const one = (code, extra = {}) => runPythonJobs([{ id: 'r', label: 'a', code, ...extra }]).get('r:a');
 
 describe.skipIf(!pythonAvailable)('학생 코드 실행 런타임', { timeout: 60_000 }, () => {
+  it('음표와 VPyLab 대기의 목표 박자를 유지하고 긴 중단 뒤에는 다시 센다', () => {
+    const run = one(`from vpython import *
+for i in range(4):
+    play_note("C4", 0.04)
+    sleep(0.125)
+    rate(500)
+sleep(2)
+play_note_and_wait("G4", 0.25)
+play_note("A4")
+`);
+    expect(run.error).toBeNull();
+    const notes = run.commands.filter(cmd => cmd.action === 'sound');
+    expect(notes.slice(0, 4).map(cmd => cmd.beatTime)).toEqual([0, 0.125, 0.25, 0.375]);
+    expect(notes[4].beatTime).toBeCloseTo(2.502, 5);
+    expect(notes[5]).not.toHaveProperty('beatTime');
+  });
+
   it('한 구의 위치와 색은 독립적이고 교체된 벡터는 화면을 갱신하지 않는다', () => {
     const run = one(`from vpython import *
 b = sphere(pos=vec(1,0,0))
