@@ -96,6 +96,11 @@ while True:
     if step == 0 and mode == last_view:
         continue
     particle_time += step / .24
+    if mode == 5 and mode == last_view:
+        # ${en ? "With the nucleus fixed, only the particle layers move." : "핵이 고정된 동안에는 입자층의 흐름만 바뀝니다."}
+        for layer in layers:
+            layer.flow_time = particle_time
+        continue
     dt = 0 if mode == 5 else step
     if dt > 0:
         velocity -= mu * norm(comet.pos) * dt / mag(comet.pos)**2
