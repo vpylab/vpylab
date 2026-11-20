@@ -94,10 +94,16 @@ export function finishSurfaceImage(material, spec, renderer) {
 
 export const PRESET_NAMES = Object.keys(PRESET_GENERATORS);
 
+export function isImageURL(spec) {
+  if (typeof spec !== 'string') return false;
+  const sitePath = spec.startsWith('/') && !spec.startsWith('//') && !spec.includes('\\');
+  return sitePath || spec.startsWith('https://') || spec.startsWith('http://') || spec.startsWith('data:image/');
+}
+
 /**
  * 텍스처 spec → Three.Texture
  * - "preset:<name>": 프로시저럴 프리셋
- * - "https://..." / "http://..." / "data:...": 외부 이미지 로드
+ * - "/projects/..." / "https://..." / "http://..." / "data:...": 외부 이미지 로드
  * - falsy: null 반환
  */
 export function resolveTexture(spec) {
@@ -121,11 +127,7 @@ export function resolveTexture(spec) {
         }, undefined, done);
       }));
     }
-  } else if (
-    spec.startsWith('http://') ||
-    spec.startsWith('https://') ||
-    spec.startsWith('data:image')
-  ) {
+  } else if (isImageURL(spec)) {
     let complete;
     const ready = new Promise(resolve => { complete = resolve; });
     textureLoads.set(spec, ready);

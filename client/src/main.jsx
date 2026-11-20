@@ -20,3 +20,16 @@ createRoot(document.getElementById('root')).render(
     <App />
   </StrictMode>,
 )
+
+// 학교망에서 외부 글꼴 응답이 지연되어도 실습 화면은 시스템 글꼴로 바로 표시합니다.
+for (const href of [
+  'https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap',
+  'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap',
+]) {
+  const stylesheet = document.createElement('link');
+  stylesheet.rel = 'stylesheet';
+  stylesheet.media = 'print';
+  stylesheet.href = href;
+  stylesheet.addEventListener('load', () => { stylesheet.media = 'all'; }, { once: true });
+  document.head.append(stylesheet);
+}

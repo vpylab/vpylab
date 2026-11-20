@@ -457,7 +457,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       />
 
       {/* 화면 조작부: 전체 화면 · 화면에 맞추기 · 자동 맞춤 · 좌표축 */}
-      {!webglUnavailable && <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+      {!webglUnavailable && <div className="vp-view-control absolute top-2 right-2 flex flex-col gap-1 items-end">
         <button type="button" className="vp-view-toggle" aria-expanded={viewMenuOpen} aria-controls={viewMenuId}
           onClick={() => setViewMenuOpen(open => !open)}>
           {locale === 'en' ? 'View' : '보기'} <span aria-hidden="true">{viewMenuOpen ? '▴' : '▾'}</span>

@@ -49,3 +49,16 @@ it('사각형 사진은 발광을 켜도 무늬가 남고, 끄면 일반 조명 
     clearScene(scene);
   }
 });
+
+it('loads a packaged exercise image from this deployment', async () => {
+  const path = '/projects/seoul-moon/lroc-color.jpg';
+  const image = new THREE.Texture();
+  const load = vi.spyOn(THREE.TextureLoader.prototype, 'load').mockImplementation((_url, ready) => {
+    ready();
+    return image;
+  });
+  expect(resolveTexture(path)).toBe(image);
+  await whenTexturesReady();
+  expect(load.mock.calls[0][0]).toBe(path);
+  expect(resolveTexture('//another.example/map.jpg')).toBeNull();
+});
