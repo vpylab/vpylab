@@ -3,7 +3,7 @@ import { translateUi } from './ui-text';
 const sourceFields = new Set(['code', 'accessibleCode', 'supportCode', 'copyCode', 'signature', 'url', 'path', 'id', 'ko', 'en']);
 const englishCommands = { 음표:'play_note_and_wait', 소리:'play_sound' };
 const noteLetters = { 도:'C', 레:'D', 미:'E', 파:'F', 솔:'G', 라:'A', 시:'B' };
-const isCoreCourse = id => ['beg-light-sound', 'beg-github-project'].includes(id);
+const isCoreCourse = id => ['first-lines', 'beg-light-sound', 'beg-github-project'].includes(id);
 function englishNote(token) {
   const match=/^([도레미파솔라시])([#b]?)(-?\d+)?$/.exec(token);
   return match ? noteLetters[match[1]] + match[2] + (match[3] ?? '4') : token;

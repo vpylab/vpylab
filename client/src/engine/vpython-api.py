@@ -5841,7 +5841,7 @@ def play_sfx(name):
 def start_bgm(name, loop=True):
     """
     배경음악 시작
-    사용 가능: adventure, explore, battle, peaceful, victory
+    내장곡 이름 또는 두근두근러닝 MP3·M4A 경로/주소를 사용한다.
     """
     _add_command({
         "action": "sound",

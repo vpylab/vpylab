@@ -305,7 +305,9 @@ function CourseDetail({ courseId, lessonId }) {
                   }
                   className="btn-primary w-full !text-[13px] !py-2.5"
                 >
-                  {lang === 'ko' ? '샌드박스에서 실습 →' : 'Practice in Sandbox →'}
+                  {activeLesson.starterCode === ''
+                    ? (lang === 'ko' ? '직접 입력하기 →' : 'Type it yourself →')
+                    : (lang === 'ko' ? '샌드박스에서 실습 →' : 'Practice in Sandbox →')}
                 </button>
               </div>
             </div>

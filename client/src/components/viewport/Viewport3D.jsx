@@ -29,7 +29,7 @@ const THEME_BG = {
  * @param {{ onRun?: () => void, onStop?: () => void, isRunning?: boolean, isReady?: boolean }} [props.controls]
  *   전체 화면 안에서도 실행·정지할 수 있게 부모가 넘기는 핸들러. 전체 화면일 때만 화면에 그립니다.
  */
-export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPosition, controls, canvasId = 'scene' }) {
+export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPosition, controls, tutorialPrompt, canvasId = 'scene' }) {
   const containerRef = useRef(null);
   const sceneForChildren = useRef(null);
   const wrapperRef = useRef(null);
@@ -417,6 +417,13 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       <div className="vp-stage-frame relative w-full" style={{ height: extraCanvases.length ? (defaultHasObjects ? 320 : 0) : '100%', overflow: 'hidden' }}>
       <div ref={containerRef} className="w-full h-full" />
 
+      {tutorialPrompt && !webglUnavailable && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          {tutorialPrompt === 'ready'
+            ? <button type="button" className="btn-primary pointer-events-auto" onClick={controls.onRun}>{locale === 'ko' ? '예제 실행하기' : 'Run example'}</button>
+            : <span role="status" className="text-sm">{locale === 'ko' ? '예제를 실행할 준비 중…' : 'Preparing the example…'}</span>}
+        </div>
+      )}
       {webglUnavailable && (
         <div
           role="status"

@@ -40,6 +40,7 @@ import { createPackageImportTools } from '../shared/package-imports.js';
 
 import { playSampleVoice } from '../shared/instruments/play-sample.js';
 import { createRoomBus } from '../shared/instruments/room-audio.js';
+import { dugunAudioUrl, createAssetAudioPlayer } from '../shared/dugun-audio.js';
 import { instruments } from '../shared/instrument-profiles.js';
 
 const PYODIDE_VERSION = '0.27.0';
@@ -93,7 +94,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com blob:; style-src 'unsafe-inline'; connect-src https://cdn.jsdelivr.net https://unpkg.com https://pypi.org https://files.pythonhosted.org blob:; img-src blob: data:; font-src https://cdn.jsdelivr.net; worker-src blob:;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com blob:; style-src 'unsafe-inline'; connect-src https://cdn.jsdelivr.net https://unpkg.com https://pypi.org https://files.pythonhosted.org blob:; img-src blob: data:; media-src data: https://raw.githubusercontent.com/greatsong/dugun-assets/; font-src https://cdn.jsdelivr.net; worker-src blob:;">
   <title>${safeTitle} — VPyLab</title>
   <style>
     ${widgetCss}
@@ -418,8 +419,18 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   function sfxError() { beep(200,0.3,'square',0.15); }
   function sfxLevelUp() { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,0.2,'sine',0.2),i*120)); }
 
+  const assetUrl = (${dugunAudioUrl.toString()});
+  const assetAudio = (${createAssetAudioPlayer.toString()})(
+    () => getAudioCtx() && audioBus,
+    () => {},
+    url => logToConsole('음원을 재생할 수 없습니다. / Could not play audio: ' + url),
+  );
   const SFX_MAP = { jump:sfxJump, coin:sfxCoin, powerup:sfxPowerUp, power_up:sfxPowerUp, death:sfxDeath, fireball:sfxFireball, pipe:sfxPipe, '1up':sfx1Up, oneup:sfx1Up, select:sfxSelect, warning:sfxWarning, explosion:sfxExplosion, laser:sfxLaser, success:sfxSuccess, error:sfxError, levelup:sfxLevelUp, level_up:sfxLevelUp };
-  function playSfx(name) { const fn = SFX_MAP[name?.toLowerCase()]; if (fn) fn(); }
+  function playSfx(name) {
+    const url = assetUrl(name);
+    if (url) { assetAudio.play(url, false); return; }
+    if (typeof name === 'string' && Object.hasOwn(SFX_MAP, name.toLowerCase())) SFX_MAP[name.toLowerCase()]();
+  }
 
   // BGM 시스템
   let currentBgm = null;
@@ -433,8 +444,10 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
 
   function startBgm(name, loop) {
     stopBgm();
-    const pattern = BGM_PATTERNS[name?.toLowerCase()];
-    if (!pattern) return;
+    const url = assetUrl(name);
+    if (url) { assetAudio.play(url, true, loop !== false); return; }
+    if (typeof name !== 'string' || !Object.hasOwn(BGM_PATTERNS, name.toLowerCase())) return;
+    const pattern = BGM_PATTERNS[name.toLowerCase()];
     let running = true, timeoutIds = [];
     function playPattern() {
       if (!running) return;
@@ -452,6 +465,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   }
 
   function stopBgm() {
+    assetAudio.stopMusic();
     if (currentBgm) { currentBgm.stop(); currentBgm = null; }
   }
 
@@ -3034,6 +3048,7 @@ async def 악기(instrument, name, duration=0.5, volume=None):
     stopButton.hidden = false;
     stopButton.addEventListener('click', () => {
       stopBgm();
+      assetAudio.stopAll();
       roomBus?.close();
       audioCtx?.close();
       window.location.reload();

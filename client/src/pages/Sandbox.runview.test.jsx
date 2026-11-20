@@ -28,8 +28,8 @@ vi.mock('../hooks/usePyodide', async () => {
 
 const REPO_CODE = 'from vpython import *\nsphere()\n';
 
-function openSandbox(search) {
-  const router = createMemoryRouter([{ path: '/sandbox', element: <Sandbox /> }], { initialEntries: [`/sandbox${search}`] });
+function openSandbox(search, state) {
+  const router = createMemoryRouter([{ path: '/sandbox', element: <Sandbox /> }], { initialEntries: [{ pathname: '/sandbox', search, state }] });
   render(<I18nProvider><RouterProvider router={router} /></I18nProvider>);
 }
 
@@ -93,4 +93,14 @@ it('감상 링크의 원격 코드를 기다리는 동안에도 편집기를 마
   await act(async () => finish(new Response(REPO_CODE, { status: 200 })));
   expect(await screen.findByRole('button', { name: /클릭하여 시작/ })).toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: '편집기' })).toBeNull();
+});
+
+it('튜토리얼의 실행 단추로 들어오면 첫 배치까지 시작하고 직접 연 편집기는 입력을 기다린다', async () => {
+  openSandbox('?tutorial=interaction');
+  await screen.findAllByRole('textbox', { name: '편집기' });
+  expect(engine.runCode).not.toHaveBeenCalled();
+  cleanup();
+  openSandbox('?tutorial=interaction', { runTutorial: true });
+  await waitFor(() => expect(engine.runCode).toHaveBeenCalledTimes(1));
+  expect(engine.runCode.mock.calls[0][0]).toContain('bind=바꾸기');
 });

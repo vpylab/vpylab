@@ -12,6 +12,7 @@
  * 효과음/BGM은 합성하며 펠트 피아노는 녹음 음원과 합성을 함께 사용합니다.
  */
 
+import { createAssetAudioPlayer, dugunAudioUrl } from '../../../server/shared/dugun-audio.js';
 import { instruments } from '../../../server/shared/instrument-profiles.js';
 import { playFeltSample, warmFeltSamples } from './felt-sample.js';
 
@@ -44,8 +45,18 @@ const activeScores = new Set();
 const audioListeners = new Set();
 let audioState = { volume: masterVolume, muted: masterMuted, playing: false, voiceCount: 0, pendingCount: 0 };
 
+const assetAudio = createAssetAudioPlayer(
+  () => !masterMuted && masterVolume > 0 && getAudioContext() ? masterGain : null,
+  notifyAudioState,
+  url => {
+    const message = '음원을 재생할 수 없습니다. / Could not play audio: ' + url;
+    console.warn(message);
+    globalThis.dispatchEvent?.(new CustomEvent('vpylab-audio-error', { detail: message }));
+  },
+);
+
 function notifyAudioState() {
-  const voiceCount = [...activeVoices.values()].filter((voice) => !voice.retiring).length;
+  const voiceCount = [...activeVoices.values()].filter((voice) => !voice.retiring).length + assetAudio.count;
   const playing = voiceCount > 0 || activeTimeouts.size > 0 || activeScores.size > 0 || pendingPreviewCancel !== null;
   const pendingCount = activeTimeouts.size + activeScores.size + (pendingPreviewCancel ? 1 : 0);
   if (audioState.volume === masterVolume && audioState.muted === masterMuted && audioState.playing === playing && audioState.voiceCount === voiceCount && audioState.pendingCount === pendingCount) return;
@@ -199,6 +210,7 @@ export function stopAllSounds() {
   audioGeneration += 1;
   pendingPreviewCancel?.();
   stopBgm();
+  assetAudio.stopAll();
   for (const cancel of activeScores) cancel();
   activeScores.clear();
   for (const id of activeTimeouts) clearTimeout(id);
@@ -969,11 +981,18 @@ const SFX_MAP = {
  */
 /** 지원하는 효과음 이름인지 확인 */
 export function hasSfx(name) {
-  return Boolean(SFX_MAP[name?.toLowerCase()]);
+  return typeof name === 'string' && (Object.hasOwn(SFX_MAP, name.toLowerCase()) || Boolean(dugunAudioUrl(name)));
 }
 
 export function playSfx(name) {
-  const fn = SFX_MAP[name?.toLowerCase()];
+  const url = dugunAudioUrl(name);
+  if (url) {
+    assetAudio.play(url, false);
+    _onSoundEvent?.('sfx', name);
+    return;
+  }
+  if (!hasSfx(name)) return;
+  const fn = SFX_MAP[name.toLowerCase()];
   if (!fn) return;
   if (_onSoundEvent) _onSoundEvent('sfx', name.toLowerCase());
   fn();
@@ -1087,13 +1106,20 @@ const BGM_PATTERNS = {
  */
 /** 지원하는 배경음악 이름인지 확인 */
 export function hasBgm(name) {
-  return Boolean(BGM_PATTERNS[name?.toLowerCase()]);
+  return typeof name === 'string' && (Object.hasOwn(BGM_PATTERNS, name.toLowerCase()) || Boolean(dugunAudioUrl(name)));
 }
 
 export function startBgm(name, loop = true) {
   stopBgm(); // 기존 BGM 중지
 
-  const pattern = BGM_PATTERNS[name?.toLowerCase()];
+  const url = dugunAudioUrl(name);
+  if (url) {
+    assetAudio.play(url, true, loop);
+    _onSoundEvent?.('bgm', name);
+    return;
+  }
+  if (!hasBgm(name)) return;
+  const pattern = BGM_PATTERNS[name.toLowerCase()];
   if (!pattern) return;
   if (_onSoundEvent) _onSoundEvent('bgm', name.toLowerCase());
 
@@ -1113,6 +1139,7 @@ export function startBgm(name, loop = true) {
  * BGM 정지
  */
 export function stopBgm() {
+  assetAudio.stopMusic();
   if (currentBgm) {
     currentBgm.stop();
     currentBgm = null;
@@ -1123,7 +1150,7 @@ export function stopBgm() {
  * 현재 BGM 이름 조회
  */
 export function getCurrentBgm() {
-  return currentBgm?.name || null;
+  return currentBgm?.name || assetAudio.musicUrl;
 }
 
 // ===================================================================

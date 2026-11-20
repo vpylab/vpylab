@@ -1,4 +1,7 @@
-export const DEFAULT_CODE = `from vpython import *
+export const DEFAULT_CODE = '';
+
+// 이전 버전의 기본 예제를 수정한 초안은 학생 코드로 복원합니다.
+export const LEGACY_BOUNCING_BALL = `from vpython import *
 
 # 화면에 보이는 범위 (카메라는 한 곳에 고정됩니다)
 scene.range = 6
@@ -17,6 +20,8 @@ while True:
         ball.velocity.x = -ball.velocity.x
 `;
 
-export function getDefaultCode(locale = 'ko') {
-  return locale === 'en' ? DEFAULT_CODE.replace('# 화면에 보이는 범위 (카메라는 한 곳에 고정됩니다)', '# Visible range (the camera stays in one place)').replace('# 구를 만들고 움직여보세요', '# Create and move a sphere').replace('# 벽에 부딪히면 반사', '# Bounce at the walls') : DEFAULT_CODE;
+const legacyEnglish = LEGACY_BOUNCING_BALL.replace('# 화면에 보이는 범위 (카메라는 한 곳에 고정됩니다)', '# Visible range (the camera stays in one place)').replace('# 구를 만들고 움직여보세요', '# Create and move a sphere').replace('# 벽에 부딪히면 반사', '# Bounce at the walls');
+
+export function isStarterCode(code) {
+  return !code || code === LEGACY_BOUNCING_BALL || code === legacyEnglish;
 }
