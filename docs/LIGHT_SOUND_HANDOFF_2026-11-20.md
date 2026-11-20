@@ -66,6 +66,10 @@
 
 These measurements use desktop browsers and emulated viewports. Each linked draft records its preview, test conditions and remaining classroom checks. The production classroom site is https://vpylab.vercel.app. Use the preview linked from the relevant PR to test proposed changes.
 
+## 터치 취소와 3D 선택
+
+물체를 누른 뒤 3D 교점이 없는 빈 하늘로 이동하다 터치가 취소되면, `mouseup`의 `evt.pos`와 `evt.pick`은 그 손가락의 마지막 유효 교점을 가리킵니다. `evt.clientX`와 `evt.clientY`는 취소 직전의 화면 좌표입니다. 다음 터치는 새로 선택합니다.
+
 ## 서울 관측소 수업 자료
 
 [서울에서 본 달](../client/public/projects/seoul-moon/compare.html)에서 서울의 초승달·상현·보름달 사진, 관측 시각으로 고정한 실습, 같은 시각에서 줌을 왕복한 영상을 엽니다. 서울시청 기준 기하 고도와 밝은 면을 NASA JPL Horizons와 대조했습니다. 모바일 너비의 Chromium·WebKit으로 달 추적과 줌을 확인했습니다. 초승달과 상현 사진의 분 단위 촬영 시각은 공개 자료에 없습니다.
