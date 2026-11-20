@@ -133,3 +133,29 @@ it.skipIf(!hasPython())('서울의 밤하늘에서 축소하면 태양까지 보
 `;
   expect(runPythonJobs([{id: 'seoul', label: 'pullback', code}]).get('seoul:pullback').error).toBeNull();
 });
+
+it.skipIf(!hasPython())('우주에서 시간을 진행한 뒤 서울로 돌아와도 달과 태양광의 상대 방향을 보존한다', () => {
+  const fixed = source.replace('observation_start = None', 'observation_start = 1743417900');
+  const code = fixed.replace('while True:', `for days, level in [(0,0),(2,0),(5,0),(5,8),(5,20),(5,31.99),(5,32),(5,level_for_zoom(145))]:
+    stamp = observation_start + days*86400
+    change_level(level)`) + `
+    physical = norm(solar-lunar)
+    if level < 32:
+        assert mag(norm(sun.pos-moon.pos) - physical) < 1e-8
+        assert mag(sunlight.direction + physical) < 1e-8
+        toward = moon.pos - scene.camera.pos
+        forward = norm(scene.camera.axis)
+        side = norm(cross(forward,scene.up))
+        top = cross(side,forward)
+        height = dot(toward,forward)*tan(scene.fov/2)
+        assert abs(dot(toward,side))+moon.radius < height*aspect
+        assert abs(dot(toward,top))+moon.radius < height
+    else:
+        assert moon.visible and scene.camera.pos == observer_eye
+        assert mag(sunlight.direction+local_vector(physical,east,north,up)) < 1e-8
+        assert mag(moon.axis-local_vector(prime,east,north,up)) < 1e-8
+        assert 53 < lit < 55
+    assert instant == observation_start + days*86400
+`;
+  expect(runPythonJobs([{id: 'seoul', label: 'sunlight', code}]).get('seoul:sunlight').error).toBeNull();
+});

@@ -239,6 +239,8 @@ def toggle(event):
     running = not running
     last_tick = monotonic()
     play.text = "일시 정지" if running else "재생"
+    if not running:
+        picker.text = clock_text()
 
 def set_speed(event):
     global speed, last_tick
@@ -466,7 +468,7 @@ while True:
     lit = 50 * (1 + dot(norm(solar - lunar), norm(eye - lunar)))
     waxing = "차오르는 달" if elongation < pi else "기우는 달"
     status = datetime.fromtimestamp(instant, kst).strftime("%Y-%m-%d  %H:%M KST")
-    status += f"\n기하 고도 · 해 {sun_alt:.1f}° · 달 {altitude:.1f}° · 밝은 면 {lit:.1f}%"
+    status += f"\n서울 기하 고도 · 해 {sun_alt:.1f}° · 달 {altitude:.1f}° · 밝은 면 {lit:.1f}%"
     if mode in [horizon_mode, tracking_mode, solar_mode, rise_mode, phase_mode]:
         status += f" · {magnification:.0f}×"
     if speed == 0 and running:
@@ -572,18 +574,27 @@ while True:
         space_color = vector(0.012, 0.018, 0.030)
         scene.background = space_color
         model_moon = 3.3 * norm(lunar)
-        model_sun = 8 * norm(solar)
+        # 달에서 태양을 보는 직선 위에 모형 태양을 놓습니다. 지구 중심에서
+        # 거리가 8인 지점을 택하면 밝은 반구와 모형 태양의 방향이 일치합니다.
+        to_sun = -light
+        along = dot(model_moon, to_sun)
+        model_distance = sqrt(8**2 - dot(model_moon,model_moon) + along**2) - along
+        model_sun = model_moon + model_distance * to_sun
         if ray.visible:
-            ray.pos = 1.2 * norm(solar)
-            ray.axis = 0.85 * norm(solar)
+            ray.pos = model_moon + .42*to_sun
+            ray.axis = .85*to_sun
             status += " · 화살표는 태양 방향"
         if mode == "우주에서 보기":
             # 같은 시각의 지구 중심 좌표로 바꾼 뒤 서울 위에서 북극 쪽으로 물러납니다.
             t = pullback
             blend = t*t*(3-2*t)
             moon.pos = (1-blend)*lunar + blend*model_moon
-            sun.pos = (1-blend)*(eye + (.4/109.1)*solar_sight) + blend*model_sun
-            radius = .4 + 0.75*blend
+            # 거리의 역수를 보간하면 실제 태양에서 모형 태양까지 부드럽게
+            # 이어지고, 시야 단계와 관계없이 달에 닿는 빛의 방향이 보존됩니다.
+            real_distance = mag(solar-lunar)
+            distance = 1 / ((1-blend)/real_distance + blend/model_distance)
+            sun.pos = moon.pos + distance*to_sun
+            radius = distance*((1-blend)*109.1/real_distance + blend*1.15/model_distance)
             if abs(sun.radius-radius) > .00001:
                 sun.radius = radius
             close_axis = vector(0,4.5,-12)
@@ -601,12 +612,28 @@ while True:
             # 우주에 도착하면 드래그로 같은 중심 주위를 회전할 수 있습니다.
             orbit_axis = (-pole).rotate(angle=orbit_pitch, axis=cross(-pole, final_up))
             orbit_axis = orbit_axis.rotate(angle=orbit_yaw, axis=final_up)
-            turn_axis = cross(forward, orbit_axis)
-            if mag(turn_axis) < 1e-8:
-                turn_axis = east
-            forward = forward.rotate(angle=blend*acos(max(-1,min(1,dot(forward,orbit_axis)))), axis=turn_axis)
             center = .4 * model_sun
-            camera_pos = (1-blend)*(eye + 4*t*up) + blend*(center-14*orbit_axis)
+            far_eye = center-14*orbit_axis
+            camera_pos = (1-blend)*(eye + 4*t*up) + blend*far_eye
+            if selected_view in [tracking_mode, phase_mode]:
+                # 이동하는 달을 화면 안에 두면서 전체 조망의 중심으로 시선을 옮깁니다.
+                sight = norm(moon.pos-camera_pos)
+                overview = norm(center-camera_pos)
+                axis = cross(sight, overview)
+                if mag(axis) > 1e-8:
+                    final_angle = norm(model_moon-far_eye).diff_angle(orbit_axis)
+                    angle = blend * min(final_angle, sight.diff_angle(overview))
+                    sight = sight.rotate(angle=angle, axis=axis)
+                offset_axis = cross(norm(moon_sight), forward)
+                if mag(offset_axis) > 1e-8:
+                    offset = acos(max(-1, min(1, dot(norm(moon_sight),forward))))
+                    sight = sight.rotate(angle=(1-blend)*offset, axis=offset_axis)
+                forward = sight
+            else:
+                turn_axis = cross(forward, orbit_axis)
+                if mag(turn_axis) < 1e-8:
+                    turn_axis = east
+                forward = forward.rotate(angle=blend*acos(max(-1,min(1,dot(forward,orbit_axis)))), axis=turn_axis)
             if reframe:
                 scene.fov = 2*atan2(1-.42*blend, min(1,aspect))
             scene.up = norm((1-blend)*up + blend*final_up)
