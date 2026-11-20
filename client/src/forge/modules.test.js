@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { activeParameters, buildForgeModel, createRecipe, forgeCommands, forgeParameters, forgePresets, visibleForgePresets } from './recipes';
@@ -9,6 +10,30 @@ import { getForgeTutorial } from '../data/forge-tutorial';
 const scene=new THREE.Scene();afterEach(()=>clearScene(scene));
 const run=(code,rateLimit=20000)=>runPythonJobs([{id:'forge',label:'case',code,rateLimit}]).get('forge:case');
 const box=()=>{scene.updateMatrixWorld(true);return new THREE.Box3().setFromObject(scene);};
+const forgeHelpers = /\b(?:my_module|friend|player|object_3d)\.(?:move_to|dispose|object)\b/;
+
+it('학생이 복사·내려받는 모든 대장간 코드는 도형의 기본 속성을 쓴다',()=>{
+  const recipes=forgePresets.map(p=>createRecipe(p.id));
+  for(const bellMode of ['sound','waves'])recipes.push({...createRecipe('bell'),bellMode});
+  for(const recipe of recipes){
+    const module=makeForgeModule(recipe);
+    for(const code of [moduleDefinition(module),moduleProgram(module,{metadata:false}),moduleProgram(module,{file:true})]){
+      expect(code,recipe.presetId).not.toMatch(forgeHelpers);
+      expect(code,recipe.presetId).not.toMatch(/def (?:move_to|dispose)\(|class Module:/);
+    }
+  }
+});
+
+it('수업 자료와 배포용 Python 예제에서 대장간 전용 호출을 가르치지 않는다',()=>{
+  const sources=import.meta.glob(['../data/**/*.{js,json}','!../data/**/*.test.js','../../public/**/*.py','../pages/Guide.jsx'],{eager:true,query:'?raw',import:'default'});
+  expect(Object.keys(sources)).toContain('../../public/projects/solar-comparison/dumpling.py');
+  for(const [path,source] of Object.entries(sources))expect(source,path).not.toMatch(forgeHelpers);
+  for(const lang of ['KO','EN']){
+    const guide = '../docs/USER_GUIDE_'+lang+'.md';
+    expect(readFileSync(guide,'utf8'),guide).not.toMatch(forgeHelpers);
+  }
+});
+
 it('단일 오브젝트를 다루고 공전 시스템을 포함하지 않는다',()=>{
   expect(visibleForgePresets).toHaveLength(16);expect(visibleForgePresets.filter(p=>p.kind==='character')).toHaveLength(4);expect(forgePresets.map(p=>p.id)).not.toContain('earth-moon');
   expect(forgePresets.every(p=>['character','shape','asset'].includes(p.kind))).toBe(true);
@@ -72,7 +97,7 @@ describe.skipIf(!hasPython())('대장간 출력의 실제 Python·기하 의미'
     positions().forEach((point,i)=>expect(point.sub(before[i]).distanceTo(new THREE.Vector3(1,0,0))).toBeLessThan(1e-7));
   });
   it('위치·배율·이동과 인스턴스별 색·제거가 서로 간섭하지 않는다',()=>{
-    const m=builtInModule('kirby'),fn=factoryName(m),code='from vpython import *\n'+moduleDefinition(m)+`\na=${fn}(pos=vector(3,2,1),scale=2)\nb=${fn}(pos=vector(-3,0,0),scale=.5)\na.object.pos.x+=1\na.object.pos.y+=1\na.move_to(vector(5,3,2))\na.object.color=color.green\nassert b.object.color == color.white\nassert mag(a.pos-vector(5,3,2))<0.000001\nb.dispose()\nassert a.object.visible and not b.object.visible\n`;
+    const m=builtInModule('kirby'),fn=factoryName(m),code='from vpython import *\n'+moduleDefinition(m)+`\na=${fn}(pos=vector(3,2,1),scale=2)\nb=${fn}(pos=vector(-3,0,0),scale=.5)\na.pos.x+=1\na.pos.y+=1\na.pos=vector(5,3,2)\na.color=color.green\nassert b.color == color.white\nassert mag(a.pos-vector(5,3,2))<0.000001\nb.visible=False\nassert a.visible and not b.visible\n`;
     const result=run(code);expect(result.error).toBeNull();processBatch(result.commands,scene);
     const compounds=result.commands.filter(c=>c.action==='compound');expect(getMesh(compounds[0].id).visible).toBe(true);expect(getMesh(compounds[1].id).visible).toBe(false);
     expect(getMesh(compounds[0].id).children[0].material.color.g).toBeGreaterThan(0);
@@ -83,15 +108,15 @@ describe.skipIf(!hasPython())('대장간 출력의 실제 Python·기하 의미'
     code=code.slice(0,code.indexOf('while True:'))+`\noriginal=vector(other.color)\nmove_character(1.5,0)\ncollect_items()\nassert player.color==vector(1,.45,.7)\nassert other.color==original\nassert not items[0].visible and items[1].visible\n`;
     expect(run(code).error).toBeNull();
   });
-  it('서로 다른 종의 실제 클릭은 자기 소리만 내며 dispose 뒤에는 울리지 않는다',()=>{
+  it('서로 다른 종의 실제 클릭은 자기 소리만 내며 숨긴 뒤에는 울리지 않는다',()=>{
     const a=makeForgeModule({...createRecipe('bell'),bellMode:'sound'}),b=makeForgeModule({...createRecipe('bell'),bellMode:'sound',params:{...createRecipe('bell').params,tone:440}});
     const code='from vpython import *\n'+moduleDefinition(a)+'\n'+moduleDefinition(b)+`\na=${factoryName(a)}(pos=vector(-2,0,0))\nb=${factoryName(b)}(pos=vector(2,0,0))\n`;
     const base=run(code);expect(base.error).toBeNull();const creates=base.commands.filter(c=>c.action==='create');
-    const jobs=[{id:'a',label:'click',code,events:[{name:'click',pick:creates[0].id}]},{id:'b',label:'click',code,events:[{name:'click',pick:creates[4].id}]},{id:'dispose',label:'click',code:code+'\na.dispose()\na.dispose()\n',events:[{name:'click',pick:creates[0].id}]},{id:'empty',label:'click',code,events:[{name:'click',pick:null}]}];
+    const jobs=[{id:'a',label:'click',code,events:[{name:'click',pick:creates[0].id}]},{id:'b',label:'click',code,events:[{name:'click',pick:creates[4].id}]},{id:'hidden',label:'click',code:code+'\na.visible=False\n',events:[{name:'click',pick:creates[0].id}]},{id:'empty',label:'click',code,events:[{name:'click',pick:null}]}];
     const result=runPythonJobs(jobs);
     expect(result.get('a:click').commands.filter(c=>c.action==='sound').map(c=>c.frequency)).toEqual([880]);
     expect(result.get('b:click').commands.filter(c=>c.action==='sound').map(c=>c.frequency)).toEqual([440]);
-    for(const key of ['dispose:click','empty:click'])expect(result.get(key).commands.filter(c=>c.action==='sound')).toHaveLength(0);
+    for(const key of ['hidden:click','empty:click'])expect(result.get(key).commands.filter(c=>c.action==='sound')).toHaveLength(0);
     for(const r of result.values())expect(r.error).toBeNull();
   });
   it('종은 모양만·소리·음파 단계로 나뉘고 음파는 새 객체를 누적 생성하지 않는다',()=>{
