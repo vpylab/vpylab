@@ -135,6 +135,34 @@ describe('GitHubProjectDialog', () => {
     expect(screen.queryByTestId('github-invitations')).toBeNull();
   });
 
+  it('받은 초대의 수락 버튼은 초록색으로 눈에 띈다', async () => {
+    github.createRepo('bo', 'team', { description: '우리 팀', topics: [PROJECT_TOPIC], files: { 'main.py': 'x' } });
+    github.state.userInvitations.push({ id: 78, repoKey: 'bo/team', invitee: 'ada', inviter: 'bo', expired: false });
+    github.repo('bo/team').invitations.push({ id: 78, invitee: 'ada', inviter: 'bo', expired: false });
+    render(<GitHubProjectDialog mode="projects" getCode={() => ''} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('github-connect'));
+    const accept = await screen.findByTestId('github-accept');
+    expect(accept).toHaveTextContent('수락');
+    expect(accept.style.backgroundColor).toBe('rgb(31, 136, 61)');
+    expect(accept.style.color).toBe('rgb(255, 255, 255)');
+  });
+
+  it('팀이 정한 영어 저장소 이름으로 프로젝트를 만든다(대문자·한글·기호는 입력하면서 걸러진다)', async () => {
+    render(<GitHubProjectDialog mode="projects" getCode={() => 'sphere()'} onClose={() => {}} />);
+    fireEvent.click(screen.getByTestId('github-connect'));
+    await screen.findByTestId('github-account');
+    const repoInput = screen.getByTestId('github-repo-name');
+    expect(repoInput).toHaveAttribute('placeholder', 'space-ufo-team3');
+    expect(screen.getByTestId('github-create-form')).toHaveTextContent('예: space-ufo-team3, 2-3-disco-party');
+    fireEvent.change(screen.getByTestId('github-project-title'), { target: { value: '우리 팀 우주 게임' } });
+    fireEvent.change(repoInput, { target: { value: 'Space UFO_팀 team3!' } });
+    expect(repoInput).toHaveValue('space-ufo-team3');
+    fireEvent.change(repoInput, { target: { value: 'space-ufo-team3' } });
+    fireEvent.click(screen.getByTestId('github-create'));
+    await waitFor(() => expect(github.repo('ada/space-ufo-team3')).toBeTruthy());
+    expect(await screen.findByTestId('github-notice')).toHaveTextContent('space-ufo-team3 저장소를 만들고');
+  });
+
   it('연 프로젝트: 팀원·저장 기록을 보이고, 초대·초대 취소·최신 코드 가져오기·연결 끊기가 동작한다', async () => {
     const fullName = await connectedWithProject('v1');
     const onLoaded = vi.fn();
