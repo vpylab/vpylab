@@ -1139,7 +1139,7 @@ while True:
     signature: "scene.bind('click mousedown ...', handler)\n@scene.bind('keydown')   # 데코레이터도 가능",
     params: [
       { name: 'event_names', type: 'string', default: '—', desc: { ko: '공백 구분 다중 가능', en: 'Space-separated names' } },
-      { name: 'handler',     type: 'function', default: '—', desc: { ko: 'evt.pos, evt.pick, evt.key. VPyLab의 포인터 이벤트는 브라우저 화면 좌표 evt.clientX, evt.clientY(CSS 픽셀)도 전달합니다.', en: 'evt.pos, evt.pick, evt.key. VPyLab pointer events also provide viewport coordinates evt.clientX and evt.clientY in CSS pixels.' } },
+      { name: 'handler',     type: 'function', default: '—', desc: { ko: 'evt.pos, evt.pick, evt.key. VPyLab의 포인터 이벤트는 브라우저 화면 좌표 evt.clientX, evt.clientY(CSS 픽셀)도 전달합니다. scene.userzoom=False에서 zoom을 바인딩하면 휠·핀치 배율 변화가 evt.value로 전달됩니다(두 배 확대 시 1).', en: 'evt.pos, evt.pick, evt.key. VPyLab pointer events also provide viewport coordinates evt.clientX and evt.clientY in CSS pixels. With scene.userzoom=False, bind zoom to receive wheel and pinch changes in evt.value (1 for a doubling).' } },
     ],
     code: `from vpython import *
 
