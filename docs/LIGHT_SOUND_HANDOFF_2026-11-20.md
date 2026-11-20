@@ -53,3 +53,15 @@
 - 실행 링크: `/sandbox?view=run#b64=<base64url 코드>`, 예제 링크: `/sandbox?example=<id>`.
 - iOS 판정(`sound-system.js`의 `isIOSDevice`)은 `MacIntel` + 터치 점 2개 이상도 iOS로 봅니다. 데스크톱의 휴대폰 흉내로 iOS 경로를 탈 수 있지만 실제 기기 확인을 대신하지는 못합니다.
 - `main`에 병합하면 운영 두 사이트에 자동 배포됩니다. 병합은 관리자가 승인한 뒤에만 합니다.
+
+## 11월 20일 후속 초안 검증
+
+| 수업에서 확인할 사항 | 검토용 결과 |
+|---|---|
+| 표준 대기와 음악 | [#48](https://github.com/vpylab/vpylab/pull/48)에서 세 음을 세 배치로 전송하고 각 화면을 처리한 뒤 표준 대기를 시작합니다. [#45](https://github.com/vpylab/vpylab/pull/45)의 48음은 오디오 시계에서 평균 간격 125.00ms였습니다. 화면 간격 표준편차는 8.25ms였습니다. |
+| 모바일 감상 | [#49](https://github.com/vpylab/vpylab/pull/49)의 같은 맥·로컬 gzip·빈 캐시 5회씩에서 첫 장면 중앙값 3,979→2,522ms, 코드 보기 전 Monaco 요청은 매회 3→0건이었습니다. |
+| 조명·표면·혜성 | [#44](https://github.com/vpylab/vpylab/pull/44)는 같은 URL의 실패 후 재시도, [#46](https://github.com/vpylab/vpylab/pull/46)은 점광원의 거리별 명암, [#47](https://github.com/vpylab/vpylab/pull/47)은 지구·목성·토성 그림의 출처를 다룹니다. [#50](https://github.com/vpylab/vpylab/pull/50)은 #39의 고정 핵 모드 전송량을 줄입니다. 실물 태블릿 GPU·발열·배터리는 측정 전입니다. |
+| 내려받은 작품 | [#42](https://github.com/vpylab/vpylab/pull/42) 미리보기에서 내려받은 태양·혜성 두 작품과 악기 작품에서 필요한 지도·입자·음색·위젯을 검증했습니다. |
+| 국제 수업 | [두 행성의 합주 활동지](../client/public/projects/light-sound-lab/duet.html)는 공식 Web VPython 3.2에서 실행한 시각 모델과 VPyLab 전용 음 확장을 함께 담습니다. Web VPython에는 소리 기능이 없습니다. 교사 검토와 실제 수업 자료 수집은 별도 단계입니다. |
+
+These measurements use desktop browsers and emulated viewports. Each linked draft records its preview, test conditions and remaining classroom checks. The production classroom site is https://vpylab.vercel.app. Use the preview linked from the relevant PR to test proposed changes.
