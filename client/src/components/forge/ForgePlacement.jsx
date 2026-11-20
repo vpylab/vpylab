@@ -12,7 +12,8 @@ export default function ForgePlacement({ factory, placement, onChange }) {
   const code = placementCode(factory, value);
   const set = (key, next) => {
     setCopied('');
-    onChange(normalizePlacement({ ...value, [key]: next }));
+    // 이전 값에서 이어서 바꿉니다. 두 조절기가 잇달아 바뀌어도 앞의 변경을 잃지 않습니다.
+    onChange(previous => normalizePlacement({ ...previous, [key]: next }));
   };
   const copy = async () => {
     try {
