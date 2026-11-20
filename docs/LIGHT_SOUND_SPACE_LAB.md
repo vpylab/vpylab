@@ -6,6 +6,10 @@
 
 Paste one example into **Create**, then press **Run**. On a phone, observe it in the **Screen** tab, then return to **Code**. For a first lesson, predict the result, change one value and run it again. Ask students what changed and what stayed the same. Sounds represent events or measurements in the model.
 
+[7번 한영 25분 활동지와 공통 시각 모델 · Bilingual worksheet and shared visual model](../client/public/projects/light-sound-lab/duet.html)
+
+수업 사이트에서는 7번의 활동지 링크를 누르세요. 실습은 현재 호스트에서 열립니다. / On the lesson site, use the worksheet link under activity 7. Its practice opens on the same host.
+
 ## 약 5줄 · First observations
 
 ### 1. 어느 쪽이 낮일까? · Which side is day?
@@ -210,3 +214,13 @@ In 4, compare the silhouettes from the front when the planet is entirely inside 
 [run-7]: https://vpylab.vercel.app/sandbox?view=run#b64=ZnJvbSB2cHl0aG9uIGltcG9ydCAqCnNjZW5lLnJhbmdlID0gMy4yCnNwaGVyZShyYWRpdXM9MC4zOCwgY29sb3I9Y29sb3Iub3JhbmdlLCBlbWlzc2l2ZT1UcnVlKQpwZXJpb2RzID0gWzIsIDNdCm5vdGVzID0gWyJDNCIsICJHNCJdCnJhZGlpID0gWzEuNCwgMi40XQpwbGFuZXRzID0gW10KZm9yIHJhZGl1cyBpbiByYWRpaToKICAgIHJpbmcocmFkaXVzPXJhZGl1cywgdGhpY2tuZXNzPTAuMDEyLCBheGlzPXZlY3RvcigwLCAwLCAxKSkKICAgIHNwaGVyZShwb3M9dmVjdG9yKHJhZGl1cywgMCwgMCksIHJhZGl1cz0wLjA3LCBjb2xvcj1jb2xvci53aGl0ZSkKICAgIHBsYW5ldHMuYXBwZW5kKHNwaGVyZShyYWRpdXM9MC4xOSwgY29sb3I9Y29sb3IuY3lhbikpCmZvciBmcmFtZSBpbiByYW5nZSgyNDEpOgogICAgcmF0ZSgyMCkKICAgIGZvciBpIGluIHJhbmdlKGxlbihwbGFuZXRzKSk6CiAgICAgICAgcGxhbmV0ID0gcGxhbmV0c1tpXQogICAgICAgIGxhcCA9IHBlcmlvZHNbaV0gKiAyMAogICAgICAgIGFuZ2xlID0gMiAqIHBpICogKGZyYW1lICUgbGFwKSAvIGxhcAogICAgICAgIHBsYW5ldC5wb3MgPSByYWRpaVtpXSAqIHZlY3Rvcihjb3MoYW5nbGUpLCBzaW4oYW5nbGUpLCAwKQogICAgICAgIGlmIGZyYW1lICUgbGFwID09IDA6CiAgICAgICAgICAgIHBsYXlfbm90ZShub3Rlc1tpXSwgMC4zKQ
 [run-8]: https://vpylab.vercel.app/sandbox?view=run#b64=ZnJvbSB2cHl0aG9uIGltcG9ydCAqCmRpc3RhbmNlID0gMwpzY2VuZS5yYW5nZSA9IDUKc3RhcnQgPSB2ZWN0b3IoLTIsIDAsIDApCnNlbmRlciA9IGJveChwb3M9c3RhcnQsIHNpemU9dmVjdG9yKDAuMiwgMSwgMC42KSwgY29sb3I9Y29sb3IuY3lhbikKd2FsbCA9IGJveChwb3M9c3RhcnQgKyB2ZWN0b3IoZGlzdGFuY2UsIDAsIDApLCBzaXplPXZlY3RvcigwLjEsIDIsIDAuOCkpCnB1bHNlID0gc3BoZXJlKHBvcz1zdGFydCwgcmFkaXVzPTAuMTUsIGNvbG9yPWNvbG9yLnllbGxvdywgZW1pc3NpdmU9VHJ1ZSkKc3RlcHMgPSBkaXN0YW5jZSAqIDIwCnBsYXlfbm90ZSgiQzQiLCAwLjE4KQpmb3IgdGljayBpbiByYW5nZSgyICogc3RlcHMgKyAxKToKICAgIHJhdGUoMzApCiAgICBpZiB0aWNrIDw9IHN0ZXBzOgogICAgICAgIHBhdGggPSB0aWNrCiAgICBlbHNlOgogICAgICAgIHBhdGggPSAyICogc3RlcHMgLSB0aWNrCiAgICBwdWxzZS5wb3MgPSBzdGFydCArIHZlY3RvcihwYXRoIC8gMjAsIDAsIDApCiAgICBpZiB0aWNrID09IHN0ZXBzOgogICAgICAgIHdhbGwuY29sb3IgPSBjb2xvci5vcmFuZ2UKICAgIGlmIHRpY2sgPT0gMiAqIHN0ZXBzOgogICAgICAgIHNlbmRlci5lbWlzc2l2ZSA9IFRydWUKICAgICAgICBwbGF5X25vdGUoIkc0IiwgMC40NSk
 [run-9]: https://vpylab.vercel.app/sandbox?view=run#b64=ZnJvbSB2cHl0aG9uIGltcG9ydCAqCnNjZW5lLnJhbmdlID0gMy40CnN0YXIgPSBzcGhlcmUocmFkaXVzPTAuMzUsIGNvbG9yPWNvbG9yLndoaXRlLCBlbWlzc2l2ZT1UcnVlKQpiZWFtID0gYXJyb3cocG9zPXN0YXIucG9zLCBheGlzPXZlY3RvcigyLCAwLCAwKSwgY29sb3I9Y29sb3IuY3lhbikKcmVjZWl2ZXIgPSBzcGhlcmUocG9zPXZlY3RvcigyLjYsIDAsIDApLCByYWRpdXM9MC4yKQp0aWNrc19wZXJfdHVybiA9IDYwCmZvciB0aWNrIGluIHJhbmdlKDE4MSk6CiAgICByYXRlKDMwKQogICAgcGhhc2UgPSB0aWNrICUgdGlja3NfcGVyX3R1cm4KICAgIGFuZ2xlID0gMiAqIHBpICogcGhhc2UgLyB0aWNrc19wZXJfdHVybgogICAgYmVhbS5heGlzID0gMiAqIHZlY3Rvcihjb3MoYW5nbGUpLCBzaW4oYW5nbGUpLCAwKQogICAgaWYgcGhhc2UgPT0gMDoKICAgICAgICByZWNlaXZlci5jb2xvciA9IGNvbG9yLnllbGxvdwogICAgICAgIHJlY2VpdmVyLmVtaXNzaXZlID0gVHJ1ZQogICAgICAgIHBsYXlfbm90ZSgiQTQiLCAwLjE4KQogICAgZWxpZiBwaGFzZSA9PSA1OgogICAgICAgIHJlY2VpdmVyLmVtaXNzaXZlID0gRmFsc2UKICAgICAgICByZWNlaXZlci5jb2xvciA9IGNvbG9yLmdyYXkoMC40KQ
+
+### 7번 파일럿의 실행 확인 · Activity 7 runtime checks
+
+Web VPython 3.2 공식 실행기에서 활동지의 시각 코드만 실행했습니다. 두 행성의 첫 동시 귀환은 (2,3)에서 6박, (2,4)에서 4박, (3,4)에서 12박이었습니다. Web VPython에는 소리 재생 API가 없습니다. VPyLab 편집기에서만 소리 행을 더해 C4와 G4의 Web Audio 시작을 측정했습니다.
+
+The official Web VPython 3.2 browser runner displayed the shared visual model. After departure the first joint return was beat 6 for (2,3), beat 4 for (2,4) and beat 12 for (3,4). The sound extension ran separately in VPyLab. With periods (2,3) through beat 12 inclusive, the oscillator started seven C4s and five G4s. The captions used position markers I and O and remained usable with sound off.
+
+7번 영상 → 활동지 → 실습 → 코드 보기 → 도구를 Chromium 터치 모사 390×844·667×320과 WebKit 터치 모사 320×568에서 확인했습니다. 활동지를 200% 글자 크기로 읽고 키보드로 귀환 기록을 펼쳤습니다. 실물 iPhone·iPad, 학교 기기, 보조공학 사용자 및 학급 단위 학습효과는 별도 확인 대상입니다.
+
+The activity 7 video, worksheet, practice, code and tools paths were exercised on emulated touch screens in Chromium at 390×844 and 667×320 and WebKit at 320×568. Worksheet text was enlarged to 200% and the transcript opened with the keyboard. Physical device performance, assistive-technology user experience and learning outcomes require separate evaluation in schools.

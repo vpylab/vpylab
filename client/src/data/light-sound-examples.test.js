@@ -35,3 +35,19 @@ describe('light and sound classroom examples', () => {
     });
   });
 });
+
+it('국제 파일럿은 공통 시각 코드에 VPyLab 음 한 줄만 더해 같은 호스트에서 연다', () => {
+  const sheet = readFileSync(resolve('public/projects/light-sound-lab/duet.html'), 'utf8');
+  const visual = sheet.match(/<code id="visual">([\s\S]+?)<\/code>/)[1];
+  const sound = sheet.match(/<code id="sound">([^<]+)<\/code>/)[1];
+  expect(visual).not.toMatch(/play_note/);
+  const code = visual.replace('Web VPython 3.2', 'from vpython import *')
+    .replace('if phase == 0:\n', 'if phase == 0:\n' + sound + '\n');
+  for (const lang of ['ko', 'en']) {
+    const link = sheet.match(new RegExp('id="' + lang + '-run" href="([^"]+)"'))[1];
+    const url = new URL(link.replaceAll('&amp;', '&'), 'https://preview.example');
+    expect(url.origin).toBe('https://preview.example');
+    expect(url.searchParams.get('lang')).toBe(lang);
+    expect(Buffer.from(url.hash.slice(5), 'base64url').toString('utf8')).toBe(code);
+  }
+});
