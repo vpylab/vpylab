@@ -371,8 +371,8 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = GITHUB_SYNC_TIMEO
 }
 
 async function buildProjectPageHtml(code, title) {
-  const { generateStandaloneHTML } = await import('../utils/export-html');
-  return generateStandaloneHTML(code, title || 'VPyLab');
+  const { generateProjectHTML } = await import('../utils/export-html');
+  return generateProjectHTML(code, title || 'VPyLab');
 }
 
 async function parseApiJson(response) {

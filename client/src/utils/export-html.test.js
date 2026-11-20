@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import * as THREE from 'three';
-import { generateStandaloneHTML } from './export-html';
+import { generateProjectHTML, generateStandaloneHTML } from './export-html';
 import course from '../data/light-sound-course';
 import { hasPython, runPythonJobs } from '../test/python-runner';
 import source from '../engine/student-code-transform.py?raw';
@@ -55,6 +55,37 @@ describe.skipIf(!hasPython())('교재 작품의 편집기와 공유 HTML 실행 
   });
 });
 
+it('독립 HTML의 표준 대기 별칭이 요청 시간 뒤 복귀하며 색과 음을 세 번 보낸다', () => {
+  const code = `from vpython import *
+import time as clock
+from time import sleep as wait
+def sleep(x):
+    return x + 1
+assert sleep(4) == 5
+lamp = sphere()
+for i, note in enumerate(["C4", "D4", "E4"]):
+    lamp.color = [color.red, color.green, color.blue][i]
+    play_note(note, 0.01)
+    if i < 2:
+        start = clock.monotonic()
+        if i == 0: wait(0.03)
+        else: clock.sleep(0.03)
+        assert clock.monotonic() - start >= 0.03
+`;
+  const job = { id: 'sleep', code, realTime: true };
+  const html = generateStandaloneHTML(code);
+  const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+    input: JSON.stringify({ api: exportedApi(html), transform: source, jobs: [job] }),
+    encoding: 'utf8', timeout: 10000,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  const [run] = JSON.parse(result.stdout);
+  expect(run.error).toBeNull();
+  const batches = run.batchEnds.map((end, i) => run.commands.slice(run.batchEnds[i - 1] ?? 0, end));
+  expect(batches.map(batch => batch.filter(cmd => cmd.action === 'sound').map(cmd => cmd.name))).toEqual([['C4'], ['D4'], ['E4']]);
+  expect(batches.map(batch => batch.find(cmd => cmd.action === 'update')?.color)).toEqual([[1,0,0], [0,1,0], [0,0,1]]);
+});
+
 function startExport(width, height) {
   document.body.innerHTML = '<div id="viewport"></div><div id="console"></div><div id="loading"></div><div id="progress"></div>';
   const html = generateStandaloneHTML(course.lessons[1].code);
@@ -78,9 +109,34 @@ function startExport(width, height) {
     navigator: {}, innerWidth: width, innerHeight: height, devicePixelRatio: 1,
     requestAnimationFrame: vi.fn(), console, setTimeout, clearTimeout,
   };
-  runInNewContext(`${script}\nglobalThis.testExport = { camera, controls, processCmd, meshes, scene };`, context);
+  runInNewContext(`${script}\nglobalThis.testExport = { camera, controls, processCmd, scene, meshes };`, context);
   return { ...context.testExport, context, listeners };
 }
+
+it('내려받는 작품이 쓰는 천체만 JPEG로 넣고 지구 관측 자료의 출처를 보인다', async () => {
+  const empty = await generateProjectHTML('sphere()');
+  const earth = await generateProjectHTML('sphere(texture=textures.earth)');
+  expect(empty).not.toContain('data:image/jpeg;base64,');
+  expect(earth.match(/data:image\/jpeg;base64,/g)).toHaveLength(1);
+  expect(earth).toContain('Reto Stöckli, NASA Earth Observatory');
+});
+
+it('작품에 지정한 환경광과 사용자 광원만 켜고 혜성의 입자 시각을 셰이더에 전달한다', () => {
+  const { processCmd, scene, meshes } = startExport(800, 600);
+  processCmd({action: 'create', type: 'local_light', id: 'a'});
+  processCmd({action: 'create', type: 'distant_light', id: 'b'});
+  processCmd({action: 'scene', property: 'ambient', value: [0.2, 0.3, 0.4]});
+  processCmd({action: 'scene', property: 'lights', value: ['a']});
+  expect(scene.children.find(child => child.isAmbientLight).color.toArray()).toEqual([0.2, 0.3, 0.4]);
+  expect(meshes.get('a').visible).toBe(true);
+  expect(scene.children.filter(child => child.isDirectionalLight).every(child => !child.visible)).toBe(true);
+  processCmd({action: 'create', type: 'points', shape: 'plume', id: 'tail', points: [[1, 0, 0]]});
+  processCmd({action: 'update', id: 'tail', flow_time: 1.25});
+  const plume = meshes.get('tail');
+  expect(plume.material.userData.flowTime.value).toBe(1.25);
+  expect(plume.frustumCulled).toBe(false);
+  expect(plume.material.depthWrite).toBe(false);
+});
 
 it('내려받은 HTML은 도형 생성·갱신·배경의 바이트 RGB를 같은 정규화 색으로 그린다', () => {
   const { processCmd, meshes, scene } = startExport(390, 844);
@@ -92,6 +148,38 @@ it('내려받은 HTML은 도형 생성·갱신·배경의 바이트 RGB를 같�
   expect(mesh.material.color.toArray()).toEqual([1, 0, 0]);
   processCmd({ action: 'scene', property: 'background', value: [0, 128, 255] });
   expect(scene.background.toArray()).toEqual([0, 128 / 255, 1]);
+});
+
+it('구의 발광을 다시 켜면 직사각형 무늬와 기본 지도가 같은 텍스처를 쓴다', () => {
+  const { processCmd, meshes } = startExport(390, 844);
+  processCmd({ action: 'create', type: 'sphere', id: 'globe', texture: 'data:image/png;base64,AA==', emissive: true });
+  const material = meshes.get('globe').material;
+  expect(material.map).toBeInstanceOf(THREE.Texture);
+  expect(material.emissiveMap).toBe(material.map);
+  processCmd({ action: 'update', id: 'globe', emissive: false });
+  expect(material.emissiveMap).toBeNull();
+  processCmd({ action: 'update', id: 'globe', emissive: true });
+  expect(material.emissiveMap).toBe(material.map);
+});
+
+it('점광원의 기본 환산과 명시한 세기를 생성과 갱신에서 구분한다', () => {
+  const { processCmd, meshes } = startExport(390, 844);
+  for (const explicit of [true, false]) {
+    const id = String(explicit);
+    processCmd({ action: 'create', type: 'local_light', id, distance_falloff: explicit, intensity: 1 });
+    const light = meshes.get(id);
+    expect(light.decay).toBe(explicit ? 2 : 0);
+    processCmd({ action: 'update', id, intensity: 2 });
+    expect(light.intensity).toBeCloseTo(explicit ? 2 : 2 * Math.PI / 0.9);
+  }
+});
+
+it('시점 선택에 따라 회전·확대·이동 조작을 잠그고 다시 푼다', () => {
+  const { processCmd, controls } = startExport(390, 844);
+  for (const enabled of [false, true]) {
+    for (const property of ['userspin', 'userzoom', 'userpan']) processCmd({action: 'scene', property, value: enabled});
+    expect([controls.enableRotate, controls.enableZoom, controls.enablePan]).toEqual([enabled, enabled, enabled]);
+  }
 });
 
 describe('공유 페이지의 시야 범위', () => {
@@ -144,4 +232,33 @@ it.skipIf(!hasPython())('pyramid의 size·axis·up과 clone은 편집기와 독�
 it.skipIf(!hasPython())('독립 HTML의 vector(v)는 새 복사본이며 모듈 위치·차이 벡터를 받을 수 있다',()=>{
  const jobs=[{id:'copy',code:'from vpython import *\na=vec(1,2,3)\nb=vector(a)\nb.x+=5\nassert a==vec(1,2,3) and b==vec(6,2,3)\nassert vector(b-a)==vec(5,0,0)\nassert vector([1,2,3])==a\n'}];
  const result=spawnSync('python3',['-I','src/test/run-export-python.py'],{input:JSON.stringify({api:exportedApi(generateStandaloneHTML(jobs[0].code)),transform:source,jobs})+'\n',encoding:'utf8'});expect(result.status,result.stderr).toBe(0);expect(JSON.parse(result.stdout)[0].error).toBeNull();
+});
+
+it.skipIf(!hasPython())('공유 HTML이 점 목록, 텍스처, 위젯 콜백과 음 이름 화음을 실행한다', () => {
+  const code = `from vpython import *
+ball = sphere(texture=textures.checker)
+dots = points(pos=[dict(pos=vec(0,0,0), color=color.red)], radius=0.1)
+dots.splice(0, 1, [vec(1,2,3)])
+dots.modify(0, x=2)
+assert dots.npoints == 1 and dots.point(0)["pos"] == vec(2,2,3)
+def change(control):
+    ball.texture = textures.earth
+pace = slider(min=0, max=3, value=1, step=1, bind=change)
+change(pace)
+play_chord(["C4", "미4", "G4"], 0.15)
+play_note("B4", 0.15, volume=0)
+`;
+  const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+    input: JSON.stringify({ api: exportedApi(generateStandaloneHTML(code)), transform: source, jobs: [{ id: 'export', code }] }) + '\n',
+    encoding: 'utf8', timeout: 15000,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  const [run] = JSON.parse(result.stdout);
+  expect(run.error).toBeNull();
+  expect(run.commands).toContainEqual(expect.objectContaining({ action: 'widget_create', kind: 'slider', value: 1 }));
+  expect(run.commands).toContainEqual(expect.objectContaining({ action: 'curve_set', points: [[2,2,3]] }));
+  expect(run.commands).toContainEqual(expect.objectContaining({ action: 'update', texture: 'preset:earth' }));
+  const [chord, silent] = run.commands.filter(command => command.action === 'sound');
+  expect(chord.frequencies.map(Math.round)).toEqual([262,330,392]);
+  expect(silent.volume).toBe(0);
 });

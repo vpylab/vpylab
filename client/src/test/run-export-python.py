@@ -17,11 +17,18 @@ async def fast_sleep(seconds, result=None):
     return result
 
 
-asyncio.sleep = fast_sleep
 results = []
 for job in payload['jobs']:
     commands = []
-    namespace = {'__name__': '__export_api__', '_js_process_batch': lambda message: commands.extend(json.loads(message)['commands'])}
+    batch_ends = []
+    asyncio.sleep = original_sleep if job.get('realTime') else fast_sleep
+
+    def collect_batch(message):
+        commands.extend(json.loads(message)['commands'])
+        if job.get('realTime'):
+            batch_ends.append(len(commands))
+
+    namespace = {'__name__': '__export_api__', '_js_process_batch': collect_batch}
     error = None
     try:
         exec(compile(payload['api'], '<export-api>', 'exec'), namespace)
@@ -30,6 +37,7 @@ for job in payload['jobs']:
             if not name.startswith('_'):
                 setattr(module, name, value)
         sys.modules['vpython'] = module
+        transform.sleep_dispatch = transform.make_sleep_dispatch(namespace['sleep'])
         compiled, _ = transform.compile_student_code(job['code'], '<student>')
         student = {name: value for name, value in namespace.items() if not name.startswith('_')}
         student.update({'__name__': '__main__', transform.RUNTIME_NAME: transform})
@@ -39,5 +47,5 @@ for job in payload['jobs']:
         namespace['_send_commands']()
     except Exception as exc:
         error = f'{type(exc).__name__}: {exc}'
-    results.append({'id': job['id'], 'error': error, 'commands': commands})
+    results.append({'id': job['id'], 'error': error, 'commands': commands, 'batchEnds': batch_ends})
 json.dump(results, sys.stdout, ensure_ascii=False)
