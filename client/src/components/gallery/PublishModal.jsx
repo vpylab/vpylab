@@ -116,8 +116,8 @@ export default function PublishModal({ isOpen, onClose, code, thumbnail, remixFr
           return;
         }
 
-        const { generateStandaloneHTML } = await import('../../utils/export-html');
-        htmlContent = generateStandaloneHTML(code, title.trim());
+        const { generateProjectHTML } = await import('../../utils/export-html');
+        htmlContent = await generateProjectHTML(code, title.trim());
       }
 
       const res = await publishWork({

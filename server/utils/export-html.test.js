@@ -10,6 +10,7 @@ import { generateStandaloneHTML as generateShared } from './standalone-template.
 import { createPackageImportTools } from '../shared/package-imports.js';
 import course from '../../client/src/data/light-sound-course.js';
 
+const widgetCss = readFileSync(new URL('../shared/widgets/panel.css', import.meta.url), 'utf8');
 const editorTransform = readFileSync(new URL('../../client/src/engine/student-code-transform.py', import.meta.url), 'utf8');
 const embeddedTransform = page => {
   const expression = page.match(/const transformSrc = decodeURIComponent\(escape\(atob\('[A-Za-z0-9+/=]+'\)\)\);/);
@@ -30,7 +31,15 @@ test('서버에 패키징한 학생 코드 변환기는 편집기와 같은 원�
 test('서버와 브라우저의 공유 HTML은 같은 템플릿과 변환기를 사용한다', () => {
   const code = course.lessons[0].code;
   const options = { repoUrl: 'https://github.com/example/test', openInVpylabUrl: 'https://vpylab.vercel.app/sandbox' };
-  assert.equal(generateStandaloneHTML(code, '소리 검증', options), generateShared(code, '소리 검증', options, editorTransform));
+  assert.equal(generateStandaloneHTML(code, '소리 검증', options), generateShared(code, '소리 검증', options, editorTransform, [], {}, widgetCss));
+});
+
+test('서버만 배포해도 사용한 사진과 출처가 HTML에 포함된다', () => {
+  const earth = generateStandaloneHTML('sphere(texture=textures.earth)');
+  const alias = generateStandaloneHTML('p = textures\nsphere(texture=getattr(p, name))');
+  assert.equal((earth.match(/data:image\/jpeg;base64,/g) || []).length, 1);
+  assert.match(earth, /Reto Stöckli, NASA Earth Observatory/);
+  assert.equal((alias.match(/data:image\/jpeg;base64,/g) || []).length, 5);
 });
 
 test('HTML에 삽입한 변환기는 백슬래시·백틱·템플릿·script 종료 문자열도 보존한다', () => {

@@ -31,3 +31,17 @@ for body, hour, minute in [('해',7,17),('달',14,22)]:
   const result = runPythonJobs([{ id: 'seoul', label: 'ephemeris', code }]).get('seoul:ephemeris');
   expect(result.error).toBeNull();
 });
+
+it('서울 관측 지도를 쓰는 HTML에 원본 바이트와 제작자 표시를 함께 싣는다', async () => {
+  const { generateProjectHTML } = await import('../utils/export-html');
+  const page = await generateProjectHTML(source);
+  const maps = JSON.parse(page.match(/const planetMaps = (\{.*\});/)[1]);
+  expect(Object.keys(maps).sort()).toEqual(['earth', 'lroc-color', 'sun']);
+  const original = readFileSync('public/projects/seoul-moon/lroc-color.jpg', 'base64');
+  expect(maps['lroc-color'] === 'data:image/jpeg;base64,' + original).toBe(true);
+  expect(page).toContain('NASA/Goddard Space Flight Center Scientific Visualization Studio, LROC, Arizona State University');
+
+  const dynamic = await generateProjectHTML('surface = getattr(textures, name)');
+  const dynamicMaps = JSON.parse(dynamic.match(/const planetMaps = (\{.*\});/)[1]);
+  expect(Object.keys(dynamicMaps).sort()).toEqual(['earth', 'jupiter', 'moon', 'saturn', 'sun']);
+});

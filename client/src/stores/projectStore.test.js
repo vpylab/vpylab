@@ -37,7 +37,7 @@ vi.mock('./codeStore', () => ({
 }));
 
 vi.mock('../utils/export-html', () => ({
-  generateStandaloneHTML: vi.fn((code, title) => `<html><title>${title}</title><body>${code}</body></html>`),
+  generateProjectHTML: vi.fn((code, title) => `<html><title>${title}</title><body>${code}</body></html>`),
 }));
 
 const { default: useProjectStore } = await import('./projectStore');
