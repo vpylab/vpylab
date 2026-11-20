@@ -80,7 +80,9 @@ for step in range(3):
         look_around(Pointer("mousemove", 260, 225))
         zoom_control.value = 32
         set_zoom(zoom_control)`) + `
-    assert sun.visible and solar_disc.visible and solar_disc.pos == sun.pos
+    assert sun.visible and solar_disc.visible
+    assert mag((solar_disc.pos-observer_eye) / disc_depth - (sun.pos-observer_eye)) < 1e-10
+    assert abs(solar_disc.radius / disc_depth - sun.radius) < 1e-10
     assert scene.camera.pos == observer_eye
     if step == 0:
         initial = scene.camera.axis

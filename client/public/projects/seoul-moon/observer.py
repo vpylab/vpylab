@@ -168,9 +168,10 @@ pole = vector(0, 0, 1)
 earth = sphere(radius=0.995, texture=textures.earth, shininess=0)
 moon = sphere(radius=0.2724, texture="/projects/seoul-moon/lroc-color.jpg", shininess=0)
 sun = sphere(emissive=True, texture=textures.sun, color=color.white, shininess=0)
-# 지상에서는 광구의 밝기가 표면 무늬를 씻어냅니다. 같은 위치의 발광 원반 위에
-# 옅은 태양 재질을 겹칩니다. 달을 비추는 광원은 위의 sunlight 하나입니다.
-solar_disc = sphere(radius=.398, emissive=True, color=color.white, shininess=0, visible=False)
+# 눈부심 원반은 약간 앞에 그리고 거리와 반지름에 같은 비율을 곱합니다.
+# 태양의 방향과 각지름을 유지하면서 겹친 표면이 깜빡이지 않게 합니다.
+disc_depth = .94
+solar_disc = sphere(radius=.4*disc_depth, emissive=True, color=color.white, shininess=0, visible=False)
 ray = arrow(color=color.yellow, emissive=True, shaftwidth=0.045, visible=False)
 # 관측소의 좌표축은 남쪽(+x), 천정(+y), 서쪽(+z)입니다.
 vertical = vector(0, 1, 0)
@@ -485,10 +486,10 @@ while True:
         sunlight.intensity = 3 + 18*daylight
         height_factor = min(1, max(0, sun_alt/12))
         solar_disc.color = vector(1,.70,.34) + height_factor * vector(0,.30,.66)
-        sun.opacity = .24 - .18 * height_factor
+        solar_disc.opacity = .76 + .18 * height_factor
         moon.pos, moon.visible = sky_disc(moon_sight, altitude, .2724, .2724, east, north, up)
         sun.pos, sun.visible = sky_disc(solar_sight, sun_alt, 109.1, .4, east, north, up)
-        solar_disc.pos = sun.pos
+        solar_disc.pos = observer_eye + disc_depth * (sun.pos-observer_eye)
         solar_disc.visible = sun.visible
         moon.axis = local_vector(prime, east, north, up)
         moon.up = local_vector(lunar_north, east, north, up)
@@ -535,7 +536,6 @@ while True:
             scene.fov = radians(48)
             moon.radius = .2724
             sun.radius = 1.15
-            sun.opacity = 1
         moon.axis = prime
         moon.up = lunar_north
         moon.pos = 3.3 * norm(lunar)
