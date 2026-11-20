@@ -19,7 +19,7 @@
  * 미지원 (브라우저 IDE에서만 동작):
  * - 2D 그래프 (graph, gcurve, gdots, gvbars, ghbars) — DOM 패널 필요
  * - scene.mouse.ray·project(). 키 입력과 click·mousedown·mouseup·mousemove 이벤트, scene.mouse.pos·pick은 지원
- * - scene.pause() / scene.waitfor() / input() — 이벤트·입력 채널 필요
+ * - scene.pause() / input() — 이벤트·입력 채널 필요. scene.waitfor()는 키·마우스 이벤트에 지원
  *   학생 코드가 위 기능을 사용하면 콘솔 경고 후 무시.
  *
  * TODO: vpython-api.py를 ?raw 임포트해 인라인 Python 중복을 제거하는 리팩터링이
@@ -2739,6 +2739,38 @@ class _Scene:
                 handlers.clear()
             elif fn in handlers:
                 handlers.remove(fn)
+
+    async def waitfor(self, events):
+        """이벤트가 올 때까지 기다렸다가 이벤트 객체를 돌려준다(편집기·GlowScript scene.waitfor와 같음).
+        scene.waitfor('click keydown')처럼 공백으로 여러 이벤트를 적으면 먼저 온 것 하나를 돌려준다.
+        변환기가 호출 앞에 await를 붙이므로 학생 코드에서는 평범한 함수처럼 쓴다."""
+        names = events.split() if isinstance(events, str) else list(events)
+        if not names:
+            raise ValueError("scene.waitfor에 이벤트 이름을 넣어 주세요 (예: 'click')")
+        if all(name in ('redraw', 'draw_complete') for name in names):
+            await rate(60)
+            return _SimpleNamespace(event=names[0], pos=vector(0,0,0), pick=None, key=None, canvas=self)
+        unknown = [name for name in names if name not in _key_handlers]
+        for name in unknown:
+            _unsupported_warn("scene.waitfor(" + name + ")")
+        if len(unknown) == len(names):
+            return None
+        received = []
+        def catch(event):
+            received.append(event)
+        for name in names:
+            if name in _key_handlers:
+                _key_handlers[name].append(catch)
+        _send_commands()
+        try:
+            while not received:
+                await asyncio.sleep(0.05)
+        finally:
+            for name in names:
+                handlers = _key_handlers.get(name, [])
+                if catch in handlers:
+                    handlers.remove(catch)
+        return received[0]
     @property
     def mouse(self):
         return _mouse_now

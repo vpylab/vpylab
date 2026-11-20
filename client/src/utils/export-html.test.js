@@ -401,3 +401,89 @@ scene.bind("keydown", 점프)
     expect(jump).toContainEqual(expect.objectContaining({ action: 'sound', name: 'G4', type: 'glass' }));
   });
 });
+
+it.skipIf(!hasPython())('scene.waitfor("click keydown")로 멈춘 게임이 클릭·키로 출발하고 충돌 뒤 다시 시작한다', () => {
+  const code = `UFO = group()
+몸 = ellipsoid(group=UFO, size=vec(1.8, 0.35, 0.9), color=color.cyan)
+창 = sphere(group=UFO, pos=vec(0, 0.18, 0), radius=0.32, color=color.yellow)
+box(pos=vec(0, -0.35, 0), size=vec(12, 0.3, 1), color=color.blue)
+장벽 = box(pos=vec(5, 0.2, 0), size=vec(0.4, 0.8, 0.6), color=color.orange)
+scene.title = "출발 대기"
+자취 = points(color=color.cyan, radius=0.065, size_units="world", retain=12)
+while True:
+    시작 = scene.waitfor("click keydown")
+    print(시작.event)
+    UFO.pos = vec(-2, 0, 0)
+    장벽.pos.x = 5
+    자취.clear()
+    상승속도 = 0
+    scene.title = "경기 중"
+    while abs(UFO.pos.x - 장벽.pos.x) > 0.8 or UFO.pos.y > 0.8:
+        rate(50)
+        키 = keysdown()
+        if "right" in 키:
+            UFO.pos.x = min(3, UFO.pos.x + 0.12)
+        if " " in 키 and UFO.pos.y == 0:
+            상승속도 = 0.25
+        UFO.pos.y = max(0, UFO.pos.y + 상승속도)
+        창.emissive = UFO.pos.y > 0
+        자취.append(UFO.pos + vec(-0.8, 0, 0))
+        상승속도 = max(-0.25, 상승속도 - 0.018)
+        장벽.pos.x -= 0.13
+        if 장벽.pos.x < -5:
+            장벽.pos.x = 5
+    scene.title = "충돌"
+`;
+  const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+    input: JSON.stringify({ api: exportedApi(generateStandaloneHTML(code)), transform: source, jobs: [{ id: 'game', code, events: [
+      { type: 'wait', ticks: 40, label: 'idle' },
+      { type: 'mouse', payload: { name: 'click', pos: [0, 0, 0], pick: null }, ticks: 4, label: 'click' },
+      { type: 'key', name: 'keydown', key: 'ArrowRight', ticks: 10, label: 'right' },
+      { type: 'key', name: 'keyup', key: 'ArrowRight', ticks: 1, label: 'right-up' },
+      { type: 'key', name: 'keydown', key: ' ', ticks: 4, label: 'jump' },
+      { type: 'key', name: 'keyup', key: ' ', ticks: 1, label: 'jump-up' },
+      { type: 'wait', ticks: 400, label: 'crash' },
+      { type: 'key', name: 'keydown', key: 'r', ticks: 4, label: 'restart' },
+    ] }] }) + '\n',
+    encoding: 'utf8', timeout: 15000,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  const [run] = JSON.parse(result.stdout.slice(result.stdout.indexOf('[{')));
+  expect(run.error).toBeNull();
+  const [ufo, , windowId] = run.commands.filter(c => c.action === 'create').map(c => c.id);
+  const trailId = run.commands.find(c => c.type === 'points').id;
+  const marks = ['start', 'idle', 'click', 'right', 'right-up', 'jump', 'jump-up', 'crash', 'restart']
+    .map(label => run.commands.findIndex(c => c.action === 'event_done' && c.event === label));
+  expect(marks.every(index => index >= 0)).toBe(true);
+  const part = label => {
+    const i = ['start', 'idle', 'click', 'right', 'right-up', 'jump', 'jump-up', 'crash', 'restart'].indexOf(label);
+    return run.commands.slice(i === 0 ? 0 : marks[i - 1] + 1, marks[i]);
+  };
+  const titles = commands => commands.filter(c => c.property === 'title').map(c => c.value);
+  const ufoPos = commands => commands.filter(c => c.action === 'update' && c.id === ufo && c.pos).map(c => c.pos);
+  // 출발 전에는 기다리기만 한다.
+  expect(titles(part('start'))).toEqual(['출발 대기']);
+  expect(ufoPos([...part('start'), ...part('idle')])).toEqual([]);
+  // 클릭으로 출발해 자취를 비우고, → 키로 오른쪽, Space로 떠오르며 공중에서 조종석이 켜진다.
+  expect(titles(part('click'))).toEqual(['경기 중']);
+  expect(ufoPos(part('click'))[0]).toEqual([-2, 0, 0]);
+  expect(part('click')).toContainEqual(expect.objectContaining({ action: 'curve_clear', id: trailId }));
+  const rightX = ufoPos(part('right')).map(p => p[0]);
+  expect(Math.max(...rightX)).toBeGreaterThan(-1.5);
+  expect(Math.max(...ufoPos([...part('jump'), ...part('jump-up'), ...part('crash')]).map(p => p[1]))).toBeGreaterThan(0.5);
+  expect(part('jump').filter(c => c.id === windowId).map(c => c.emissive)).toContain(true);
+  // 장벽에 부딪히면 멈추고 다시 기다리며, 아무 키(R)로 새 경기를 시작한다.
+  expect(titles(part('crash'))).toEqual(['충돌']);
+  expect(titles(part('restart'))).toEqual(['경기 중']);
+  expect(ufoPos(part('restart'))[0]).toEqual([-2, 0, 0]);
+  // 자취는 retain=12에 따라 최근 12점만 남는다.
+  let trail = [];
+  for (const c of run.commands.filter(command => command.id === trailId)) {
+    if (c.action === 'curve_clear') trail = [];
+    if (c.action === 'curve_set') trail = [...c.points];
+    if (c.action === 'curve_append') trail.push(...c.points);
+    expect(trail.length).toBeLessThanOrEqual(12);
+  }
+  const beforeCrash = run.commands.slice(0, marks[7]).filter(c => c.id === trailId && c.action !== 'create');
+  expect(beforeCrash.some(c => c.action === 'curve_set' || c.action === 'curve_append')).toBe(true);
+});
