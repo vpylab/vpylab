@@ -19,7 +19,7 @@
  * 미지원 (브라우저 IDE에서만 동작):
  * - 2D 그래프 (graph, gcurve, gdots, gvbars, ghbars) — DOM 패널 필요
  * - scene.mouse.ray·project(). 키 입력과 click·mousedown·mouseup·mousemove 이벤트, scene.mouse.pos·pick은 지원
- * - scene.pause() / input() — 이벤트·입력 채널 필요. scene.waitfor()는 키·마우스 이벤트에 지원
+ * - input() — 입력 채널 필요. scene.waitfor()·scene.pause()는 키·마우스 이벤트에 지원
  *   학생 코드가 위 기능을 사용하면 콘솔 경고 후 무시.
  *
  * TODO: vpython-api.py를 ?raw 임포트해 인라인 Python 중복을 제거하는 리팩터링이
@@ -720,8 +720,10 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   }
 
   let widgetEvent;
+  let sceneEvent;
   const widgets = (${createWidgetPanel.toString()})(
-    event => widgetEvent?.(event.widget, event.value ?? null),
+    // 위젯 이벤트는 그 위젯으로, scene.pause() 안내 배너를 누른 click은 화면 클릭으로 보낸다.
+    event => event.widget ? widgetEvent?.(event.widget, event.value ?? null) : sceneEvent?.(JSON.stringify(event)),
     () => {}, () => {}
   );
 
@@ -743,6 +745,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     if (cmd.action === 'widget_create') return widgets.createWidget(cmd);
     if (cmd.action === 'widget_update') return widgets.updateWidget(cmd);
     if (cmd.action === 'widget_delete') return widgets.deleteWidget(cmd);
+    if (cmd.action === 'pause_notice') return widgets.createPauseNotice(cmd);
     if (cmd.action === 'create') {
       let mesh;
       const baseColor = toColor(cmd.color || [1,1,1]);
@@ -1124,6 +1127,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
 
     // scene.bind('click') 등 마우스 이벤트와 scene.mouse. 고른 물체는 편집기처럼 가장 가까운 VPython 객체다.
     const mouseEvent = pyodide.globals.get('_mouse_event');
+    sceneEvent = mouseEvent;
     const mouseState = pyodide.globals.get('_mouse_state');
     const eventBound = pyodide.globals.get('_event_bound');
     const raycaster = new THREE.Raycaster();
@@ -2771,6 +2775,17 @@ class _Scene:
                 if catch in handlers:
                     handlers.remove(catch)
         return received[0]
+
+    async def pause(self, text=''):
+        """화면을 클릭할 때까지 멈춘다(편집기·GlowScript scene.pause와 같음). 안내 문구를 줄 수 있다."""
+        notice_id = _new_id()
+        _add_command({"action": "pause_notice", "id": notice_id,
+                      "text": str(text) if text else "▶ 화면을 클릭하면 계속합니다"})
+        try:
+            return await self.waitfor('click')
+        finally:
+            _add_command({"action": "widget_delete", "id": notice_id})
+            _send_commands()
     @property
     def mouse(self):
         return _mouse_now
