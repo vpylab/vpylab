@@ -4,6 +4,7 @@
  * 커맨드 배칭: 프레임당 단일 postMessage에서 받은 배치를 처리
  */
 
+import { normalizeRenderColors } from '../../../server/shared/rgb-input.js';
 import * as THREE from 'three';
 import { trackSphere, forgetSphere } from './sphere-detail';
 import { updateSolarGlow } from './solar-glow';
@@ -74,7 +75,7 @@ const curveRegistry = new Map();
 
 // axis·up 기준 좌표계(basis)로 방향을 정하는 객체 종류 — box와 같은 방식으로 회전한다
 // group은 GlowScript 명세대로 Python이 하위 객체를 하나씩 돌리므로 여기 없다 (그룹 자체는 위치만 갖는다)
-const BASIS_TYPES = new Set(['box', 'pyramid', 'ellipsoid', 'compound', 'extrusion', 'text', 'curve', 'points', 'helix']);
+const BASIS_TYPES = new Set(['sphere', 'box', 'pyramid', 'ellipsoid', 'compound', 'extrusion', 'text', 'curve', 'points', 'helix']);
 
 // 기본 재질 설정
 const DEFAULT_MATERIAL_PARAMS = {
@@ -224,6 +225,11 @@ function cloneThreeColor(color) {
 
 const CELESTIAL_SURFACES = new Set(['sun', 'moon', 'jupiter', 'saturn']);
 
+// 지구 지도나 사진은 발광을 켰을 때 같은 이미지를 발광색으로도 사용합니다.
+function isImageSurface(spec) {
+  return spec === 'preset:earth' || spec === 'earth' || /^(?:https?:|data:image\/)/.test(spec);
+}
+
 // 조명 및 사용자 shininess가 바뀌어도 동일한 재질 규칙을 사용합니다.
 function applySurface(material, spec, texture) {
   if (!material || !('roughness' in material)) return;
@@ -234,7 +240,8 @@ function applySurface(material, spec, texture) {
   material.metalness = DEFAULT_MATERIAL_PARAMS.metalness;
   material.bumpMap = name === 'moon' ? texture : null;
   material.bumpScale = name === 'moon' ? .018 : 0;
-  material.emissiveMap = celestial ? texture : null;
+  const emitImage = material.emissiveIntensity > 0 && isImageSurface(spec);
+  material.emissiveMap = celestial || emitImage ? texture : null;
   material.needsUpdate = true;
 }
 
@@ -242,6 +249,7 @@ function setMaterialEmissive(material, enabled) {
   if (!material || !('emissive' in material)) return;
   material.emissive = enabled ? cloneThreeColor(material.color) : new THREE.Color(0, 0, 0);
   material.emissiveIntensity = enabled ? 0.8 : 0;
+  if (isImageSurface(material.userData?.textureSpec)) material.emissiveMap = enabled ? material.map : null;
   material.needsUpdate = true;
 }
 
@@ -405,6 +413,12 @@ function createObject(cmd, scene) {
       const segments = tex ? 64 : 32;
       geometry = new THREE.SphereGeometry(cmd.radius ?? DEFAULT_OBJECT_PROPS.sphere.radius, segments, segments / 2);
       mesh = new THREE.Mesh(geometry, material);
+      mesh.userData.vpType = 'sphere';
+      if (cmd.axis || cmd.up) {
+        mesh.userData.boxAxis = asVectorArray(cmd.axis, [1, 0, 0]);
+        mesh.userData.boxUp = asVectorArray(cmd.up, [0, 1, 0]);
+        applyBoxOrientation(mesh, mesh.userData.boxAxis, mesh.userData.boxUp);
+      }
       trackSphere(scene, mesh);
       updateSolarGlow(mesh);
       break;
@@ -565,20 +579,49 @@ function createObject(cmd, scene) {
           transparent: cmd.opacity < 1,
           opacity: cmd.opacity ?? 1,
         });
-        if (cmd.shape === 'mist') {
+        const plume = cmd.shape === 'plume';
+        if (plume || cmd.shape === 'mist') {
           pmat.transparent = true;
           pmat.depthWrite = false;
           pmat.blending = THREE.AdditiveBlending;
+          const clock = { value: cmd.flow_time ?? 0 };
+          if (plume) pmat.userData.flowTime = clock;
+          pmat.customProgramCacheKey = () => plume ? 'plume-v1' : 'mist-v1';
           pmat.onBeforeCompile = shader => {
+            if (plume) {
+              shader.uniforms.flowTime = clock;
+              shader.vertexShader = `uniform float flowTime;
+                varying float particleFade;
+                float seed(uint n) {
+                  n = (n ^ (n >> 16u)) * 0x7feb352du;
+                  n = (n ^ (n >> 15u)) * 0x846ca68bu;
+                  return float(n ^ (n >> 16u)) / 4294967296.0;
+                }
+              ` + shader.vertexShader.replace('#include <begin_vertex>', `
+                uint id = uint(gl_VertexID);
+                float variation = seed(id + 19u);
+                float age = fract(seed(id + 571u) + flowTime / mix(2.6, 6.8, variation));
+                vec3 transformed = position * vec3(age, age * age, age);
+                // 방출구에 작은 폭을 주고 꼬리 끝으로 갈수록 가닥을 느슨하게 벌립니다.
+                float phase = seed(id + 41u) * 6.2831853;
+                transformed.yz += .035 * vec2(cos(phase), sin(phase)) * (1.0 - age);
+                transformed.z += .04 * age * sin(8.0 * age + phase);
+                particleFade = smoothstep(0., .09, age) * (1. - smoothstep(.55, 1., age));
+              `).replace('gl_PointSize = size;', 'gl_PointSize = size * mix(.55, 1.65, variation);');
+              shader.fragmentShader = 'varying float particleFade;\n' + shader.fragmentShader;
+            }
             shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', `
               vec2 offset = gl_PointCoord * 2.0 - 1.0;
               float radiusSquared = dot(offset, offset);
+              diffuseColor.a *= ${plume ? 'particleFade' : '1.0'};
               diffuseColor.a *= exp(-3.6 * radiusSquared) * (1.0 - smoothstep(0.55, 1.0, radiusSquared));
               #include <alphatest_fragment>
             `);
           };
         }
         mesh = new THREE.Points(geom, pmat);
+        // 곡선 경로가 입력 점들의 경계 밖을 지날 수 있습니다.
+        if (plume) mesh.frustumCulled = false;
       }
       mesh.userData = {
         vpType: cmd.type,
@@ -827,6 +870,9 @@ function updateMesh(cmd, scene) {
   if (!mesh) return;
 
   const registryUpdates = {};
+  if (cmd.flow_time !== undefined && mesh.material?.userData.flowTime) {
+    mesh.material.userData.flowTime.value = cmd.flow_time;
+  }
 
   if (cmd.pos) {
     mesh.position.set(cmd.pos[0], cmd.pos[1], cmd.pos[2]);
@@ -1149,7 +1195,8 @@ export function processBatch(commands, scene) {
   root._canvasScenes ||= new Map();
   root._canvasScenes.set('scene', root);
   root._canvasPending ||= new Map();
-  for (const cmd of commands) {
+  for (const command of commands) {
+    const cmd = normalizeRenderColors(command);
     const canvasId = cmd.canvas_id || 'scene';
     if (cmd.action === 'canvas_create') {
       root._canvasHost?.create(cmd);
