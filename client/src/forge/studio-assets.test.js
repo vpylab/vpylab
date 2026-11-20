@@ -13,7 +13,7 @@ const studio=forgePresets.filter(p=>p.studio);
 it('시작 목록은 캐릭터 4종·프로젝트 물건 7종·기본 모양 5종이며 옛 작품 코드는 같다',()=>{
   expect(visibleForgePresets.filter(p=>p.kind==='character').map(p=>p.id)).toEqual(['kirby','dumpling','flashlight','toolbox']);
   expect(visibleForgePresets.filter(p=>p.kind==='asset')).toHaveLength(7);expect(visibleForgePresets.filter(p=>p.kind==='shape')).toHaveLength(5);
-  for(const [id,hash]of Object.entries(legacyHashes))expect(createHash('sha256').update(moduleProgram(builtInModule(id))).digest('hex'),id).toBe(hash);
+  for(const [id,hash]of Object.entries(legacyHashes))expect(createHash('sha256').update(moduleProgram(builtInModule(id),{legacyWrapper:true})).digest('hex'),id).toBe(hash);
   for(const p of studio){const m=builtInModule(p.id);expect(moduleFromPublishedCode(moduleProgram(m)),p.id).toEqual(m);expect(buildForgeModel(m.recipe).parts.length).toBeLessThanOrEqual(p.kind==='character'?80:10);}
 });
 it.skipIf(!hasPython())('새 에셋은 최소·최대·두 인스턴스 이동에서 Python과 미리보기의 형상·색이 같다',()=>{
@@ -47,7 +47,7 @@ it.skipIf(!hasPython())('새 에셋은 최소·최대·두 인스턴스 이동�
     }
     const compound=result.commands.find(c=>c.action==='compound');expect(compound.sub_ids,key).toHaveLength(model.parts.length);clearScene(scene);
   }
-  const copies=studio.map(p=>{const m=builtInModule(p.id),fn=factoryName(m);return{id:p.id,label:'copies',code:'from vpython import *\n'+moduleDefinition(m)+`\na=${fn}(pos=vector(3,0,0),scale=.7)\nb=${fn}(pos=vector(-3,0,0),scale=1.3)\na.object.pos.x+=1\na.object.visible=False\nassert b.object.visible\nassert mag(a.pos-vector(4,0,0))<0.0001\nb.dispose()\nassert not b.object.visible\n`};});
+  const copies=studio.map(p=>{const m=builtInModule(p.id),fn=factoryName(m);return{id:p.id,label:'copies',code:'from vpython import *\n'+moduleDefinition(m)+`\na=${fn}(pos=vector(3,0,0),scale=.7)\nb=${fn}(pos=vector(-3,0,0),scale=1.3)\nassert isinstance(a, compound) and a.object is a\na.pos.x+=1\na.object.visible=False\nassert b.object.visible\nassert mag(a.pos-vector(4,0,0))<0.0001\nb.dispose()\nassert not b.object.visible\n`};});
   for(const [key,r]of runPythonJobs(copies))expect(r.error,key).toBeNull();
 },20000);
 

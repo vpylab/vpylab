@@ -59,6 +59,18 @@ describe.skipIf(!hasPython())('대장간 출력의 실제 Python·기하 의미'
     for(const expression of ['smile','surprise','sleepy'])for(const accessory of ['none','hat','bow','antenna'])jobs.push({id:expression,label:accessory,code:moduleProgram(makeForgeModule({...createRecipe('cat'),expression,accessory}))});
     const results=runPythonJobs(jobs);for(const [id,r]of results)expect(r.error,id).toBeNull();
   },30000);
+  it('복사한 만두의 pos.x를 바꾸면 화면의 모든 부품이 정확히 한 칸 이동한다',()=>{
+    const result=run(moduleProgram(builtInModule('dumpling'),{metadata:false})+'\nmy_module.pos.x += 1\n');
+    expect(result.error).toBeNull();
+    const compound=result.commands.find(c=>c.action==='compound');
+    const move=result.commands.findIndex(c=>c.id===compound.id && c.action==='update' && c.pos);
+    expect(move).toBeGreaterThan(result.commands.indexOf(compound));
+    processBatch(result.commands.slice(0,move),scene);
+    const positions=()=>compound.sub_ids.map(id=>getMesh(id).getWorldPosition(new THREE.Vector3()));
+    const before=positions();
+    processBatch(result.commands.slice(move),scene);
+    positions().forEach((point,i)=>expect(point.sub(before[i]).distanceTo(new THREE.Vector3(1,0,0))).toBeLessThan(1e-7));
+  });
   it('위치·배율·이동과 인스턴스별 색·제거가 서로 간섭하지 않는다',()=>{
     const m=builtInModule('kirby'),fn=factoryName(m),code='from vpython import *\n'+moduleDefinition(m)+`\na=${fn}(pos=vector(3,2,1),scale=2)\nb=${fn}(pos=vector(-3,0,0),scale=.5)\na.object.pos.x+=1\na.object.pos.y+=1\na.move_to(vector(5,3,2))\na.object.color=color.green\nassert b.object.color == color.white\nassert mag(a.pos-vector(5,3,2))<0.000001\nb.dispose()\nassert a.object.visible and not b.object.visible\n`;
     const result=run(code);expect(result.error).toBeNull();processBatch(result.commands,scene);

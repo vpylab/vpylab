@@ -79,28 +79,24 @@ export default function ForgePreview({model,view,onBell,onCapture,waveTick=0,pla
     const meshes=model.parts.filter(p=>!p.effect).map(p=>getMesh('forge_'+p.name)).filter(Boolean);
     if(!s.place){
       if(!placement)return;
-      const outer=new THREE.Group(),inner=new THREE.Group(),effects=new THREE.Group(),axes=new THREE.AxesHelper(3);
-      outer.add(inner);s.scene.add(outer,effects,axes);s.place={outer,inner,effects,axes};
+      const outer=new THREE.Group(),effects=new THREE.Group(),axes=new THREE.AxesHelper(3);
+      s.scene.add(outer,effects,axes);s.place={outer,effects,axes};
     }
-    const {outer,inner,effects,axes}=s.place;
+    const {outer,effects,axes}=s.place;
     axes.visible=!!placement;
-    outer.position.set(0,0,0);outer.quaternion.identity();outer.scale.setScalar(1);inner.position.set(0,0,0);
+    outer.position.set(0,0,0);outer.quaternion.identity();outer.scale.setScalar(1);
     const tint=new THREE.Color(placement?placement.tint:'#ffffff');
     for(const mesh of meshes){
-      (placement?inner:s.scene).add(mesh);
+      (placement?outer:s.scene).add(mesh);
       mesh.traverse(node=>{for(const material of [].concat(node.material||[])){if(!material.color)continue;material.userData.forgeBase??=material.color.clone();material.color.copy(material.userData.forgeBase).multiply(tint);}});
     }
     // 종의 음파 고리는 묶음에 들어가지 않는 효과입니다. 생성 함수처럼 위치와 크기만 따라가고 돌지는 않습니다.
     for(const part of model.parts){if(!part.effect)continue;const mesh=getMesh('forge_'+part.name);if(mesh)(placement?effects:s.scene).add(mesh);}
     effects.position.set(placement?placement.x:0,placement?placement.y:0,placement?placement.z:0);effects.scale.setScalar(placement?placement.scale:1);
     if(!placement)return;
-    outer.updateMatrixWorld(true);
-    const box=new THREE.Box3();for(const mesh of meshes)box.union(new THREE.Box3().setFromObject(mesh));
-    // compound의 pos는 묶음의 가운데입니다. 그 점을 중심으로 키우고 돌립니다.
-    const middle=box.isEmpty()?new THREE.Vector3():box.getCenter(new THREE.Vector3());
-    inner.position.copy(middle).negate();
+    // 생성 함수와 같은 기준점에서 완성품 전체를 돌립니다.
     outer.scale.setScalar(placement.scale);
-    outer.position.set(placement.x,placement.y,placement.z).addScaledVector(middle,placement.scale);
+    outer.position.set(placement.x,placement.y,placement.z);
     outer.quaternion.setFromAxisAngle(new THREE.Vector3(...PLACEMENT_AXES[placement.axis]),THREE.MathUtils.degToRad(placement.angle));
   },[model,placement]);
   useEffect(()=>{

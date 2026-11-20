@@ -172,7 +172,7 @@ obj.clear_trail()
 | `helix` | `pos`, `axis`, `radius`, `length`, `coils`, `thickness` | 나선/스프링 |
 | `label` | `pos`, `text`, `color`, `height`(픽셀), `background`, `border` | 항상 카메라를 향하는 2D 텍스트 라벨 |
 | `text` | `pos`, `text`, `height`, `depth`, `align`, `billboard`, `axis`, `up`, `color` | 두께가 있는 3D 입체 글자 (아래 절) |
-| `compound` / `frame` | `[obj, obj, ...]`, `pos`, `axis`, `up`, `color`, ... | 여러 객체를 하나로 묶기. `pos` 기본값은 부품들의 중심이고 지정하면 중심이 그 자리로 옮겨진다. `length`·`size`·`axis` 길이로 크기 조절, `rotate()`·`clone()`, `origin`(읽기 전용)·`world_to_compound()`·`compound_to_world()` |
+| `compound` / `frame` | `[obj, obj, ...]`, `origin`, `pos`, `axis`, `up`, `color`, ... | 여러 객체를 하나로 묶기. `origin`은 부품을 묶을 기준점이며 기본값은 경계 상자의 중심이다. `pos`를 지정하면 그 기준점이 해당 위치로 이동한다. `length`·`size`·`axis` 길이로 크기 조절, `rotate()`·`clone()`, `origin`(읽기 전용)·`world_to_compound()`·`compound_to_world()` |
 
 `compound.color`의 기본값은 `color.white`이며 부품의 원래 색에 곱하는 색 필터입니다. `c.color = color.white`로 원래 색을 복원합니다. 전체를 같은 색으로 칠하려면 부품을 흰색으로 만드세요. `c.opacity`(0~1)는 부품 불투명도에 곱하고, `c.shininess`(0~1)·`c.emissive`도 묶은 뒤 바꿀 수 있습니다. 묶인 부품을 따로 편집하려면 `group()`을 사용하세요.
 | `group` | `pos`, `axis`, `up`, `visible` + `box(group=g)` | 하위 객체를 나중에 따로 바꿀 수 있는 묶음 (아래 절) |

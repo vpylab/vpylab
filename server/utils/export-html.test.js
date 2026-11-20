@@ -184,7 +184,10 @@ exec('''
 origin=vector(3,0,0)
 a=compound([sphere()],pos=origin)
 b=compound([sphere()],pos=origin)
+anchored=compound([sphere()],origin=origin)
+anchored.pos.x+=1
 origin.x=9
+assert anchored.pos==vector(4,0,0)
 assert a.pos.x==3 and b.pos.x==3
 p=a.pos
 p.x=1
@@ -210,6 +213,9 @@ s.color.z=0.25
 assert s.pos==vector(4,0.5,0)
 _send_commands()
 ''',namespace)
+anchored_commands=[c for c in commands if c.get('id')==namespace['anchored']._id]
+assert anchored_commands[0]['center']==anchored_commands[0]['pos']==[3,0,0]
+assert anchored_commands[-1]['pos']==[4,0,0]
 assert [c for c in commands if c.get('id')==namespace['a']._id and 'pos' in c and c['action']=='update'][-1]['pos']==[7,8,9]
 assert [c['color'] for c in commands if c.get('id')==namespace['a']._id and c['action']=='update' and 'color' in c]==[[7,8,9],[1,0,0]]
 assert [c for c in commands if c.get('id')==namespace['s']._id and c['action']=='update'][-2:]==[

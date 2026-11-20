@@ -46,8 +46,8 @@ describe('사용 코드', () => {
       'friend = make_bell_ab12cd34(',
       '    pos=vector(1.5, 0, -2), scale=1.3',
       ')',
-      'friend.object.rotate(angle=radians(90), axis=vector(0, 0, 1))',
-      'friend.object.color = vector(255, 180, 80)',
+      'friend.rotate(angle=radians(90), axis=vector(0, 0, 1))',
+      'friend.color = vector(255, 180, 80)',
     ]);
   });
 });
