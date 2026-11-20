@@ -18,7 +18,10 @@ const members={
 const extras={print:'값을 출력하기',len:'개수',range:'반복할 숫자',abs:'절댓값',round:'반올림',min:'가장 작은 값',max:'가장 큰 값',sum:'합계',enumerate:'번호와 값',zip:'나란히 묶기',int:'정수로',float:'실수로',str:'문자열로',list:'목록으로',dict:'키와 값으로',sorted:'정렬한 목록',sin:'사인',cos:'코사인',sqrt:'제곱근',pi:'원주율',textures:'재질 모음 (textures.earth)',random:'0부터 1 사이 난수',True:'참',False:'거짓',None:'값 없음',for:'하나씩 반복',while:'조건 동안 반복',if:'조건 확인',else:'그렇지 않으면',elif:'다른 조건',def:'함수 정의',return:'값 돌려주기',break:'반복 끝내기',continue:'다음 반복',from:'가져올 곳',import:'가져오기',in:'안에',and:'그리고',or:'또는',not:'아님'};
 const word=(id,prefix)=>vocabularyWord(id,prefix);
 const docText=(d,locale)=>d?.[locale]||d?.ko||'';
-const identifier=/[\p{L}_][\p{L}\p{N}_]*/u;
+// 예전 작품의 내부 이름도 Python으로 실행할 수 있지만 편집기의 학습 후보에서는 숨깁니다.
+function isStudentCompletionName(name) {
+  return !name.startsWith('_') && !/^obj_\d+$/.test(name) && name !== 'move_to' && name !== 'dispose';
+}
 
 // 문자열·주석을 읽지 않고, 괄호 깊이를 따라 현재 호출과 인자만 찾습니다.
 export function pythonContext(source){
@@ -59,7 +62,7 @@ export function completionChoices(source,locale='ko'){
  if(member&&member[1]==='textures'&&!declared.has('textures')&&!/[.\])]$/.test(context.masked.slice(0,member.index).trimEnd()))return texturePresets.map(p=>choice(p.name,ko?p.desc.ko:p.desc.en,ko?`sphere(texture=textures.${p.name})처럼 도형의 표면에 입혀요.`:`Use it as a surface: sphere(texture=textures.${p.name})`));
  if(member){const type=receiverType(member[1],declared);return typeMembers(type).map(name=>choice(name,ko?(word(name,member[1]+'.'+name)?.meaning||'속성·동작'):'Property / method',ko?(word(name,member[1]+'.'+name)?.explanation||'현재 객체에서 사용할 수 있는 이름입니다.'):(word(name)?.english||'A member of this object.')));}
  if(/\.[\p{L}\p{N}_]*$/u.test(context.masked))return[];
- const values=[...[...declared].filter(([name])=>identifier.test(name)&&!functions.has(name)&&!extras[name]).map(([name])=>choice(name,ko?'내 코드의 이름':'Name in this code',ko?'이 코드에서 정의한 이름입니다.':'A name defined in this code.','variable')),...[...functions].map(([name,d])=>choice(name,ko?(word(name)?.meaning||docText(d.title,locale)):(d.title?.en||name),docText(d.description,locale),'function')),...Object.entries(extras).map(([name,meaning])=>choice(name,ko?meaning:'Python',ko?meaning:name,'keyword'))];
+ const values=[...[...declared].filter(([name])=>isStudentCompletionName(name)&&!functions.has(name)&&!extras[name]).map(([name])=>choice(name,ko?'내 코드의 이름':'Name in this code',ko?'이 코드에서 정의한 이름입니다.':'A name defined in this code.','variable')),...[...functions].map(([name,d])=>choice(name,ko?(word(name)?.meaning||docText(d.title,locale)):(d.title?.en||name),docText(d.description,locale),'function')),...Object.entries(extras).map(([name,meaning])=>choice(name,ko?meaning:'Python',ko?meaning:name,'keyword'))];
  const call=context.call,doc=call&&functions.get(call.name),segment=call?context.masked.slice(call.start):'';
  if(doc&&/^\s*[\p{L}\p{N}_]*$/u.test(segment)){
   const used=new Set(call.segments.map(s=>s.trim().match(/^([\w]+)\s*=(?!=)/)?.[1]).filter(Boolean)),positional=call.segments.filter(s=>s.trim()&&!/^\s*\w+\s*=(?!=)/.test(s)).length;

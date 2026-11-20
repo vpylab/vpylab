@@ -47,3 +47,33 @@ it('textures라는 이름을 학생이 직접 만들었거나 다른 객체의 �
  expect(names('items[0].textures.')).not.toContain('jupiter');
  expect(names('ball = sphere(texture=textures.')).toContain('jupiter');
 });
+
+it('이전 작품을 열어도 내부 이름과 옛 대장간 메서드를 완성 후보로 보여 주지 않는다', () => {
+  const code = [
+    'ball = sphere()',
+    '_id = ball._id',
+    'def move_to(_target, step_size):',
+    '    pass',
+    'def dispose():',
+    '    pass',
+    'for _part in parts:',
+    '    pass',
+    'obj_42 = ball',
+    'def move_together(내_공):',
+    '    pass',
+    '',
+  ].join('\n');
+  for (const locale of ['ko', 'en']) {
+    for (const suffix of ['', '_', 'mov', 'sphere(', 'ball.', 'ball.pos.']) {
+      const choices = completionChoices(code + suffix, locale).map(c => c.name);
+      for (const hidden of ['_id', '_target', '_part', 'move_to', 'dispose', 'obj_42']) {
+        expect(choices, locale + ' ' + suffix).not.toContain(hidden);
+      }
+    }
+    expect(completionChoices(code, locale).map(c => c.name)).toEqual(
+      expect.arrayContaining(['ball', 'step_size', 'move_together', '내_공', 'local_light'])
+    );
+    expect(completionChoices(code + 'ball.', locale).map(c => c.name)).toContain('pos');
+    expect(completionChoices(code + 'ball.pos.', locale).map(c => c.name)).toContain('x');
+  }
+});

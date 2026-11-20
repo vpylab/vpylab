@@ -1,7 +1,7 @@
 import { afterEach, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import CodeVocabulary from './CodeVocabulary';
-import { vocabularyForCode } from '../../data/code-vocabulary';
+import { codeVocabulary, vocabularyForCode, vocabularyWord } from '../../data/code-vocabulary';
 
 afterEach(()=>localStorage.clear());
 it('코드에 사용한 낯선 단어만 원문 순서로 고르고 주석·문자열·아는 색 단어는 제외한다', () => {
@@ -53,4 +53,24 @@ it('흔한 변수 이름에는 소리·도형의 뜻을 붙이지 않는다', ()
   for (const id of ['volume', 'points', 'menu', 'camera', 'norm', 'mag']) expect(ids).not.toContain(id);
   const used = vocabularyForCode('play_note("C4", 0.5, volume=0.4)\nstars = points(pos=[])\nview = menu(choices=[])\nscene.camera.pos = vector(0, 1, 2)\nd = mag(ball.pos)').map(term => term.id);
   expect(used).toEqual(expect.arrayContaining(['volume', 'points', 'menu', 'camera', 'mag']));
+});
+
+it('옛 작품에서도 공개 낱말 카드와 예시만 보여 준다', () => {
+  const hiddenNames = /(?:^|[^\p{L}\p{N}_])(?:_[\p{L}\p{N}_]+|move_to|dispose|obj_\d+)(?![\p{L}\p{N}_])/u;
+  for (const term of codeVocabulary) {
+    for (const value of Object.values(term)) expect(value).not.toMatch(hiddenNames);
+  }
+  for (const name of ['_id', '_pos', 'move_to', 'dispose', 'obj_42']) {
+    expect(vocabularyWord(name)).toBeUndefined();
+  }
+  const code = 'ball = sphere()\n_id = ball._id\nball.move_to(ball.pos)\nball.dispose()';
+  for (const locale of ['ko', 'en']) {
+    const view = render(<CodeVocabulary initiallyOpen code={code} locale={locale}/>);
+    const cards = within(view.getByRole('complementary'));
+    expect(cards.getByRole('button', { name: /^sphere / })).toBeVisible();
+    fireEvent.click(cards.getByRole('button', { name: /^pos / }));
+    expect(cards.getByText('ball.pos.x += 0.1')).toBeVisible();
+    expect(view.container.textContent).not.toMatch(hiddenNames);
+    view.unmount();
+  }
 });
