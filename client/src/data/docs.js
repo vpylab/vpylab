@@ -903,10 +903,10 @@ box(pos=vector(0, -0.5, 0), size=vector(5, 0.1, 5), color=color.green)`,
     category: 'scene',
     title: { ko: '점 조명 (local_light)', en: 'local_light' },
     description: {
-      ko: '특정 위치에서 사방으로 빛을 내는 점 조명을 생성합니다.',
-      en: 'Creates a point light that emits light in all directions from a position.',
+      ko: '점광원을 옮기면 표면에 닿는 각도에 따라 명암이 달라집니다. Web VPython처럼 기본 밝기는 거리와 무관합니다. VPyLab에서 생성할 때 intensity를 명시하면 거리의 제곱에 따라 빛이 약해집니다.',
+      en: 'Moving the light changes the angle at which it strikes a surface. As in Web VPython, its default brightness is independent of distance. In VPyLab, supplying intensity at creation selects inverse-square falloff.',
     },
-    signature: "local_light(pos=vector(0,0,0), color=color.white, intensity=1.0)",
+    signature: "local_light(pos=vector(0,0,0), color=color.white)",
     params: [
       { name: 'pos',       type: 'vector', default: 'vector(0,0,0)', desc: { ko: '조명 위치', en: 'Light position' } },
       { name: 'color',     type: 'vector', default: 'color.white',   desc: { ko: '조명 색상', en: 'Light color' } },
@@ -914,7 +914,7 @@ box(pos=vector(0, -0.5, 0), size=vector(5, 0.1, 5), color=color.green)`,
     ],
     code: `from vpython import *
 scene_background(color.black)
-local_light(pos=vector(2, 3, 0), color=color.yellow, intensity=1.5)
+local_light(pos=vector(2, 3, 0), color=color.yellow)
 sphere(radius=0.5, color=color.white)`,
     tags: ['scene', 'light', 'point', 'local', 'lighting'],
   },

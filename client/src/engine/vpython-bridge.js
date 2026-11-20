@@ -83,6 +83,9 @@ const DEFAULT_MATERIAL_PARAMS = {
   metalness: 0.1,
 };
 
+// 확산광의 1/π와 기본 재질의 비금속 비율을 보정합니다.
+const VP_POINT_LIGHT_SCALE = Math.PI / (1 - DEFAULT_MATERIAL_PARAMS.metalness);
+
 /** 객체의 재질(배열이면 각각)에 fn을 적용 */
 function eachMaterial(obj, fn) {
   const m = obj?.material;
@@ -730,10 +733,14 @@ function createObject(cmd, scene) {
     }
 
     case 'local_light': {
+      // VPython의 기본 조명은 표면과 광선 사이의 각도로 밝기가 정해집니다.
+      // intensity를 명시한 기존 VPyLab 작품의 거리 감쇠는 그대로 적용합니다.
+      const vpLight = cmd.distance_falloff === false;
       const light = new THREE.PointLight(
         toThreeColor(cmd.color || [1, 1, 1]),
-        cmd.intensity ?? 1,
-        50, // distance
+        (cmd.intensity ?? 1) * (vpLight ? VP_POINT_LIGHT_SCALE : 1),
+        vpLight ? 0 : 50,
+        vpLight ? 0 : 2,
       );
       if (cmd.pos) light.position.set(cmd.pos[0], cmd.pos[1], cmd.pos[2]);
       scene.add(light);
@@ -926,7 +933,8 @@ function updateMesh(cmd, scene) {
   }
 
   if (cmd.intensity !== undefined && mesh.isLight) {
-    mesh.intensity = cmd.intensity;
+    const vpLight = mesh.isPointLight && mesh.decay === 0;
+    mesh.intensity = cmd.intensity * (vpLight ? VP_POINT_LIGHT_SCALE : 1);
     registryUpdates.intensity = cmd.intensity;
   }
 
