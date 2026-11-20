@@ -135,7 +135,9 @@ export default function TeamProjectsPanel({
     let alive = true;
     if (repoNameTouched) return undefined;
     (async () => {
-      const nextName = await defaultRepoNameFromTitle(createTitle);
+      // 제목에 영어가 없으면 뜻 없는 이름(vpylab-project-xxxxxx)을 채우지 않고, 팀이 직접 입력하도록 비워 둡니다.
+      const hasLatin = normalizeRepoNameInput(createTitle).length > 0;
+      const nextName = hasLatin ? await defaultRepoNameFromTitle(createTitle) : '';
       if (alive) setCreateRepoName(nextName);
     })();
     return () => { alive = false; };
@@ -918,7 +920,7 @@ function CreateProjectModal({
                 value={repoName}
                 onChange={(e) => onRepoNameChange(e.target.value)}
                 maxLength={50}
-                placeholder="vpylab-project-123abc"
+                placeholder="space-ufo-team3"
                 className="w-full border px-3 py-2 text-sm outline-none font-mono"
                 style={{
                   backgroundColor: 'var(--color-bg-primary)',
@@ -926,7 +928,7 @@ function CreateProjectModal({
                   color: 'var(--color-text-primary)',
                 }}
               />
-              <p className="mt-1 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{ui("GitHub 주소용 이름입니다.")}</p>
+              <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{ui("팀이 함께 정한 영어 이름을 입력하세요. 영어 소문자, 숫자, 하이픈(-)만 사용합니다. 예: space-ufo-team3, 2-3-disco-party")}</p>
             </label>
           )}
 
@@ -1091,7 +1093,7 @@ function ConnectGithubModal({
               value={repoName}
               onChange={(e) => onRepoNameChange(e.target.value)}
               maxLength={50}
-              placeholder="vpylab-project-123abc"
+              placeholder="space-ufo-team3"
               className="w-full border px-3 py-2 text-sm outline-none font-mono"
               style={{
                 backgroundColor: 'var(--color-bg-primary)',
@@ -1099,7 +1101,7 @@ function ConnectGithubModal({
                 color: 'var(--color-text-primary)',
               }}
             />
-            <p className="mt-1 text-[11px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>{ui("비워두면 기본 이름을 사용합니다.")}</p>
+            <p className="mt-1 text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>{ui("팀이 함께 정한 영어 이름을 입력하세요. 영어 소문자, 숫자, 하이픈(-)만 사용합니다. 예: space-ufo-team3, 2-3-disco-party")}</p>
           </label>
 
           <div

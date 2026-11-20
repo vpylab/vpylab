@@ -50,6 +50,8 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
   } = useGitHubStore();
   const store = useGitHubStore.getState;
   const [title, setTitle] = useState(defaultTitle || '');
+  // GitHub 저장소 이름: 팀이 영어로 정합니다. 비워 두면 제목으로 자동으로 정합니다.
+  const [repoName, setRepoName] = useState('');
   const [message, setMessage] = useState('');
   const [did, setDid] = useState('');
   const [blocker, setBlocker] = useState('');
@@ -162,7 +164,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
     const name = title.trim();
     if (!name) return;
     setNotice('');
-    const result = await store().createProject({ title: name, code: getCode() });
+    const result = await store().createProject({ title: name, code: getCode(), repoName: repoName.trim() || undefined });
     keepIfAuth(result, () => doCreate());
     if (result.status !== 'created') return;
     setNotice(ui`${result.project.repo} 저장소를 만들고 지금 코드를 저장했습니다.`);
@@ -265,6 +267,10 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
   const primary = { backgroundColor: 'var(--color-accent)', color: 'var(--color-text-on-accent, #fff)', borderColor: 'var(--color-accent)' };
   const secondary = { color: 'var(--color-text-secondary)' };
   const muted = { color: 'var(--color-text-muted)' };
+  // 받은 초대는 눈에 띄게: GitHub의 수락 버튼과 같은 초록
+  const acceptButton = { backgroundColor: '#1f883d', borderColor: '#1f883d', color: '#fff', fontWeight: 700, fontSize: '14px', padding: '8px 18px' };
+  const inviteCard = { border: '2px solid #1f883d', backgroundColor: 'rgba(31, 136, 61, 0.08)' };
+  const invitePill = { display: 'inline-block', minWidth: '20px', padding: '0 6px', borderRadius: '999px', backgroundColor: '#1f883d', color: '#fff', fontSize: '12px', textAlign: 'center' };
   const warning = { color: 'var(--color-warning-text, var(--color-text-primary))' };
   const box = { border: '1px solid var(--color-border)', backgroundColor: 'var(--color-bg-secondary)', color: 'var(--color-text-primary)' };
   const inputClass = 'w-full min-w-0 text-sm py-2 px-3 rounded-md outline-none';
@@ -292,8 +298,8 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
 
   const createForm = (
     <form onSubmit={create} className="flex flex-col gap-2" data-testid="github-create-form">
-      <label htmlFor="github-project-title" className="text-xs font-semibold">{ui("새 프로젝트 제목")}</label>
-      <div className="flex items-stretch gap-2">
+      <label htmlFor="github-project-title" className="text-sm font-bold">{ui("새 프로젝트 제목")}</label>
+      <div className="flex items-stretch">
         <input
           id="github-project-title"
           value={title}
@@ -303,10 +309,25 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
           style={box}
           data-testid="github-project-title"
         />
-        <button type="submit" className={`${button} shrink-0`} style={primary} disabled={working || !title.trim()} data-testid="github-create">
-          {busy === 'create' ? ui("만드는 중…") : ui("지금 코드로 프로젝트 만들기")}
-        </button>
       </div>
+      <label htmlFor="github-repo-name" className="text-sm font-bold mt-1">{ui("GitHub 저장소 이름")}</label>
+      <input
+        id="github-repo-name"
+        value={repoName}
+        onChange={(event) => setRepoName(event.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 50))}
+        maxLength={50}
+        placeholder="space-ufo-team3"
+        className={`${inputClass} font-mono`}
+        style={box}
+        autoCapitalize="off"
+        autoComplete="off"
+        spellCheck={false}
+        data-testid="github-repo-name"
+      />
+      <p className="m-0 text-xs" style={secondary}>{ui("팀이 함께 정한 영어 이름을 입력하세요. 영어 소문자, 숫자, 하이픈(-)만 사용합니다. 예: space-ufo-team3, 2-3-disco-party")}</p>
+      <button type="submit" className={`${button} self-end`} style={{ ...primary, fontWeight: 700 }} disabled={working || !title.trim()} data-testid="github-create">
+        {busy === 'create' ? ui("만드는 중…") : ui("지금 코드로 프로젝트 만들기")}
+      </button>
       {busy === 'create' ? (
         <p className="m-0 flex items-center gap-2 text-xs" role="status" aria-live="polite" style={{ color: 'var(--color-text-primary)' }} data-testid="github-create-progress">
           <span aria-hidden="true" className="inline-block h-3 w-3 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-2 border-solid" style={{ borderColor: 'var(--color-accent)', borderTopColor: 'transparent' }} />
@@ -325,16 +346,16 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
     <>
       {(invitations.length > 0 || invitationsUnavailable) && (
         <section className="flex flex-col gap-1" aria-label={ui("받은 초대")} data-testid="github-invitations">
-          <h3 className="m-0 text-xs font-semibold">{ui("받은 초대")}</h3>
+          <h3 className="m-0 text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>{ui("받은 초대")} <span style={invitePill}>{invitations.length}</span></h3>
           {invitationsUnavailable && <p className="m-0 text-xs" style={muted}>{ui("받은 초대를 읽지 못했습니다. GitHub의 알림에서도 초대를 수락할 수 있습니다.")}</p>}
           {invitations.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-3 text-sm px-3 py-2 rounded-md" style={{ border: '1px solid var(--color-border)' }}>
+            <div key={item.id} className="flex items-center justify-between gap-3 text-sm px-3 py-2.5 rounded-md" style={inviteCard}>
               <span className="min-w-0 flex flex-col">
-                <span className="truncate">{item.title}</span>
+                <span className="truncate font-semibold">{item.title}</span>
                 <span className="text-xs truncate" style={muted}>{item.fullName}{item.inviter ? ` · ${ui`${item.inviter} 님의 초대`}` : ''}</span>
               </span>
-              <button type="button" className={`${button} shrink-0`} disabled={working} onClick={() => accept(item.id)} aria-label={ui`${item.title} 초대 수락`}>
-                {ui("수락")}
+              <button type="button" className={`${button} shrink-0`} style={acceptButton} disabled={working} onClick={() => accept(item.id)} aria-label={ui`${item.title} 초대 수락`} data-testid="github-accept">
+                ✓ {ui("수락")}
               </button>
             </div>
           ))}
@@ -343,7 +364,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
       )}
       <section className="flex flex-col gap-1" aria-label={ui("내 프로젝트")}>
         <div className="flex items-center justify-between gap-2">
-          <h3 className="m-0 text-xs font-semibold">{ui("내 프로젝트")}</h3>
+          <h3 className="m-0 text-sm font-bold">{ui("내 프로젝트")}</h3>
           <button type="button" className="underline cursor-pointer border-none bg-transparent p-0 text-xs" style={secondary} disabled={working || listing} onClick={refresh}>{ui("목록 새로 고침")}</button>
         </div>
         <div className="flex flex-col gap-1 overflow-auto" style={{ maxHeight: 200 }} data-testid="github-project-list">
@@ -359,7 +380,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
               style={{ border: '1px solid var(--color-border)', backgroundColor: item.fullName === project?.fullName ? 'var(--color-bg-secondary)' : 'transparent', color: 'var(--color-text-primary)' }}
             >
               <span className="min-w-0 flex flex-col">
-                <span className="truncate">{item.title}</span>
+                <span className="truncate font-semibold">{item.title}</span>
                 <span className="text-xs truncate" style={muted}>{item.fullName}</span>
               </span>
               <span className="text-xs shrink-0" style={muted}>{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : ''}</span>
