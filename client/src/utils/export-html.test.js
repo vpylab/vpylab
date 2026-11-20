@@ -314,3 +314,90 @@ play_note("B4", 0.15, volume=0)
   expect(chord.frequencies.map(Math.round)).toEqual([262,330,392]);
   expect(silent.volume).toBe(0);
 });
+
+describe.skipIf(!hasPython())('내려받은 HTML의 group과 키·클릭 이벤트', () => {
+  const friend = `친구 = group()
+몸 = box(group=친구, size=vec(1.6, 1, 0.6), color=color.cyan)
+왼눈 = sphere(group=친구, pos=vec(-0.36, 0.15, 0.32), radius=0.15)
+등 = sphere(group=친구, pos=vec(0, 0.67, 0), radius=0.23, color=color.orange)
+def 이동(e):
+    if e.key == "right":
+        친구.pos.x += 0.3
+scene.bind("keydown", 이동)
+def 인사(e):
+    if e.pick == 등:
+        등.emissive = not 등.emissive
+        play_note("G4", 0.3, type="glass")
+scene.bind("click", 인사)
+`;
+  const ufo = `UFO = group()
+몸 = ellipsoid(group=UFO, size=vec(1.8, 0.35, 0.9), color=color.cyan)
+창 = sphere(group=UFO, pos=vec(0, 0.18, 0), radius=0.32, color=color.yellow)
+def 점프(e):
+    if e.key != "up":
+        return
+    play_note("G4", 0.2, type="glass")
+    for 높이 in [0, 0.8, 1.3, 0.8, 0]:
+        rate(8)
+        UFO.pos.y = 높이
+        창.emissive = 높이 > 0
+scene.bind("keydown", 점프)
+`;
+  const runExport = jobs => {
+    const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+      input: JSON.stringify({ api: exportedApi(generateStandaloneHTML(jobs[0].code)), transform: source, jobs }) + '\n',
+      encoding: 'utf8', timeout: 15000,
+    });
+    expect(result.status, result.stderr).toBe(0);
+    return JSON.parse(result.stdout);
+  };
+  const created = commands => commands.filter(c => c.action === 'create').map(c => Object.fromEntries(
+    ['id', 'type', 'pos', 'group'].map(key => [key, c[key]]),
+  ));
+
+  it.each([['friend', friend], ['ufo', ufo]])('묶음과 부품의 상대 위치가 편집기와 같다 (%s)', (id, code) => {
+    const [exported] = runExport([{ id, label: 'export', code }]);
+    expect(exported.error).toBeNull();
+    const original = runPythonJobs([{ id, label: 'export', code }]).get(`${id}:export`);
+    expect(original.error).toBeNull();
+    expect(created(exported.commands)).toEqual(created(original.commands));
+    const [groupCmd, ...parts] = created(exported.commands);
+    expect(groupCmd.type).toBe('group');
+    expect(parts.every(part => part.group === groupCmd.id)).toBe(true);
+  });
+
+  it('방향키로 묶음 전체가 움직이고 클릭한 부품만 빛나며 소리를 낸다', () => {
+    const [run] = runExport([{ id: 'friend', code: friend, events: [
+      { type: 'key', name: 'keydown', key: 'ArrowRight', label: 'right' },
+      { type: 'key', name: 'keyup', key: 'ArrowRight', label: 'right-up' },
+      { type: 'mouse', payload: { name: 'click', pos: [0, 0.67, 0.23], pick: '@몸' }, label: 'click-body' },
+      { type: 'mouse', payload: { name: 'click', pos: [0, 0.67, 0.23], pick: '@등' }, label: 'click-back' },
+    ] }]);
+    expect(run.error).toBeNull();
+    const ids = Object.fromEntries(run.commands.filter(c => c.action === 'create').map((c, i) => [['group', 'body', 'eye', 'back'][i], c.id]));
+    const after = label => run.commands.slice(0, run.commands.findIndex(c => c.action === 'event_done' && c.event === label) + 1);
+    const between = (from, to) => after(to).slice(after(from).length);
+    expect(after('right').filter(c => c.action === 'update')).toEqual([{ action: 'update', id: ids.group, pos: [0.3, 0, 0] }]);
+    // 몸을 누르면 아무 일도 없고, 등을 누르면 등만 빛나고 유리 소리를 낸다.
+    expect(between('right-up', 'click-body').filter(c => c.action !== 'event_done')).toEqual([]);
+    const backClick = between('click-body', 'click-back');
+    expect(backClick).toContainEqual({ action: 'update', id: ids.back, emissive: true });
+    expect(backClick.filter(c => c.action === 'update').map(c => c.id)).toEqual([ids.back]);
+    expect(backClick).toContainEqual(expect.objectContaining({ action: 'sound', name: 'G4', type: 'glass' }));
+  });
+
+  it('↑ 키 처리기 안의 rate() 동안 UFO 묶음이 오르내리고 공중에서만 조종석이 켜진다', () => {
+    const [run] = runExport([{ id: 'ufo', code: ufo, events: [
+      { type: 'key', name: 'keydown', key: 'ArrowLeft', label: 'left' },
+      { type: 'key', name: 'keydown', key: 'ArrowUp', label: 'up', ticks: 60 },
+    ] }]);
+    expect(run.error).toBeNull();
+    const [ufoId, , windowId] = run.commands.filter(c => c.action === 'create').map(c => c.id);
+    const start = run.commands.findIndex(c => c.event === 'left');
+    const jump = run.commands.slice(start + 1);
+    expect(run.commands.slice(0, start).some(c => c.action === 'update' || c.action === 'sound')).toBe(false);
+    expect(jump.filter(c => c.id === ufoId).map(c => c.pos[1])).toEqual([0, 0.8, 1.3, 0.8, 0]);
+    expect(jump.filter(c => c.id === windowId).map(c => c.emissive)).toEqual([false, true, true, true, false]);
+    expect(jump).toContainEqual(expect.objectContaining({ action: 'sound', name: 'G4', type: 'glass' }));
+  });
+});
