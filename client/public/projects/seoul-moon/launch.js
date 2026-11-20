@@ -9,6 +9,7 @@ try {
     const millis = Date.parse(at + ':00+09:00');
     if (Number.isFinite(millis) && new Date(millis + 9*3600000).toISOString().slice(0,16) === at) {
       source = source.replace('observation_start = None', 'observation_start = ' + millis / 1000);
+      if (params.get('start') === 'space') source = source.replace('start_in_space = False', 'start_in_space = True');
       if (params.get('aim') === 'sun') source = source.replace('recorded_view = tracking_mode', 'recorded_view = solar_mode');
     }
   }

@@ -212,9 +212,10 @@ def daylight_color(altitude):
 
 # 관측 기록을 열면 한국 시각에 맞춰 일시 정지한 채 시작합니다.
 observation_start = None
+start_in_space = False
 stamp = time() if observation_start is None else observation_start
 running = observation_start is None
-speed = 0
+speed = .25 if start_in_space else 0
 last_tick = monotonic()
 notice = ""
 
@@ -364,6 +365,9 @@ def change_level(level):
     pullback = max(0, 1-view_level/surface_level)
     magnification = 160**(max(0, view_level-surface_level)/(100-surface_level))
 
+if start_in_space:
+    change_level(0)
+
 def set_zoom(event):
     change_level(event.value)
 
@@ -431,7 +435,7 @@ def choose_view(event):
 view = menu(choices=[horizon_mode, tracking_mode, solar_mode, rise_mode, phase_mode, "전체 조망", "지구·달 중심"], selected=selected_view, bind=choose_view)
 button(text="일출", bind=show_rise)
 button(text="월출", bind=show_rise)
-pace = slider(min=0, max=24, step=0.05, value=0, text="시간/초", bind=set_speed)
+pace = slider(min=0, max=24, step=0.05, value=speed, text="시간/초", bind=set_speed)
 zoom_control = slider(min=0, max=100, step=.01, value=round(view_level, 2), text="시야 단계", bind=set_zoom)
 play = button(text="일시 정지" if running else "재생", bind=toggle)
 button(text="지금 서울", bind=now_seoul)
