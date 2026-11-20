@@ -15,7 +15,7 @@ export function loadEarth(renderer) {
   });
   const loader = new KTX2Loader(manager).setWorkerLimit(1).detectSupport(renderer);
   state = { closed:false, texture:null };
-  state.ready = loader.loadAsync(new URL('../assets/planets/earth.ktx2', import.meta.url).href).then(texture => {
+  state.ready = loader.loadAsync(new URL('../assets/planets/earth_dark.ktx2', import.meta.url).href).then(texture => {
     if (state.closed) { texture.dispose(); return null; }
     texture.colorSpace = SRGBColorSpace;
     state.texture = texture;

@@ -38,8 +38,16 @@ test('서버만 배포해도 사용한 사진과 출처가 HTML에 포함된다'
   const earth = generateStandaloneHTML('sphere(texture=textures.earth)');
   const alias = generateStandaloneHTML('p = textures\nsphere(texture=getattr(p, name))');
   assert.equal((earth.match(/data:image\/jpeg;base64,/g) || []).length, 1);
-  assert.match(earth, /Reto Stöckli, NASA Earth Observatory/);
-  assert.equal((alias.match(/data:image\/jpeg;base64,/g) || []).length, 5);
+  assert.match(earth, /Earth day map · three-globe/);
+  const dark = generateStandaloneHTML('sphere(texture=textures.earth_dark)');
+  const maps = html => JSON.parse(html.match(/const planetMaps = (\{.*\});/)[1]);
+  for (const [html, name] of [[earth, 'earth'], [dark, 'earth_dark']]) {
+    const bytes = readFileSync(new URL('../../client/src/assets/planets/' + name + '.jpg', import.meta.url), 'base64');
+    assert.deepEqual(Object.keys(maps(html)), [name]);
+    assert.equal(maps(html)[name] === 'data:image/jpeg;base64,' + bytes, true);
+  }
+  assert.match(dark, /Reto Stöckli, NASA Earth Observatory/);
+  assert.equal((alias.match(/data:image\/jpeg;base64,/g) || []).length, 6);
 });
 
 test('HTML에 삽입한 변환기는 백슬래시·백틱·템플릿·script 종료 문자열도 보존한다', () => {

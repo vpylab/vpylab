@@ -476,6 +476,7 @@ class _TexturePresets:
     stucco = "preset:stucco"
     flower = "preset:flower"
     earth = "preset:earth"
+    earth_dark = "preset:earth_dark"
     sun = "preset:sun"
     moon = "preset:moon"
     saturn = "preset:saturn"

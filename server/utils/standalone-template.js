@@ -30,6 +30,7 @@
 
 import { configureCometParticles } from '../shared/comet-particles.js';
 import { createWidgetPanel } from '../shared/widget-panel.js';
+import { earthDayLicense } from '../shared/earth-day-license.js';
 import { createTexturePainters } from '../shared/procedural-textures.js';
 import { createRenderColorNormalizer } from '../shared/rgb-input.js';
 import { createCompoundAppearanceTools } from '../shared/compound-appearance.js';
@@ -75,9 +76,10 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   const samples = code.includes('felt') ? feltLayers : [];
   const sampleCredit = samples.length ? ' · <a href="https://github.com/sfzinstruments/SalamanderGrandPiano">Piano samples by Alexander Holm</a> (<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>, excerpts converted to mono and filtered)' : '';
   const planetCredit = [
-    planetMaps.earth && '<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/">Earth · Reto Stöckli, NASA Earth Observatory</a>',
+    planetMaps.earth && '<a href="https://github.com/vasturiano/three-globe/blob/46eb4aaa1837311ab0df3f02b35129e041c11e2f/example/img/earth-day.jpg">Earth day map · three-globe</a>',
+    planetMaps.earth_dark && '<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/">Earth · Reto Stöckli, NASA Earth Observatory</a>',
     planetMaps['lroc-color'] && '<a href="https://svs.gsfc.nasa.gov/4720/">Moon · NASA/Goddard Space Flight Center Scientific Visualization Studio, LROC, Arizona State University</a>',
-    Object.keys(planetMaps).some(name => name !== 'earth' && name !== 'lroc-color') && '<a href="https://github.com/vpylab/vpylab">Model surfaces · VPyLab (AGPL-3.0-or-later)</a>',
+    Object.keys(planetMaps).some(name => !['earth', 'earth_dark', 'lroc-color'].includes(name)) && '<a href="https://github.com/vpylab/vpylab">Model surfaces · VPyLab (AGPL-3.0-or-later)</a>',
   ].filter(Boolean).map(credit => ' · ' + credit).join('');
   const safeTitle = escapeHTML(title);
   const safeOpenInVpylabUrl = options.openInVpylabUrl ? escapeHTML(options.openInVpylabUrl) : '';
@@ -118,6 +120,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   <div data-vpylab-viewport data-single-canvas>
     <div id="viewport" class="vp-stage-frame">
       <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}${sampleCredit}${planetCredit}</div>
+      ${planetMaps.earth ? '<!--\n' + earthDayLicense + '\n-->' : ''}
       <button id="stop-playback" type="button" hidden style="position:absolute;right:8px;bottom:8px;min-height:44px;z-index:30">정지 / Stop</button>
       <div id="scene-title" style="position:absolute;left:12px;top:48px;z-index:5"></div>
       <div id="scene-caption" style="position:absolute;left:12px;bottom:56px;z-index:5"></div>
@@ -1385,6 +1388,7 @@ class _TexturePresets:
     stucco = "preset:stucco"
     flower = "preset:flower"
     earth = "preset:earth"
+    earth_dark = "preset:earth_dark"
     brick = "preset:brick"
     checker = "preset:checker"
     grid = "preset:grid"

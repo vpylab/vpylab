@@ -13,7 +13,7 @@ parser.add_argument("ktx_input_png", type=Path)
 args = parser.parse_args()
 if sha256(args.nasa_jpeg.read_bytes()).hexdigest() != "f55226d46d27e05511f2118dc6aa24f5dbf9b6b2cddc87cc6e0e7dd067c00b11":
     parser.error("NASA Blue Marble July 2004 base map (5400 × 2700) required")
-output = Path(__file__).resolve().parents[3] / "client/src/assets/planets/earth.jpg"
+output = Path(__file__).resolve().parents[3] / "client/src/assets/planets/earth_dark.jpg"
 with Image.open(args.nasa_jpeg) as image:
     earth = image.convert("RGB").resize((2048, 1024), Image.Resampling.LANCZOS)
     earth.save(output, quality=88, optimize=True)

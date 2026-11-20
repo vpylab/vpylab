@@ -484,6 +484,7 @@ export function createTexturePainters() {
     stucco: drawStucco,
     flower: drawFlower,
     earth: drawEarth,
+    earth_dark: drawEarth,
     brick: drawBrick,
     checker: drawChecker,
     grid: drawGrid,
