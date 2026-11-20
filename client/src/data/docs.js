@@ -1988,7 +1988,7 @@ labels = ['월', '화', '수', '목', '금', '토']
     signature: "box(texture=textures.wood)  # 또는 texture='https://...'",
     params: [
       { name: 'preset', type: 'string', default: '-', desc: { ko: 'textures.wood처럼 미리 정의된 프리셋', en: 'Preset like textures.wood' } },
-      { name: 'URL',    type: 'string', default: '-', desc: { ko: '교차 출처 사용(CORS)을 허용하는 서버의 HTTPS 이미지 파일 주소', en: 'Direct HTTPS image URL on a host that permits cross-origin use (CORS)' } },
+      { name: 'URL',    type: 'string', default: '-', desc: { ko: '같은 사이트의 / 경로 또는 교차 출처 사용(CORS)을 허용하는 HTTPS 이미지 주소', en: 'A site-relative path starting with / or a direct HTTPS image URL allowing cross-origin use (CORS)' } },
       { name: 'data',   type: 'string', default: '-', desc: { ko: "data:image/... 형태의 인라인 이미지", en: 'data:image/... inline image' } },
     ],
     code: `from vpython import *
