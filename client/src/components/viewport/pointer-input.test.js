@@ -49,6 +49,17 @@ describe('attachPointerInput', () => {
     ]);
   });
 
+  it('빈 하늘에서도 현재 포인터의 화면 좌표를 전달한다', () => {
+    opts.locate = () => ({ pos: null, pick: null });
+    detach();
+    detach = attachPointerInput(el, opts);
+    el.dispatchEvent(pointer('pointerdown', { x: 12, y: 34 }));
+    el.dispatchEvent(pointer('pointermove', { x: 56, y: 78 }));
+    expect(opts.postEvent).toHaveBeenLastCalledWith({
+      canvas_id: 'scene', name: 'mousemove', pos: null, pick: null, clientX: 56, clientY: 78,
+    });
+  });
+
   it('바인딩이 없어도 누른 자리는 scene.mouse.pos에 들어간다', () => {
     bound.clear();
     el.dispatchEvent(pointer('pointerdown', { x: 5, y: 6 }));

@@ -66,6 +66,12 @@
 
 These measurements use desktop browsers and emulated viewports. Each linked draft records its preview, test conditions and remaining classroom checks. The production classroom site is https://vpylab.vercel.app. Use the preview linked from the relevant PR to test proposed changes.
 
+## 서울 관측소 수업 자료
+
+[서울에서 본 달](../client/public/projects/seoul-moon/compare.html)에서 서울의 초승달·상현·보름달 사진, 관측 시각으로 고정한 실습, 같은 시각에서 줌을 왕복한 영상을 엽니다. 서울시청 기준 기하 고도와 밝은 면을 NASA JPL Horizons와 대조했습니다. 모바일 너비의 Chromium·WebKit으로 달 추적과 줌을 확인했습니다. 초승달과 상현 사진의 분 단위 촬영 시각은 공개 자료에 없습니다.
+
+관측소에서는 마우스·한 손가락 드래그로 눈의 방향을 돌립니다. 추적 시선의 오프셋은 재생과 확대 중에도 유지하며, 관점을 바꾸면 기본 구도로 돌아갑니다. 태양 추적은 관측 글의 낮 실습 링크에서 바로 엽니다. 지상에서 보이는 광구의 밝기와 후광은 화면 표현이며, 달의 조명은 천체 위치에서 계산합니다.
+
 ## 휴대폰에서 감상하고 편집하기 · Viewing and editing on a phone
 
 공유된 실행 링크를 열고 시작 단추를 한 번 누르면 소리와 장면을 함께 실행합니다. 감상 중에는 편집기를 내려받지 않습니다. **코드 보기**를 누르면 같은 작품을 편집할 수 있습니다. 인터넷 없이 다시 편집할 계획이라면 연결된 동안 한 번 코드 보기를 열어 편집기까지 준비하세요. 학교 기기에서는 수업 전에 소리, 파일 내려받기와 재실행을 확인하세요.

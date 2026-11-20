@@ -27,12 +27,12 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
 
   const isPrimary = (event) => event.isPrimary !== false;
   const bound = (name) => isEventBound(name, canvasId);
-  const send = (name, { pos, pick }) => postEvent({ canvas_id: canvasId, name, pos, pick });
+  const send = (name, hit) => postEvent({ canvas_id: canvasId, name, ...hit });
   const updateMouse = (event) => {
-    const hit = locate(event);
+    const hit = { ...locate(event), clientX: event.clientX, clientY: event.clientY };
+    lastHit = hit;
     if (hit.pos) {
       postMouseState(hit.pos, hit.pick, canvasId);
-      lastHit = hit;
     }
     return hit;
   };
@@ -48,6 +48,7 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
     lastPointerType = event.pointerType || 'mouse';
     if (!isPrimary(event)) return;
     activePointerId = event.pointerId;
+    if (bound('mousedown') && bound('mouseup')) element.setPointerCapture?.(event.pointerId);
     element.focus?.({ preventScroll: true });
     const hit = updateMouse(event);
     if (bound('mousedown')) send('mousedown', hit);

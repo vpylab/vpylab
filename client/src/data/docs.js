@@ -1139,7 +1139,7 @@ while True:
     signature: "scene.bind('click mousedown ...', handler)\n@scene.bind('keydown')   # 데코레이터도 가능",
     params: [
       { name: 'event_names', type: 'string', default: '—', desc: { ko: '공백 구분 다중 가능', en: 'Space-separated names' } },
-      { name: 'handler',     type: 'function', default: '—', desc: { ko: 'def f(evt): evt.pos, evt.pick, evt.key', en: 'evt.pos, evt.pick, evt.key' } },
+      { name: 'handler',     type: 'function', default: '—', desc: { ko: 'evt.pos, evt.pick, evt.key. VPyLab의 포인터 이벤트는 브라우저 화면 좌표 evt.clientX, evt.clientY(CSS 픽셀)도 전달합니다.', en: 'evt.pos, evt.pick, evt.key. VPyLab pointer events also provide viewport coordinates evt.clientX and evt.clientY in CSS pixels.' } },
     ],
     code: `from vpython import *
 

@@ -32,6 +32,71 @@ for body, hour, minute in [('해',7,17),('달',14,22)]:
   expect(result.error).toBeNull();
 });
 
+it.skipIf(!hasPython())('서울에서 관측한 달의 고도와 밝은 면을 JPL Horizons와 대조한다', () => {
+  const code = setup + `
+for year, month, day, hour, minute, height, fraction in [
+    (2025, 3, 31, 19, 45, 16.19870, 5.62977),
+    (2020, 9, 24, 20, 0, 24.78540, 53.97131),
+    (2023, 12, 27, 21, 40, 46.58955, 99.51410),
+]:
+    instant = datetime(year, month, day, hour, minute, tzinfo=kst).timestamp()
+    solar, lunar, eye, up, greenwich, elongation = sky_positions(instant)
+    assert abs(degrees(asin(dot(norm(lunar-eye), up))) - height) < .05
+    assert abs(50*(1+dot(norm(solar-lunar), norm(eye-lunar))) - fraction) < .05
+`;
+  const result = runPythonJobs([{ id: 'seoul', label: 'observations', code }]).get('seoul:observations');
+  expect(result.error).toBeNull();
+});
+
+it.skipIf(!hasPython())('멈춘 관측소에서 줌을 왕복해도 같은 달과 조명, 카메라 위치를 보존한다', () => {
+  const fixed = source.replace('observation_start = None', 'observation_start = 1743417900');
+  const code = fixed.replace('while True:', `frames = []
+for factor in [1, 32, 160, 1]:
+    zoom_control.value = factor
+    set_zoom(zoom_control)`) + `
+    frames.append((moon, moon.pos, moon.radius, moon.axis, moon.up, sunlight.direction, scene.camera.pos, scene.camera.axis, stamp))
+    assert abs(1/tan(scene.fov/2) - factor*min(1, aspect)) < .0001
+assert len(frames) == 4
+for frame in frames:
+    assert frame == frames[0]
+`;
+  const result = runPythonJobs([{ id: 'seoul', label: 'zoom', code }]).get('seoul:zoom');
+  expect(result.error).toBeNull();
+});
+
+it.skipIf(!hasPython())('태양을 향해 시작하고, 드래그 후에도 눈 위치와 조명은 고정된다', () => {
+  const fixed = source.replace('observation_start = None', 'observation_start = 1795144500')
+    .replace('recorded_view = tracking_mode', 'recorded_view = solar_mode');
+  const code = fixed.replace('while True:', `class Pointer:
+    def __init__(self, name, x, y):
+        self.event, self.clientX, self.clientY = name, x, y
+
+for step in range(3):
+    if step == 1:
+        look_around(Pointer("mousedown", 120, 180))
+        look_around(Pointer("mousemove", 175, 205))
+        look_around(Pointer("mouseup", 175, 205))
+    if step == 2:
+        look_around(Pointer("mousemove", 260, 225))
+        zoom_control.value = 32
+        set_zoom(zoom_control)`) + `
+    assert sun.visible and solar_disc.visible
+    assert mag((solar_disc.pos-observer_eye) / disc_depth - (sun.pos-observer_eye)) < 1e-10
+    assert abs(solar_disc.radius / disc_depth - sun.radius) < 1e-10
+    assert scene.camera.pos == observer_eye
+    if step == 0:
+        initial = scene.camera.axis
+        assert initial == norm(sun.pos-observer_eye)
+        direction = sunlight.direction
+    if step == 1:
+        turned = scene.camera.axis
+        assert mag(turned-initial) > .01
+    if step == 2:
+        assert scene.camera.axis == turned and sunlight.direction == direction
+`;
+  expect(runPythonJobs([{ id: 'seoul', label: 'look', code }]).get('seoul:look').error).toBeNull();
+});
+
 it('서울 관측 지도를 쓰는 HTML에 원본 바이트와 제작자 표시를 함께 싣는다', async () => {
   const { generateProjectHTML } = await import('../utils/export-html');
   const page = await generateProjectHTML(source);

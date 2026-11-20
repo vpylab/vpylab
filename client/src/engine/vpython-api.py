@@ -3215,6 +3215,9 @@ def _process_pending_events():
                 pick=evt.get('pick'),
                 key=evt.get('key'),
             )
+            if 'clientX' in evt:
+                info.clientX = evt['clientX']
+                info.clientY = evt['clientY']
             info.canvas = _canvases.get(evt.get('canvas_id', 'scene'), scene)
             # VPython 위젯 콜백에는 해당 위젯을 전달한다(.selected/.index/.checked 포함).
             widget = _widget_instances.get(widget_id)
