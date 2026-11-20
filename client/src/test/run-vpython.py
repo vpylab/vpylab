@@ -112,6 +112,7 @@ asyncio.sleep = fake_async_sleep
 api_namespace = {'__name__': '__vpylab_api__'}
 exec(compile(API_PATH.read_text(encoding='utf-8'), str(API_PATH), 'exec'), api_namespace)
 api_namespace['_vpylab_transform'] = transform_module
+api_namespace['_beat_clock'] = fake_time
 
 original_rate = api_namespace['rate']
 rate_calls = [0]

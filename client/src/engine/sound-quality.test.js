@@ -301,6 +301,24 @@ describe('수업 음원의 출력 경로와 자연스러운 수명', () => {
   });
 });
 
+describe('Worker의 목표 박자를 오디오 시계에 예약한다', () => {
+  it('지터가 있는 배치·화음을 같은 악보 시각에 맞추고 정지하면 미래 음을 취소한다', () => {
+    const note = beatTime => sound.processSoundCommand({ method: 'note', name: 'C4', beatTime });
+    note(10);
+    context.currentTime = 0.132;
+    sound.processSoundCommand({ method: 'chord', frequencies: [330, 440], beatTime: 10.125 });
+    const starts = context.sources.map(source => source.start.mock.calls[0][0]);
+    expect(starts[1] - starts[0]).toBeCloseTo(0.125, 8);
+    expect(starts[2]).toBe(starts[1]);
+    sound.stopAllSounds();
+    expect(context.sources[1].stop).toHaveBeenLastCalledWith(0.132);
+    expect(context.sources[2].stop).toHaveBeenLastCalledWith(0.132);
+    context.currentTime = 2;
+    note(10.25);
+    expect(context.sources.at(-1).start.mock.calls[0][0]).toBeCloseTo(2.016, 8);
+  });
+});
+
 describe('발음 한도에서 새 음을 버리지 않는다', () => {
   it('배음 셋인 피아노로 열두 음 화음을 쳐도 모든 음의 기본음이 난다', () => {
     const hz = [211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271]; // 서로의 배음과 겹치지 않는 값
