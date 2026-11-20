@@ -24,10 +24,10 @@ function pickProgram({ light = false, sound = false } = {}) {
     ']',
   ];
   if (light) lines.push('lamp = local_light(pos=vec(0, 2, 2), intensity=8)', 'scene.lights = [lamp]');
-  lines.push('', 'def 바꾸기(이벤트):', '    if 이벤트.pick == balls[0]._id:', '        balls[0].color = balls[1].color');
+  lines.push('', 'def 바꾸기(이벤트):', '    if 이벤트.pick == balls[0]:', '        balls[0].color = balls[1].color');
   if (light) lines.push('        lamp.pos = vec(-1.5, 1, 1)');
   if (sound) lines.push("        play_note('C4', 0.2)");
-  lines.push('    elif 이벤트.pick == balls[1]._id:', '        balls[1].color = balls[0].color');
+  lines.push('    elif 이벤트.pick == balls[1]:', '        balls[1].color = balls[0].color');
   if (light) lines.push('        lamp.pos = vec(1.5, 1, 1)');
   if (sound) lines.push("        play_note('G4', 0.2)");
   lines.push('    else:', '        balls[0].color = colors[0]', '        balls[1].color = colors[1]');
@@ -103,8 +103,8 @@ export default {
       summary: '왼쪽 공, 오른쪽 공, 빈 곳을 눌렀을 때 할 일을 따로 정합니다.',
       code: pickProgram(),
       practice: {
-        line: 'if 이벤트.pick == balls[0]._id:',
-        meaning: 'balls[0]은 첫째 공, balls[1]은 둘째 공입니다. 이벤트.pick은 누른 물체의 번호표입니다. if와 elif에서 각 공의 _id와 비교하고 나머지는 else에서 처리합니다.',
+        line: 'if 이벤트.pick == balls[0]:',
+        meaning: '이벤트.pick은 클릭한 도형입니다. balls[0]과 같으면 첫째 공, balls[1]과 같으면 둘째 공을 누른 것입니다. 빈 곳을 누르면 None입니다.',
         change: 'colors의 첫 색을 바꾸고 실행하세요. 왼쪽 공을 누른 다음 빈 곳을 누르면 어떤 색이 돌아올까요?',
         observe: '왼쪽, 오른쪽 순서로 누르면 둘 다 하늘색입니다. 빈 곳을 눌러 되돌린 뒤 오른쪽부터 누르면 왜 둘 다 분홍색이 될까요?',
       },

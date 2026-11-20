@@ -30,6 +30,7 @@ export function moduleFromPublishedCode(code) {
     if(header.length>Math.ceil(MAX_MODULE_BYTES*4/3))return null;
     const module=parseModuleFile(decode(header)),source=code.trim();
     if(moduleProgram(module).trim()===source)return module;
+    if(module.recipe.presetId==='bell' && module.recipe.bellMode!=='shape' && moduleProgram(module,{bellPickIds:true}).trim()===source)return module;
     for(const publishedFormat of ['wrapper','aliases']){
       if(moduleProgram(module,{publishedFormat}).trim()===source)return module;
     }
@@ -45,7 +46,7 @@ export function factoryName(module) {return 'make_'+module.recipe.presetId.repla
 const python = value => JSON.stringify(value);
 
 // 생성된 함수는 실행하는 프로젝트의 위치·크기를 받습니다. 모듈마다 이름을 분리합니다.
-export function moduleDefinition(module, {publishedFormat=null}={}) {
+export function moduleDefinition(module, {publishedFormat=null,bellPickIds=false}={}) {
   const model=buildForgeModel(module.recipe),name=factoryName(module),lines=[],hasSound=model.preset.id==='bell'&&module.recipe.bellMode!=='shape',hasWaves=hasSound&&module.recipe.bellMode==='waves';
   const push=(line='',level=1)=>lines.push('    '.repeat(level)+line);
   lines.push(`# ${cleanText(module.title,80)} · VPyLab 대장간`);
@@ -109,10 +110,10 @@ export function moduleDefinition(module, {publishedFormat=null}={}) {
     writePublishedEnding(publishedFormat, push, effects, hasSound, hasWaves);
   } else if (hasSound) {
     push('bell = compound(parts, origin=origin)');
-    push('pick_ids = [part._id for part in parts] + [bell._id]');
+    if(bellPickIds)push('pick_ids = [part._id for part in parts] + [bell._id]');
     if (hasWaves) push('waves = ['+effects.join(', ')+']');
     push('def ring_bell(event):');
-    push('if not bell.visible or event.pick not in pick_ids:',2);
+    push(bellPickIds?'if not bell.visible or event.pick not in pick_ids:':'if not bell.visible or event.pick != bell:',2);
     push('return',3);
     if (hasWaves) {
       push('if waves[0].visible:',2);
@@ -142,11 +143,11 @@ export function moduleDefinition(module, {publishedFormat=null}={}) {
   }
   return lines.join('\n')+'\n';
 }
-export function moduleProgram(module,{file=false,metadata=!file,publishedFormat=null}={}) {
+export function moduleProgram(module,{file=false,metadata=!file,publishedFormat=null,bellPickIds=false}={}) {
   const model=buildForgeModel(module.recipe),fn=factoryName(module),header=MODULE_PREFIX+encode(JSON.stringify(module));
   const demo=[`scene.range = ${model.range}`,`scene.center = vector(${model.center.join(', ')})`,isForgeStudio(model.recipe)?'scene.forward = vector(-0.13, -0.145, -1)':'scene.forward = vector(-0.25, -0.12, -1)',`my_module = ${fn}(pos=vector(0, 0, 0), scale=1)`,'# 다른 위치에 더 만들기: '+`friend = ${fn}(pos=vector(3,0,0), scale=0.7)`];
   demo.push(publishedFormat==='wrapper'?'# 이동: my_module.move_to(vector(2,0,0))':'# 이동: my_module.pos.x += 1',publishedFormat?'# 제거: my_module.dispose()':'# 숨기기: my_module.visible = False');
-  const body=moduleDefinition(module,{publishedFormat});
+  const body=moduleDefinition(module,{publishedFormat,bellPickIds});
   return (metadata?header+'\n':'')+'from vpython import *\n\n'+body+'\n'+(file?'if __name__ == "__main__":\n'+demo.map(s=>'    '+s).join('\n'):demo.join('\n'))+'\n';
 }
 export const FORGE_STORAGE_VERSION=1;

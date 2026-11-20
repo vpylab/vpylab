@@ -1159,10 +1159,10 @@ while True:
     category: 'events',
     title: { ko: 'scene.mouse — 마우스 폴링', en: 'scene.mouse' },
     description: {
-      ko: 'scene.mouse.pos = 현재 마우스의 월드 좌표(z=0 평면 기준), .pick = 마우스 아래 객체 id, .ray = 카메라에서 마우스로 향하는 단위 벡터, .project(normal=, point=/d=) = 평면에 투영한 점.',
-      en: 'scene.mouse.pos = world coords (z=0 plane), .pick = object id under cursor, .ray = unit vector from camera, .project(normal=, point=/d=) = point on a plane.',
+      ko: 'scene.mouse.pos = 현재 마우스의 월드 좌표(z=0 평면 기준), .pick = 마우스 아래 도형(빈 곳은 None), .ray = 카메라에서 마우스로 향하는 단위 벡터, .project(normal=, point=/d=) = 평면에 투영한 점.',
+      en: 'scene.mouse.pos = world coords (z=0 plane), .pick = object under the cursor (None over empty space), .ray = unit vector from camera, .project(normal=, point=/d=) = point on a plane.',
     },
-    signature: "scene.mouse.pos → vector\nscene.mouse.pick → str | None\nscene.mouse.ray → vector\nscene.mouse.project(normal=vector(0,1,0), point=vector(0,0,0)) → vector | None",
+    signature: "scene.mouse.pos → vector\nscene.mouse.pick → object | None\nscene.mouse.ray → vector\nscene.mouse.project(normal=vector(0,1,0), point=vector(0,0,0)) → vector | None",
     params: [],
     code: `from vpython import *
 ball = sphere(pos=vector(0,0,0), radius=0.3, color=color.coral)

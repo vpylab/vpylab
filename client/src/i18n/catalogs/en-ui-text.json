@@ -2263,7 +2263,7 @@
   "left.color = right.color에서 left와 right를 서로 바꾸세요. 어느 공의 색이 변할까요?": "Swap left and right in left.color = right.color. Which ball will change color?",
   "다시 실행한 뒤 빈 곳을 먼저 눌러 보세요. 공을 직접 눌렀을 때와 결과가 같은 까닭은 무엇일까요?": "Run again and click the background first. Why is the result the same as clicking a ball?",
   "왼쪽 공, 오른쪽 공, 빈 곳을 눌렀을 때 할 일을 따로 정합니다.": "Choose a different action for the left ball, the right ball, and the background.",
-  "balls[0]은 첫째 공, balls[1]은 둘째 공입니다. 이벤트.pick은 누른 물체의 번호표입니다. if와 elif에서 각 공의 _id와 비교하고 나머지는 else에서 처리합니다.": "balls[0] is the first ball and balls[1] is the second. event.pick identifies the object you clicked. Compare it to each ball’s _id in if and elif. Use else for the background.",
+  "이벤트.pick은 클릭한 도형입니다. balls[0]과 같으면 첫째 공, balls[1]과 같으면 둘째 공을 누른 것입니다. 빈 곳을 누르면 None입니다.": "event.pick is the shape you clicked. Compare it with balls[0] for the first ball or balls[1] for the second. Clicking empty space gives None.",
   "colors의 첫 색을 바꾸고 실행하세요. 왼쪽 공을 누른 다음 빈 곳을 누르면 어떤 색이 돌아올까요?": "Change the first color in colors and run. Click the left ball and then the background. Which color comes back?",
   "왼쪽, 오른쪽 순서로 누르면 둘 다 하늘색입니다. 빈 곳을 눌러 되돌린 뒤 오른쪽부터 누르면 왜 둘 다 분홍색이 될까요?": "Click left then right. Both balls are sky-blue. Reset by clicking the background. Why do both balls turn pink if you click the right one first?",
   "흰 조명 하나를 놓고, 클릭한 공 위쪽으로 옮깁니다.": "Add a white light and move it above the ball you click.",
