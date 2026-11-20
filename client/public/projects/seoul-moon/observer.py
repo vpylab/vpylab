@@ -402,7 +402,8 @@ while True:
                 scene.fov = 2*atan2(1.14, min(1.6,aspect))
                 axis = vector(0,4.5,-12)
             scene.camera.pos = observer_eye
-            scene.camera.axis = axis
+            # 가까운 지면이 카메라의 근거리 절단면에 잘리지 않게 시선 길이를 잡습니다.
+            scene.camera.axis = norm(axis)
         scene.ambient = color.gray(.12 * min(1, max(0, (sun_alt+6)/16)))
         scene.background = daylight_color(sun_alt)
         # 낮하늘의 산란광 때문에 달의 명암 대비가 약해집니다.
