@@ -108,5 +108,5 @@ it('서울 관측 지도를 쓰는 HTML에 원본 바이트와 제작자 표시�
 
   const dynamic = await generateProjectHTML('surface = getattr(textures, name)');
   const dynamicMaps = JSON.parse(dynamic.match(/const planetMaps = (\{.*\});/)[1]);
-  expect(Object.keys(dynamicMaps).sort()).toEqual(['earth', 'jupiter', 'moon', 'saturn', 'sun']);
+  expect(Object.keys(dynamicMaps).sort()).toEqual(['earth', 'earth_dark', 'jupiter', 'moon', 'saturn', 'sun']);
 });

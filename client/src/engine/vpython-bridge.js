@@ -230,7 +230,7 @@ const CELESTIAL_SURFACES = new Set(['sun', 'moon', 'jupiter', 'saturn']);
 
 // 지구 지도나 사진은 발광을 켰을 때 같은 이미지를 발광색으로도 사용합니다.
 function isImageSurface(spec) {
-  return spec === 'preset:earth' || spec === 'earth' || isImageURL(spec);
+  return /^(?:preset:)?earth(?:_dark)?$/.test(spec) || isImageURL(spec);
 }
 
 // 조명 및 사용자 shininess가 바뀌어도 동일한 재질 규칙을 사용합니다.
