@@ -59,10 +59,10 @@ export function placementCode(factory, value, name = 'friend') {
   const p = normalizePlacement(value);
   const lines = [`${name} = ${factory}(`, `    pos=vector(${p.x}, ${p.y}, ${p.z}), scale=${p.scale}`, ')'];
   if (p.angle !== 0) {
-    lines.push(`${name}.object.rotate(angle=radians(${p.angle}), axis=vector(${PLACEMENT_AXES[p.axis].join(', ')}))`);
+    lines.push(`${name}.rotate(angle=radians(${p.angle}), axis=vector(${PLACEMENT_AXES[p.axis].join(', ')}))`);
   }
   if (p.tint !== DEFAULT_PLACEMENT.tint) {
-    lines.push(`${name}.object.color = ${colorVectorText(p.tint)}`);
+    lines.push(`${name}.color = ${colorVectorText(p.tint)}`);
   }
   return lines.join('\n');
 }

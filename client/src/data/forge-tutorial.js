@@ -69,7 +69,7 @@ export const forgeCharacterTutorial={
   description:text('캐릭터를 compound로 묶고, 움직이고, 아이템을 먹으면 그 캐릭터의 색만 바꿉니다. 완성한 모양은 대장간의 모듈로 다른 프로젝트에 가져가 보세요.','Combine, move, and recolor one character when it collects an item. Reuse shapes as modules from the forge.'),
   change:text('몸통 반지름·발 크기·speed 중 하나를 바꾸고 어떤 결과인지 먼저 예상하세요.','Change body radius, foot size, or speed and predict the result.'),
   reflect:text('player.color를 other.color로 바꾸면 누가 변할까요? 부품을 따로 만드는 것과 compound로 묶는 것의 차이를 설명하세요.','Who changes if player.color becomes other.color? Explain what compound changes.'),
-  tasks:[text('아이템 하나를 더 만들고 위치와 색을 직접 정하세요.','Add another item and choose its color and position.'),text('대장간에서 만든 모듈의 .object를 player로 써 보세요. 흰 몸통·흰 포인트 색으로 시작하면 전체 색 변화가 분명합니다.','Try a forged module’s .object as player. White body and accent colors make tint changes clearer.')],
+  tasks:[text('아이템 하나를 더 만들고 위치와 색을 직접 정하세요.','Add another item and choose its color and position.'),text('대장간에서 만든 캐릭터를 player = my_module로 연결해 보세요. 흰 몸통·흰 포인트 색으로 시작하면 전체 색 변화가 분명합니다.','Use your Forge character by setting player = my_module. White body and accent colors make tint changes clearer.')],
   peerTest:text('친구가 조작하고, 다른 친구는 player와 other 중 누구의 색이 변했는지 관찰하세요. 역할을 바꿔 다시 시험하세요.','Take turns controlling and observing which character changes color.'),
   tips:[text('compound.color는 원래 부품 색에 곱해집니다. 흰 몸통은 원하는 색으로 바뀌고 검은 눈은 검게 남습니다.','compound.color multiplies original colors. White parts take the tint; black eyes stay black.'),text('같은 객체를 두 변수에 넣으면 두 캐릭터가 아닙니다. make_friend를 두 번 호출해야 각각 움직이고 색을 바꿀 수 있습니다.','Two variable names do not create two objects. Call make_friend twice for independent objects.')],
   variants,

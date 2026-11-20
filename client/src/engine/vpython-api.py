@@ -2044,13 +2044,14 @@ def _object_extent(obj):
         return pos - vector(r, r, r), pos + vector(r, r, r)
     if isinstance(obj, compound):
         h = obj.size / 2
-        return pos - h, pos + h
+        center = obj.compound_to_world(obj._bounds_center)
+        return center - h, center + h
     return pos.clone(), pos.clone()
 
 
 class compound(_VectorOwner):
     """여러 객체를 하나로 묶기. 묶은 뒤에는 하나의 객체처럼 pos·color·rotate()·clone()을 쓴다.
-    pos 기본값은 부품들의 중심(경계 상자 중심)이고, pos를 지정하면 중심이 그 자리로 옮겨진다 (GlowScript와 같음).
+    origin은 묶음의 기준점(기본값은 경계 상자 중심)이고, pos를 지정하면 기준점이 그 자리로 옮겨진다.
     (하위 객체를 나중에 따로 바꾸려면 group()을 사용한다.)"""
     _vector_attrs = ('pos', 'axis', 'up', 'color', 'trail_color', 'scale')
 
@@ -2076,7 +2077,8 @@ class compound(_VectorOwner):
                 hi = vector(max(hi.x, b.x), max(hi.y, b.y), max(hi.z, b.z))
         if lo is None:
             lo = hi = vector(0, 0, 0)
-        self._center0 = (lo + hi) / 2
+        self._bounds_center = (lo + hi) / 2
+        self._center0 = _coerce_vector(kwargs.get('origin'), self._bounds_center)
         self._size0 = vector(max(hi.x - lo.x, 1e-9), max(hi.y - lo.y, 1e-9), max(hi.z - lo.z, 1e-9))
         self._scale = vector(1, 1, 1)
         self._pos = _coerce_vector(kwargs.get('pos'), self._center0)
@@ -2289,7 +2291,7 @@ class compound(_VectorOwner):
     # Copyright (C) 2015 by John Coady, Ruth Chabay, and Bruce Sherwood — MIT License (전문은 shapes/paths 절 참조)
     @property
     def origin(self):
-        """compound 좌표계의 원점(부품 중심). 읽기 전용이며 위치는 pos로 바꾼다."""
+        """compound 좌표계의 원점(기본값은 부품 중심). 읽기 전용이며 위치는 pos로 바꾼다."""
         return self._center0.clone()
 
     @origin.setter
@@ -2338,6 +2340,7 @@ class compound(_VectorOwner):
             'visible': self._visible,
             'opacity': self._opacity,
             'texture': self._texture,
+            'origin': self.origin,
             'make_trail': self._make_trail,
             'trail_color': self._trail_color.clone() if isinstance(self._trail_color, vector) else self._trail_color,
         }

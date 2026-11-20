@@ -1654,7 +1654,7 @@ class compound:
         self._objects = list(objects)
         _send_commands()
         bounds = json.loads(str(_js_compound_bounds(json.dumps([o._id for o in self._objects]))))
-        self._center0 = vector(*bounds['center'])
+        self._center0 = _coerce_vector(kw.get('origin'), vector(*bounds['center']))
         self._size0 = vector(*bounds['size'])
         _bind_vector(self, 'pos', kw.get('pos', self._center0), False)
         axis = kw.get('axis', vector(1,0,0))

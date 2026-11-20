@@ -14,17 +14,15 @@
 
 ## 직접 VPython 속성으로 조작
 
-제공 함수가 돌려주는 모듈의 `.object`가 실제 compound입니다.
+생성 함수는 부품을 하나로 묶은 compound를 반환합니다.
 
 ```python
-# 대장간에서 복사한 코드의 my_module이 완제품을 담고 있습니다.
-obj = my_module.object
-obj.pos.x += 0.1
-obj.pos = vector(2, 0, 0)
-obj.color = vector(0.5, 1, 0.7)
+my_module.pos.x += 1
+my_module.pos = vector(2, 0, 0)
+my_module.color = vector(0.5, 1, 0.7)
 ```
 
-`move_to()`를 쓰지 않아도 됩니다. 직접 pos를 바꾼 뒤 제공 편의 메서드를 쓰더라도 위치가 어긋나지 않도록 compound의 기준점 오프셋에서 현재 위치를 계산합니다. compound 색은 원래 부품 색에 곱해지므로, 원하는 전체 색 변화는 흰 부품에서 가장 분명합니다.
+생성할 때 지정한 위치가 도형의 기준점입니다. 기존 작품의 `my_module.object`, `move_to()`, `dispose()`도 계속 사용할 수 있습니다. compound 색은 원래 부품 색에 곱해지므로, 원하는 전체 색 변화는 흰 부품에서 가장 분명합니다.
 
 ## 종의 세 단계
 

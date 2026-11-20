@@ -64,12 +64,11 @@ export default function Guide() {
             <li>{ui("완성 모듈 코드 복사 후 만들기 화면에 붙여 넣습니다. 함수의 위치와 크기를 바꾸면 여러 개를 만들 수 있습니다. Python 파일로도 내려받을 수 있습니다.")}</li>
           </ol>
           <p>{ui("대장간은 문서·튜토리얼 밖에서도 독립적으로 사용합니다. 제작 대상은 다른 작품에 넣어 쓸 하나의 오브젝트입니다. 슬라이더 값은 생성 코드에 반영되며, 실습에서 고친 코드를 슬라이더로 되돌리지는 않습니다.")}</p>
-          <p>{ui("복사한 코드의")}<code>my_module.object</code>{ui("가 완제품 compound입니다. 일반 VPython 속성으로 직접 이동하고 색·투명도를 바꿀 수 있습니다.")}</p>
-          <pre className="overflow-x-auto rounded-lg p-4" style={{ backgroundColor: 'var(--color-bg-panel)' }}><code>{`obj = my_module.object
-obj.pos.x += 0.1
-obj.pos = vector(2, 0, 0)
-obj.color = vector(0.5, 1, 0.7)
-obj.opacity = 0.6`}</code></pre>
+          <p>{ui("복사한 코드의")} <code>my_module</code>{ui("가 완제품 compound입니다. 일반 VPython 속성으로 직접 이동하고 색·투명도를 바꿀 수 있습니다.")}</p>
+          <pre className="overflow-x-auto rounded-lg p-4" style={{ backgroundColor: 'var(--color-bg-panel)' }}><code>{`my_module.pos.x += 1
+my_module.pos = vector(2, 0, 0)
+my_module.color = vector(0.5, 1, 0.7)
+my_module.opacity = 0.6`}</code></pre>
           <CodeVocabulary code={'sphere(radius=0.5, opacity=0.6)\nfriend = compound([body, eye])'}/>
           <p>{ui("낯선 영어 단어는 타이핑하거나 자동 완성할 때 그림·뜻·짧은 예시로 처음 두 번만 안내합니다. 알겠어요를 누르면 생략합니다. 자동 완성은 AI 없이 동작하며 Tab으로 적용하고 Esc로 닫습니다. Enter는 줄바꿈입니다.")}</p>
           <p>{ui("compound의 색은 원래 부품 색에 곱해집니다. 흰 부품은 새 색이 잘 나타나고 검은 부품은 검게 남습니다. 특정 부품을 따로 바꾸려면 복사한 코드의 해당 부품 속성을 살펴보세요.")}<Link to="/docs#compound">{ui("compound 문서")}</Link>{ui("와")}<Link to="/docs#shape-dome">{ui("반구·돔 가이드")}</Link>{ui("를 함께 볼 수 있습니다.")}</p>
