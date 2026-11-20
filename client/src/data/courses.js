@@ -18,12 +18,14 @@
  *   lessons      : Array<{ id, title, summary, code?, guide? }>
  */
 
+import twoBallCourse from './two-ball-course.js';
 import firstLinesCourse from './first-lines-course.js';
 import lightSoundCourse from './light-sound-course.js';
 import githubProjectCourse from './github-project-course.js';
 import spaceCourse from './space-course.js';
 
 const courses = [
+  twoBallCourse,
   firstLinesCourse,
   lightSoundCourse,
   githubProjectCourse,

@@ -2,8 +2,10 @@ import { translateUi } from './ui-text';
 
 const sourceFields = new Set(['code', 'accessibleCode', 'supportCode', 'copyCode', 'signature', 'url', 'path', 'id', 'ko', 'en']);
 const englishCommands = { 음표:'play_note_and_wait', 소리:'play_sound' };
+const ballIdentifiers = { 색상: 'color', 바꾸기: 'change_color', 이벤트: 'event' };
+const ballColorNames = { 분홍: 'pink', 하늘: 'skyblue' };
 const noteLetters = { 도:'C', 레:'D', 미:'E', 파:'F', 솔:'G', 라:'A', 시:'B' };
-const isCoreCourse = id => ['first-lines', 'beg-light-sound', 'beg-github-project'].includes(id);
+const isCoreCourse = id => ['two-ball-signals', 'first-lines', 'beg-light-sound', 'beg-github-project'].includes(id);
 function englishNote(token) {
   const match=/^([도레미파솔라시])([#b]?)(-?\d+)?$/.exec(token);
   return match ? noteLetters[match[1]] + match[2] + (match[3] ?? '4') : token;
@@ -18,9 +20,13 @@ export function localizeLessonCode(courseId, code, locale) {
   return code.replace(tokens, token => {
     if (token.startsWith('#')) return token;
     if (/^["']/.test(token)) {
+      if (courseId === 'two-ball-signals' && Object.hasOwn(ballColorNames, token.slice(1, -1))) {
+        return token[0] + ballColorNames[token.slice(1, -1)] + token[0];
+      }
       const note=/^(["'])([도레미파솔라시][#b]?(?:-?\d+)?)\1$/.exec(token);
       return note ? note[1] + englishNote(note[2]) + note[1] : token;
     }
+    if (courseId === 'two-ball-signals' && Object.hasOwn(ballIdentifiers, token)) return ballIdentifiers[token];
     return Object.hasOwn(englishCommands, token) ? englishCommands[token] : token;
   });
 }
@@ -30,6 +36,7 @@ export function localizeCourse(course, locale, courseId = course?.id) {
   if (!course || locale !== 'en') return course;
   const core = isCoreCourse(courseId);
   const visit = (value, key) => {
+    if (courseId === 'two-ball-signals' && key === 'line') return localizeLessonCode(courseId, value, locale);
     if (sourceFields.has(key)) return ['code', 'accessibleCode'].includes(key) ? localizeLessonCode(courseId, value, locale) : value;
     if (typeof value === 'string') {
       const translated = translateUi(locale, value);
