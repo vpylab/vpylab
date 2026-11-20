@@ -21,7 +21,9 @@ async def fire_events(namespace, events, commands):
     """HTML의 JavaScript가 넘기는 것과 같은 모양으로 키·마우스 이벤트를 보낸다.
     고른 물체는 "pick": "@이름"처럼 학생 코드의 변수 이름으로 적을 수 있다."""
     for event in events:
-        if event['type'] == 'key':
+        if event['type'] == 'wait':
+            pass
+        elif event['type'] == 'key':
             namespace['_key_event'](event['name'], event['key'])
         else:
             payload = dict(event['payload'])
@@ -32,7 +34,22 @@ async def fire_events(namespace, events, commands):
         # 처리기 안의 rate()까지 끝나도록 이벤트 루프를 넉넉히 돌린다.
         for _ in range(event.get('ticks', 20)):
             await original_sleep(0)
+        namespace['_send_commands']()
         commands.append({'action': 'event_done', 'event': event.get('label', event['type'])})
+
+
+async def run_with_events(namespace, program, events, commands):
+    task = asyncio.ensure_future(program) if inspect.isawaitable(program) else None
+    for _ in range(20):
+        await original_sleep(0)
+    namespace['_send_commands']()
+    commands.append({'action': 'event_done', 'event': 'start'})
+    await fire_events(namespace, events, commands)
+    if task is not None:
+        if task.done():
+            task.result()
+        else:
+            task.cancel()
 
 
 results = []
@@ -61,11 +78,12 @@ for job in payload['jobs']:
         student.update({'__name__': '__main__', transform.RUNTIME_NAME: transform})
         namespace['_student_globals'] = student
         result = eval(compiled, student)
-        if inspect.isawaitable(result):
+        if job.get('events'):
+            # 끝나지 않는 프로그램(while True 안의 scene.waitfor)도 돌아가는 동안 이벤트를 보낸다.
+            asyncio.run(run_with_events(namespace, result, job['events'], commands))
+        elif inspect.isawaitable(result):
             asyncio.run(result)
         namespace['_send_commands']()
-        if job.get('events'):
-            asyncio.run(fire_events(namespace, job['events'], commands))
     except Exception as exc:
         error = f'{type(exc).__name__}: {exc}'
     results.append({'id': job['id'], 'error': error, 'commands': commands, 'batchEnds': batch_ends})
