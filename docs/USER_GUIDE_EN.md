@@ -45,6 +45,8 @@ friend.object.opacity = 0.6
 friend.object.color = vector(1, 0.7, 0.3)
 ```
 
+The **Place it** tab sets the values for placing the finished module in a project. Change position x, y and z, `scale`, the rotation axis and angle, and the overall color with sliders. The preview and the usage code change together. In the preview, the red line is x, the green line is y and the blue line is z. Colors are written as whole numbers from 0 to 255, such as `vector(255, 180, 80)`. **Copy this usage code** copies the lines to paste below the finished module code. These values are used on screen only and are not saved in the module.
+
 The Kirby starter uses the same eyes, mouth, body, and limbs as the home Pink friend. Its preview uses the same stage lighting; the copied object excludes the stage. Previously edited or saved shapes stay intact. For an older draft, **Use the home character shape** updates the shape while keeping its title and credits. Undo restores it.
 
 Use the actual function name in your copied code. A compound's color multiplies its original part colors: white parts take the new tint and black eyes remain black. Study the generated parts when you want to change one part separately. Sliders generate code in one direction; editing code does not update the sliders.

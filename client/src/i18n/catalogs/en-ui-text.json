@@ -2201,5 +2201,18 @@
   "모듈을 내 작업대로 가져왔습니다. 원본 출처가 함께 기록됩니다.": "The module was brought to your workbench. Its original source is recorded with it.",
   "내 GitHub 저장소에 올린 모듈을 불러오지 못했습니다. 이 브라우저의 보관함에 있는 모듈은 그대로 사용할 수 있습니다.": "The modules uploaded to your GitHub repository could not be loaded. The modules in this browser's module library still work.",
   "대장간 공개 등록 (선택 기능)": "Publishing Forge modules (optional)",
-  "대장간의 공개 등록은 선택 기능이며 \"모두의 모듈에 공개 등록\"을 누를 때만 동작합니다. 누르면 학생 본인의 GitHub 계정에 있는 공개 저장소 vpylab-forge에 모듈 파일이 올라갑니다. 파일에 담기는 것은 모듈의 이름, 설명, 모양을 정한 값, 생성 코드, 참고한 프로젝트의 이름과 링크입니다. 이 저장소는 공개 저장소여서 누구나 볼 수 있습니다. 교사가 승인한 저장소의 모듈은 모두의 모듈에 GitHub 아이디와 함께 표시됩니다. \"내 모듈 공개 내리기\"를 누르면 그 파일이 저장소에서 지워지고 다음 목록 갱신 때 모두의 모듈에서 빠집니다. 지운 뒤에도 저장소의 이전 기록에는 파일이 남으며 완전히 없애려면 GitHub에서 저장소를 삭제해야 합니다. VPyLab 운영 서버에는 모듈이 저장되지 않습니다.": "Publishing from the Forge is optional and happens only when you press \"Publish to Community modules\". Pressing it uploads a module file to the public repository vpylab-forge in the student's own GitHub account. The file contains the module's name, description, the values that define its shape, the generated code, and the names and links of referenced projects. The repository is public, so anyone can see it. Modules from repositories a teacher has approved appear in Community modules together with the GitHub username. Pressing \"Unpublish my module\" deletes that file from the repository, and the module leaves Community modules at the next list update. The file remains in the repository's earlier history after it is deleted; to remove it completely, delete the repository on GitHub. Modules are not stored on a VPyLab server."
+  "대장간의 공개 등록은 선택 기능이며 \"모두의 모듈에 공개 등록\"을 누를 때만 동작합니다. 누르면 학생 본인의 GitHub 계정에 있는 공개 저장소 vpylab-forge에 모듈 파일이 올라갑니다. 파일에 담기는 것은 모듈의 이름, 설명, 모양을 정한 값, 생성 코드, 참고한 프로젝트의 이름과 링크입니다. 이 저장소는 공개 저장소여서 누구나 볼 수 있습니다. 교사가 승인한 저장소의 모듈은 모두의 모듈에 GitHub 아이디와 함께 표시됩니다. \"내 모듈 공개 내리기\"를 누르면 그 파일이 저장소에서 지워지고 다음 목록 갱신 때 모두의 모듈에서 빠집니다. 지운 뒤에도 저장소의 이전 기록에는 파일이 남으며 완전히 없애려면 GitHub에서 저장소를 삭제해야 합니다. VPyLab 운영 서버에는 모듈이 저장되지 않습니다.": "Publishing from the Forge is optional and happens only when you press \"Publish to Community modules\". Pressing it uploads a module file to the public repository vpylab-forge in the student's own GitHub account. The file contains the module's name, description, the values that define its shape, the generated code, and the names and links of referenced projects. The repository is public, so anyone can see it. Modules from repositories a teacher has approved appear in Community modules together with the GitHub username. Pressing \"Unpublish my module\" deletes that file from the repository, and the module leaves Community modules at the next list update. The file remains in the repository's earlier history after it is deleted; to remove it completely, delete the repository on GitHub. Modules are not stored on a VPyLab server.",
+  "놓아 보기": "Place it",
+  "처음 값으로 ↺": "Reset values ↺",
+  "미리보기의 선은 빨강이 x, 초록이 y, 파랑이 z 방향입니다.": "In the preview, the red line is x, the green line is y and the blue line is z.",
+  "위치 x (좌우)": "Position x (left–right)",
+  "위치 y (위아래)": "Position y (up–down)",
+  "위치 z (앞뒤)": "Position z (front–back)",
+  "크기 scale": "Size (scale)",
+  "돌리는 각도": "Rotation angle",
+  "돌리는 축": "Rotation axis",
+  "전체 색 (원래 색에 곱해집니다)": "Overall color (multiplied with the original colors)",
+  "이 사용 코드 복사": "Copy this usage code",
+  "사용 코드를 복사했습니다. 완성 모듈 코드 아래에 붙여 넣으세요.": "Usage code copied. Paste it below the finished module code.",
+  "복사하지 못했습니다. 아래 코드를 직접 선택해 복사하세요.": "Could not copy. Select the code below and copy it yourself."
 }
