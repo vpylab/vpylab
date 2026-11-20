@@ -9,11 +9,9 @@ const TEXTURE_CACHE = new Map();
 const textureLoads = new Map();
 
 export function whenTexturesReady() { return Promise.all([...textureLoads.values()]); }
-// crossOrigin='anonymous'면 CORS 헤더가 없는 서버의 이미지가 실패함.
-// 텍스처는 화면에만 사용하므로 픽셀 읽기가 필요 없어 빈 문자열로 두어
-// 일반 <img> 처럼 동작하게 한다 (canvas는 tainted 되지만 렌더링은 정상).
+// WebGL accepts cross-origin images when their server permits anonymous CORS requests.
 const URL_LOADER = new THREE.TextureLoader();
-URL_LOADER.setCrossOrigin('');
+URL_LOADER.setCrossOrigin('anonymous');
 
 // Vite가 파일을 작품과 같은 출처에서 제공하며 실제로 선택한 재질만 내려받습니다.
 const surfaceImages = {
@@ -37,7 +35,11 @@ function drawGasGiant(ctx, size) {
 }
 
 const PRESET_GENERATORS = {
-  sun: drawFire,
+  sun(ctx, size) {
+    // 느린 연결에서도 광구 전체에 같은 바탕색을 표시합니다.
+    ctx.fillStyle = '#f7c46f';
+    ctx.fillRect(0, 0, size, size);
+  },
   moon: drawGranite,
   jupiter: drawGasGiant,
   saturn: drawGasGiant,
@@ -110,6 +112,9 @@ export function resolveTexture(spec) {
     if (Object.hasOwn(surfaceImages, name)) {
       textureLoads.set(spec, new Promise(done => {
         new THREE.ImageLoader().load(surfaceImages[name], image => {
+          // 작은 임시 캔버스를 이미 그렸다면 GPU 저장소가 그 크기로 고정돼 있습니다.
+          // 같은 재질 참조를 유지하면서 최종 이미지 크기로 다시 할당합니다.
+          texture.dispose();
           texture.image = image;
           texture.needsUpdate = true;
           done();

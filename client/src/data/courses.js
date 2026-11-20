@@ -20,10 +20,12 @@
 
 import lightSoundCourse from './light-sound-course.js';
 import githubProjectCourse from './github-project-course.js';
+import spaceCourse from './space-course.js';
 
 const courses = [
   lightSoundCourse,
   githubProjectCourse,
+  spaceCourse,
   // ════════════════════════════════════════════════════════
   // [입문 0] 처음 파이썬 — 소리와 빛으로 시작하기 (7단계, 1~2줄에서 시작)
   // ════════════════════════════════════════════════════════

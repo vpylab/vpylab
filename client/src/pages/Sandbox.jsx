@@ -57,7 +57,7 @@ import SendCodeModal from '../components/codeshare/SendCodeModal';
 import CodeSharePanel from '../components/codeshare/CodeSharePanel';
 import CodeShareToast from '../components/codeshare/CodeShareToast';
 import useCodeShareStore from '../stores/codeShareStore';
-import EXAMPLES, { EXAMPLE_CATEGORIES } from '../data/examples';
+import EXAMPLES, { EXAMPLE_CATEGORIES, getExampleCode } from '../data/examples';
 import { getLesson } from '../data/courses';
 import { getTutorial } from '../data/tutorials';
 import { getDocById } from '../data/docs';
@@ -759,8 +759,9 @@ export default function Sandbox() {
       // softStop 직접 호출 (stopExecution은 아래에서 디스트럭처되므로 TDZ 회피)
       import('../engine/pyodide-singleton').then(m => m.softStop()).catch(() => {});
       if (sceneRef.current) clearScene(sceneRef.current);
-      updateCode(ex.code);
-      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = ex.code;  // 초기화 시 이 예제로 복귀
+      const exampleCode = getExampleCode(ex, getUiLocale());
+      updateCode(exampleCode);
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = exampleCode;  // 초기화 시 이 예제로 복귀
       addOutput(ui`예제 "${ui(ex.title)}" 로드됨. 실행 버튼을 눌러주세요.`, 'success');
     } else {
       addOutput(ui`예제 ID "${exampleId}"를 찾을 수 없습니다.`, 'error');
@@ -1904,7 +1905,7 @@ export default function Sandbox() {
                     color: exampleCategory === cat.id ? 'white' : 'var(--color-text-secondary)',
                   }}
                 >
-                  {cat.label}
+                  {locale === 'en' ? cat.labelEn : cat.label}
                 </button>
               ))}
             </div>
@@ -1922,8 +1923,9 @@ export default function Sandbox() {
                       stopExecution();
                       if (sceneRef.current) clearScene(sceneRef.current);
                       clearRegistry();
-                      updateCode(ex.code);
-                      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = ex.code;
+                      const exampleCode = getExampleCode(ex, getUiLocale());
+                      updateCode(exampleCode);
+                      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = exampleCode;
                       // 예제 로드 = 활성 프로젝트와 무관 → 컨텍스트 해제
                       useProjectStore.getState().closeProject();
                       useCodeStore.getState().setCurrentCodeId(null);

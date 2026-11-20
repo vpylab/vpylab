@@ -319,7 +319,7 @@ def _rotate_object(obj, angle, axis=None, origin=None):
     origin 미지정: 객체 자기 위치(자리는 그대로 두고 방향만 돈다).
     axis 미지정: 객체 자신의 axis (GlowScript와 같음). axis가 없는 객체(sphere 등)는 y축."""
     if axis is None:
-        own = getattr(obj, '_axis', None)
+        own = None if getattr(obj, '_type', None) == 'sphere' else getattr(obj, '_axis', None)
         axis = own.clone() if isinstance(own, vector) and own.mag > 0 else vector(0, 1, 0)
     else:
         axis = _coerce_vector(axis, vector(0, 1, 0))
@@ -430,7 +430,10 @@ class _ColorPalette:
     def rgb_to_hsv(c):
         """RGB 벡터 → 색상(h)·채도(s)·명도(v) 벡터 (GlowScript 호환)"""
         c = _coerce_vector(c, vector(0, 0, 0))
-        h, sat, v = colorsys.rgb_to_hsv(c.x, c.y, c.z)
+        channels = c.to_list()
+        if max(channels) > 1 and all(0 <= v <= 255 and v.is_integer() for v in channels):
+            channels = [v / 255 for v in channels]
+        h, sat, v = colorsys.rgb_to_hsv(*channels)
         return vector(h, sat, v)
 
     def __getitem__(self, key):
@@ -804,7 +807,27 @@ class _RadiusSize:
 class sphere(_GObject):
     def __init__(self, **kwargs):
         self._radius = kwargs.pop('radius', 1.0)
+        self._axis = _coerce_vector(kwargs.get('axis'), vector(1, 0, 0))
+        self._up = _coerce_vector(kwargs.get('up'), vector(0, 1, 0))
         super().__init__('sphere', radius=self._radius, **kwargs)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @axis.setter
+    def axis(self, value):
+        self._axis = _coerce_vector(value, vector(1, 0, 0))
+        _add_command({"action": "update", "id": self._id, "axis": self._axis.to_list()})
+
+    @property
+    def up(self):
+        return self._up
+
+    @up.setter
+    def up(self, value):
+        self._up = _coerce_vector(value, vector(0, 1, 0))
+        _add_command({"action": "update", "id": self._id, "up": self._up.to_list()})
 
     @property
     def radius(self):
@@ -827,7 +850,7 @@ class sphere(_GObject):
         self.radius = value.x / 2
 
     def _clone_kwargs(self):
-        return {**super()._clone_kwargs(), 'radius': self._radius}
+        return {**super()._clone_kwargs(), 'radius': self._radius, 'axis': self.axis.clone(), 'up': self.up.clone()}
 
 
 simple_sphere = sphere   # GlowScript의 삼각형 수가 적은 구 — 같은 구로 그린다
@@ -1931,17 +1954,21 @@ class curve(_PointList):
 class points(_PointList):
     """3D 점 집합 — 작은 점으로 표시.
     size: 픽셀 크기(size_units='pixels', 기본) 또는 radius로 월드 크기(size_units='world')
-    shape: 'round'(기본), 'square', VPyLab 확장 'mist'(빛이 겹치는 부드러운 입자)"""
+    shape: 'round'(기본), 'square', VPyLab 확장 'mist'(부드러운 점), 'plume'(방출 입자)"""
     _type = 'points'
 
     def __init__(self, *args, **kwargs):
         self._size = float(kwargs.get('size', 5))
         self._size_units = str(kwargs.get('size_units', 'pixels'))
+        self._flow_time = float(kwargs.get('flow_time', 0))
         self._shape = str(kwargs.get('shape', 'round'))
         super().__init__(*args, **kwargs)
 
     def _extra_create(self, kwargs):
-        return {"size": self._size, "size_units": self._size_units, "shape": self._shape}
+        options = {"size": self._size, "size_units": self._size_units, "shape": self._shape}
+        if self._shape == 'plume':
+            options['flow_time'] = self._flow_time
+        return options
 
     @property
     def size(self):
@@ -1951,6 +1978,16 @@ class points(_PointList):
     def size(self, value):
         self._size = float(value)
         _add_command({"action": "update", "id": self._id, "size": self._size})
+
+    @property
+    def flow_time(self):
+        """plume 입자의 방출 시계(초). 같은 값이면 입자가 같은 위치에 멈춘다."""
+        return self._flow_time
+
+    @flow_time.setter
+    def flow_time(self, value):
+        self._flow_time = float(value)
+        _add_command({"action": "update", "id": self._id, "flow_time": self._flow_time})
 
     @property
     def size_units(self):

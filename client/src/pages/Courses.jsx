@@ -269,6 +269,14 @@ function CourseDetail({ courseId, lessonId }) {
                   {activeLesson.summary}
                 </p>
               </div>
+              {activeLesson.practice && (
+                <dl className="px-5 py-4 text-sm leading-relaxed space-y-3">
+                  <div><dt className="font-semibold">{lang === 'ko' ? '이번에 추가한 코드' : 'New in this step'}</dt>
+                    <dd><code className="break-words">{activeLesson.practice.line}</code><p>{activeLesson.practice.meaning}</p></dd></div>
+                  <div><dt className="font-semibold">{lang === 'ko' ? '하나만 바꿔 보기' : 'Change one thing'}</dt><dd>{activeLesson.practice.change}</dd></div>
+                  <div><dt className="font-semibold">{lang === 'ko' ? '관찰하고 설명하기' : 'Observe and explain'}</dt><dd>{activeLesson.practice.observe}</dd></div>
+                </dl>
+              )}
               <pre
                 className="text-[11.5px] leading-[1.6] p-4 m-0"
                 style={{
@@ -283,6 +291,12 @@ function CourseDetail({ courseId, lessonId }) {
                 <code>{activeLesson.code}</code>
               </pre>
               <div className="px-4 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                {activeLesson.video && (
+                  <a className="inline-flex items-center min-h-11 mb-2 text-sm underline"
+                    href={activeLesson.video}>
+                    {lang === 'ko' ? '이 단계의 실행 영상 보기' : 'Watch this step run'}
+                  </a>
+                )}
                 <button
                   onClick={() =>
                     navigate(
