@@ -12,7 +12,7 @@ python3 -m http.server 8000 --bind 127.0.0.1
 
 브라우저로 http://localhost:8000/scripts/research/cinematic-preview/ 를 엽니다. 태양계에서 시간을 멈추고 기본과 시네마틱을 전환하면 동일 시점의 표면과 빛을 비교할 수 있습니다. 악기는 숫자 키 1~5 또는 터치로 연주합니다. 다운로드한 파이썬 예제는 VPyLab에서 실행할 수 있습니다. 브라우저 시연은 생성된 명령을 재생하므로 코드를 수정하면 위의 Python 명령을 다시 실행해야 합니다.
 
-지구 지도는 NASA Earth Observatory의 Reto Stöckli가 제작한 Blue Marble Next Generation 2004년 7월 합성 자료입니다. 태양·달·행성 표면의 출처와 이용 조건은 [천체 표면 자료](../../../client/src/assets/planets/SOURCE.md)에서 확인하세요.
+기본 지구 지도는 three-globe의 밝은 낮 지도입니다. 기존 NASA Blue Marble Next Generation 2004년 7월 합성 자료는 `textures.earth_dark`로 선택합니다. 태양·달·행성 표면의 출처와 이용 조건은 [천체 표면 자료](../../../client/src/assets/planets/SOURCE.md)에서 확인하세요.
 
 앱 예제 목록에서 **지구에서 기다리는 혜성**과 **빛으로 연주하는 다섯 음**을 열면 학생 코드를 직접 고쳐 실행할 수 있습니다. 여덟 행성, 혜성의 핵과 두 꼬리, 피아노 녹음 두 세기 및 타악기 합성, 공간 잔향을 포함합니다. 위 독립 시연은 최초 비교 장면을 보존합니다.
 

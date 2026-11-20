@@ -66,11 +66,17 @@
 
 These measurements use desktop browsers and emulated viewports. Each linked draft records its preview, test conditions and remaining classroom checks. The production classroom site is https://vpylab.vercel.app. Use the preview linked from the relevant PR to test proposed changes.
 
+## 터치 취소와 3D 선택
+
+물체를 누른 뒤 3D 교점이 없는 빈 하늘로 이동하다 터치가 취소되면, `mouseup`의 `evt.pos`와 `evt.pick`은 그 손가락의 마지막 유효 교점을 가리킵니다. `evt.clientX`와 `evt.clientY`는 취소 직전의 화면 좌표입니다. 다음 터치는 새로 선택합니다.
+
 ## 서울 관측소 수업 자료
 
 [서울에서 본 달](../client/public/projects/seoul-moon/compare.html)에서 서울의 초승달·상현·보름달 사진, 관측 시각으로 고정한 실습, 같은 시각에서 줌을 왕복한 영상을 엽니다. 서울시청 기준 기하 고도와 밝은 면을 NASA JPL Horizons와 대조했습니다. 모바일 너비의 Chromium·WebKit으로 달 추적과 줌을 확인했습니다. 초승달과 상현 사진의 분 단위 촬영 시각은 공개 자료에 없습니다.
 
 관측소에서는 마우스·한 손가락 드래그로 눈의 방향을 돌립니다. 추적 시선의 오프셋은 재생과 확대 중에도 유지하며, 관점을 바꾸면 기본 구도로 돌아갑니다. 태양 추적은 관측 글의 낮 실습 링크에서 바로 엽니다. 지상에서 보이는 광구의 밝기와 후광은 화면 표현이며, 달의 조명은 천체 위치에서 계산합니다.
+
+초승달 실습의 시야 단계 32는 서울 관측소의 1배 하늘입니다. 슬라이더·휠·두 손가락 핀치로 그 아래까지 축소하면 같은 시각의 우주 조망으로 이동합니다. 단계 0에서 태양·지구·달을 함께 비교하며 크기와 거리의 축척을 화면에 표시합니다. 축척을 바꿀 때 달에서 태양을 보는 방향을 보존합니다. 재생 중 줌 복귀와 같은 시각의 독립 실행을 대조한 화면과 영상은 관측 비교 자료에서 확인할 수 있습니다.
 
 ## 휴대폰에서 감상하고 편집하기 · Viewing and editing on a phone
 

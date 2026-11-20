@@ -167,6 +167,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       postEvent,
       postMouseState,
       // 프로그램이 scene.userzoom·userspin·userpan을 끄면 두 번 눌러도 카메라를 옮기지 않습니다.
+      nativeZoomEnabled: () => controls.enableZoom,
       canFit: () => controls.enableZoom !== false && controls.enableRotate !== false && controls.enablePan !== false,
       fit: () => camSystem.fitOnce(),
     });

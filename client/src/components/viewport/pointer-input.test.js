@@ -94,6 +94,41 @@ describe('attachPointerInput', () => {
     expect(opts.postEvent.mock.calls.length).toBe(count);
   });
 
+  it.each(['moon', null])('빈 하늘로 옮긴 뒤 취소하면 마지막 3D 교점과 물체(%s), 최신 화면 좌표로 끝낸다', (pick) => {
+    detach();
+    opts.locate = vi.fn()
+      .mockReturnValueOnce({ pos: [1, 2, 3], pick: 'earth' })
+      .mockReturnValueOnce({ pos: [4, 5, 6], pick })
+      .mockReturnValue({ pos: null, pick: null });
+    detach = attachPointerInput(el, opts);
+
+    el.dispatchEvent(pointer('pointerdown', { x: 10, y: 20 }));
+    el.dispatchEvent(pointer('pointermove', { x: 30, y: 40 }));
+    el.dispatchEvent(pointer('pointermove', { x: 70, y: 80 }));
+    expect(opts.postEvent).toHaveBeenLastCalledWith({
+      canvas_id: 'scene', name: 'mousemove', pos: null, pick: null, clientX: 70, clientY: 80,
+    });
+    el.dispatchEvent(pointer('pointercancel'));
+    expect(opts.postEvent).toHaveBeenLastCalledWith({
+      canvas_id: 'scene', name: 'mouseup', pos: [4, 5, 6], pick, clientX: 70, clientY: 80,
+    });
+  });
+
+  it('빈 하늘에서 시작한 새 터치를 취소할 때 이전 터치의 물체를 쓰지 않는다', () => {
+    detach();
+    opts.locate = vi.fn()
+      .mockReturnValueOnce({ pos: [1, 2, 3], pick: 'earth' })
+      .mockReturnValue({ pos: null, pick: null });
+    detach = attachPointerInput(el, opts);
+    el.dispatchEvent(pointer('pointerdown'));
+    el.dispatchEvent(pointer('pointercancel'));
+    el.dispatchEvent(pointer('pointerdown', { id: 2, x: 12, y: 34 }));
+    el.dispatchEvent(pointer('pointercancel', { id: 2 }));
+    expect(opts.postEvent).toHaveBeenLastCalledWith({
+      canvas_id: 'scene', name: 'mouseup', pos: null, pick: null, clientX: 12, clientY: 34,
+    });
+  });
+
   it('누르지 않은 포인터의 취소는 무시한다', () => {
     el.dispatchEvent(pointer('pointercancel', { id: 7 }));
     expect(opts.postEvent).not.toHaveBeenCalled();
@@ -116,6 +151,27 @@ describe('attachPointerInput', () => {
     el.dispatchEvent(pointer('pointerdown', { kind: 'mouse' }));
     el.dispatchEvent(new Event('dblclick', { bubbles: true }));
     expect(opts.fit).not.toHaveBeenCalled();
+  });
+
+  it('기본 카메라 줌을 끈 작품에서만 휠과 두 손가락 줌을 전달한다', () => {
+    bound.add('zoom');
+    const wheel = () => new WheelEvent('wheel', { deltaY: 180, cancelable: true });
+    el.dispatchEvent(wheel());
+    expect(opts.postEvent).not.toHaveBeenCalled();
+    detach();
+    detach = attachPointerInput(el, { ...opts, nativeZoomEnabled: () => false });
+    const down = wheel();
+    el.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    expect(opts.postEvent).toHaveBeenLastCalledWith({ canvas_id: 'scene', name: 'zoom', value: -1 });
+
+    el.dispatchEvent(pointer('pointerdown', { x: 0 }));
+    el.dispatchEvent(pointer('pointerdown', { id: 2, primary: false, x: 100 }));
+    el.dispatchEvent(pointer('pointermove', { id: 2, primary: false, x: 50 }));
+    expect(opts.postEvent).toHaveBeenLastCalledWith({ canvas_id: 'scene', name: 'zoom', value: -1 });
+    el.dispatchEvent(pointer('pointercancel', { id: 2, primary: false }));
+    el.dispatchEvent(pointer('pointerup'));
+    expect(log.some(e => e[1] === 'click')).toBe(false);
   });
 
   it('연결을 풀면 더는 이벤트를 보내지 않는다', () => {

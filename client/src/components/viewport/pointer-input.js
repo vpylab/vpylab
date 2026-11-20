@@ -20,17 +20,31 @@
  * @param {() => void} [options.fit]
  * @returns {() => void} 이벤트 연결을 푸는 함수
  */
-export function attachPointerInput(element, { canvasId, locate, isEventBound, postEvent, postMouseState, canFit = () => true, fit = () => {} }) {
+export function attachPointerInput(element, { canvasId, locate, isEventBound, postEvent, postMouseState, canFit = () => true, nativeZoomEnabled = () => true, fit = () => {} }) {
   let activePointerId = null; // 지금 누르고 있는 주 포인터
   let lastPointerType = 'mouse';
   let lastHit = { pos: null, pick: null };
 
   const isPrimary = (event) => event.isPrimary !== false;
   const bound = (name) => isEventBound(name, canvasId);
+  // 프로그램이 기본 줌을 끄고 zoom 이벤트를 요청했을 때만 제스처를 넘깁니다.
+  const customZoom = () => !nativeZoomEnabled() && bound('zoom');
+  const touches = new Map();
+  let pinching = false;
+  let lastSpan = 0;
+  const span = () => {
+    const [a, b] = touches.values();
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
+  const onWheel = (event) => {
+    if (!customZoom()) return;
+    event.preventDefault();
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? element.clientHeight : 1;
+    postEvent({ canvas_id: canvasId, name: 'zoom', value: -event.deltaY * unit / 180 });
+  };
   const send = (name, hit) => postEvent({ canvas_id: canvasId, name, ...hit });
   const updateMouse = (event) => {
     const hit = { ...locate(event), clientX: event.clientX, clientY: event.clientY };
-    lastHit = hit;
     if (hit.pos) {
       postMouseState(hit.pos, hit.pick, canvasId);
     }
@@ -46,14 +60,27 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
 
   const onPointerDown = (event) => {
     lastPointerType = event.pointerType || 'mouse';
+    if (event.pointerType === 'touch' && customZoom()) {
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (touches.size === 2) {
+        lastSpan = span();
+        pinching = true;
+        if (activePointerId !== null && bound('mouseup')) send('mouseup', lastHit);
+        activePointerId = null;
+      }
+      if (pinching) return;
+    }
     if (!isPrimary(event)) return;
     activePointerId = event.pointerId;
     if (bound('mousedown') && bound('mouseup')) element.setPointerCapture?.(event.pointerId);
     element.focus?.({ preventScroll: true });
     const hit = updateMouse(event);
+    lastHit = hit;
     if (bound('mousedown')) send('mousedown', hit);
   };
   const onPointerUp = (event) => {
+    touches.delete(event.pointerId);
+    if (touches.size === 0) pinching = false;
     if (!isPrimary(event) || event.pointerId !== activePointerId) return;
     activePointerId = null;
     const hit = updateMouse(event);
@@ -61,6 +88,8 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
     if (bound('click')) send('click', hit);
   };
   const onPointerCancel = (event) => {
+    touches.delete(event.pointerId);
+    if (touches.size === 0) pinching = false;
     if (event.pointerId !== activePointerId) return;
     activePointerId = null;
     releaseCapture(event);
@@ -68,9 +97,24 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
     if (bound('mouseup')) send('mouseup', lastHit);
   };
   const onPointerMove = (event) => {
+    if (touches.has(event.pointerId)) {
+      touches.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (pinching && touches.size === 2 && customZoom()) {
+        const next = span();
+        if (lastSpan > 0 && next > 0) {
+          postEvent({ canvas_id: canvasId, name: 'zoom', value: Math.log2(next / lastSpan) });
+        }
+        lastSpan = next;
+      }
+      if (pinching) return;
+    }
     if (!isPrimary(event)) return;
     // scene.mouse.pos는 늘 갱신합니다(폴링용).
     const hit = updateMouse(event);
+    if (event.pointerId === activePointerId) {
+      // 빈 하늘에서도 화면 좌표는 따라가되, 취소에 쓸 3D 교점과 물체는 함께 보존합니다.
+      lastHit = hit.pos ? hit : { ...lastHit, clientX: hit.clientX, clientY: hit.clientY };
+    }
     if (bound('mousemove')) send('mousemove', hit);
   };
   const onDblClick = (event) => {
@@ -79,12 +123,14 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
     fit();
   };
 
+  element.addEventListener('wheel', onWheel, { passive: false });
   element.addEventListener('pointerdown', onPointerDown);
   element.addEventListener('pointerup', onPointerUp);
   element.addEventListener('pointercancel', onPointerCancel);
   element.addEventListener('pointermove', onPointerMove);
   element.addEventListener('dblclick', onDblClick);
   return () => {
+    element.removeEventListener('wheel', onWheel);
     element.removeEventListener('pointerdown', onPointerDown);
     element.removeEventListener('pointerup', onPointerUp);
     element.removeEventListener('pointercancel', onPointerCancel);

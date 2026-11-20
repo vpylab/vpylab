@@ -1139,7 +1139,7 @@ while True:
     signature: "scene.bind('click mousedown ...', handler)\n@scene.bind('keydown')   # 데코레이터도 가능",
     params: [
       { name: 'event_names', type: 'string', default: '—', desc: { ko: '공백 구분 다중 가능', en: 'Space-separated names' } },
-      { name: 'handler',     type: 'function', default: '—', desc: { ko: 'evt.pos, evt.pick, evt.key. VPyLab의 포인터 이벤트는 브라우저 화면 좌표 evt.clientX, evt.clientY(CSS 픽셀)도 전달합니다.', en: 'evt.pos, evt.pick, evt.key. VPyLab pointer events also provide viewport coordinates evt.clientX and evt.clientY in CSS pixels.' } },
+      { name: 'handler',     type: 'function', default: '—', desc: { ko: 'evt.pos, evt.pick, evt.key. VPyLab의 포인터 이벤트는 브라우저 화면 좌표 evt.clientX, evt.clientY(CSS 픽셀)도 전달합니다. scene.userzoom=False에서 zoom을 바인딩하면 휠·핀치 배율 변화가 evt.value로 전달됩니다(두 배 확대 시 1).', en: 'evt.pos, evt.pick, evt.key. VPyLab pointer events also provide viewport coordinates evt.clientX and evt.clientY in CSS pixels. With scene.userzoom=False, bind zoom to receive wheel and pinch changes in evt.value (1 for a doubling).' } },
     ],
     code: `from vpython import *
 
@@ -2012,8 +2012,8 @@ log.texture = textures.brick`,
     category: 'materials',
     title: { ko: '텍스처 프리셋 (textures)', en: 'textures namespace' },
     description: {
-      ko: '바로 쓸 수 있는 재질 24종. 편집기에서 textures. 까지 치면 목록과 뜻이 나옵니다. 태양·지구·달·목성·토성은 처음 쓸 때 표면 그림을 내려받고, 받는 동안에는 간단한 무늬로 보입니다.',
-      en: '24 ready-made surfaces. Type textures. in the editor to see the list. The sun, earth, moon, jupiter and saturn surfaces download an image on first use and show a simple pattern until it arrives.',
+      ko: '바로 쓸 수 있는 재질 25종. 편집기에서 textures. 까지 치면 목록과 뜻이 나옵니다. 태양·지구·달·목성·토성은 처음 쓸 때 표면 그림을 내려받고, 받는 동안에는 간단한 무늬로 보입니다.',
+      en: '25 ready-made surfaces. Type textures. in the editor to see the list. The sun, earth, moon, jupiter and saturn surfaces download an image on first use and show a simple pattern until it arrives.',
     },
     signature: "textures.wood, textures.galaxy, textures.water, ...",
     params: [
@@ -2026,7 +2026,8 @@ log.texture = textures.brick`,
       { name: 'rug',     type: 'preset', default: '-', desc: { ko: '러그/카펫 무늬', en: 'Rug pattern' } },
       { name: 'stucco',  type: 'preset', default: '-', desc: { ko: '벽 마감재', en: 'Stucco wall' } },
       { name: 'flower',  type: 'preset', default: '-', desc: { ko: '꽃무늬 벽지', en: 'Flower wallpaper' } },
-      { name: 'earth',   type: 'preset', default: '-', desc: { ko: '지구의 바다와 육지. 2004년 7월 합성 지도, Reto Stöckli / NASA Earth Observatory', en: 'Oceans and land in July 2004. Composite by Reto Stöckli / NASA Earth Observatory' } },
+      { name: 'earth', type: 'preset', default: '-', desc: { ko: '밝은 파란 바다와 대륙이 보이는 지구 낮 지도', en: 'Daytime Earth with bright blue oceans and visible coastlines' } },
+      { name: 'earth_dark', type: 'preset', default: '-', desc: { ko: '짙은 바다색의 기존 지구 지도. 2004년 7월 합성 자료, Reto Stöckli / NASA Earth Observatory', en: 'Original Earth with darker oceans. July 2004 composite by Reto Stöckli / NASA Earth Observatory' } },
       { name: 'sun',     type: 'preset', default: '-', desc: { ko: '태양 표면 — emissive=True와 함께 쓰면 후광이 보여요', en: 'Sun surface — shows a halo with emissive=True' } },
       { name: 'moon',    type: 'preset', default: '-', desc: { ko: '충돌구와 어두운 평원을 합성한 수업용 달 표면', en: 'Classroom Moon surface with synthesized craters and dark plains' } },
       { name: 'jupiter', type: 'preset', default: '-', desc: { ko: '목성 (구름 띠와 큰 폭풍)', en: 'Jupiter (cloud bands and a storm)' } },

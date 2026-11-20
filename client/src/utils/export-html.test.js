@@ -118,7 +118,11 @@ it('내려받는 작품이 쓰는 천체만 JPEG로 넣고 지구 관측 자료�
   const earth = await generateProjectHTML('sphere(texture=textures.earth)');
   expect(empty).not.toContain('data:image/jpeg;base64,');
   expect(earth.match(/data:image\/jpeg;base64,/g)).toHaveLength(1);
-  expect(earth).toContain('Reto Stöckli, NASA Earth Observatory');
+  expect(earth).toContain('Earth day map · three-globe');
+  const dark = await generateProjectHTML('sphere(texture=textures.earth_dark)');
+  expect(dark.match(/data:image\/jpeg;base64,/g)).toHaveLength(1);
+  expect(dark).toContain('Reto Stöckli, NASA Earth Observatory');
+  expect(dark).not.toContain('Earth day map · three-globe');
 });
 
 it('작품에 지정한 환경광과 사용자 광원만 켜고 혜성의 입자 시각을 셰이더에 전달한다', () => {
