@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { I18nProvider } from '../i18n';
 import Sandbox from './Sandbox';
@@ -9,9 +9,21 @@ vi.mock('../components/editor/CodeEditor', async () => ({
   default: ({ code, onChange }) => <textarea aria-label="편집기" value={code} onChange={e => onChange(e.target.value)} />,
 }));
 vi.mock('../components/viewport/Viewport3D', () => ({ default: () => <div data-testid="viewport" /> }));
-vi.mock('../hooks/usePyodide', () => ({
-  default: () => ({ initWorker: vi.fn(), stopExecution: vi.fn(), isReady: true }),
+const engine = vi.hoisted(() => ({ status: 'ready', runCode: vi.fn(), initWorker: vi.fn(), stopExecution: vi.fn() }));
+vi.mock('../engine/pyodide-singleton', async (original) => ({
+  ...await original(), getStatus: () => engine.status,
 }));
+vi.mock('../hooks/usePyodide', async () => {
+  const { useSyncExternalStore } = await import('react');
+  const subscribe = (notify) => {
+    window.addEventListener('test-engine-status', notify);
+    return () => window.removeEventListener('test-engine-status', notify);
+  };
+  return { default: () => {
+    const status = useSyncExternalStore(subscribe, () => engine.status);
+    return { ...engine, status, isReady: status === 'ready' };
+  } };
+});
 
 const REPO_CODE = 'from vpython import *\nsphere()\n';
 
@@ -21,6 +33,8 @@ function openSandbox(search) {
 }
 
 beforeEach(() => {
+  engine.status = 'ready';
+  engine.runCode.mockClear();
   localStorage.clear();
   sessionStorage.clear();
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
@@ -53,4 +67,19 @@ it('저장소를 불러오지 못하면 실행 화면으로 가지 않고 편집
   openSandbox('?repo=greatsong/missing-repo&view=run');
   expect(await screen.findByText(/GitHub main\.py 로드 실패 \(404\)/)).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /클릭하여 시작/ })).toBeNull();
+});
+
+it('시작을 먼저 탭하면 다음 그림 프레임 없이도 준비된 코드를 한 번 실행한다', async () => {
+  engine.status = 'loading';
+  openSandbox('?repo=greatsong/dugun-curling&view=run');
+  const start = await screen.findByRole('button', { name: /클릭하여 시작/ });
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 1);
+  fireEvent.click(start);
+  expect(engine.runCode).not.toHaveBeenCalled();
+  act(() => {
+    engine.status = 'ready';
+    window.dispatchEvent(new Event('test-engine-status'));
+  });
+  await waitFor(() => expect(engine.runCode).toHaveBeenCalledWith(REPO_CODE));
+  expect(engine.runCode).toHaveBeenCalledTimes(1);
 });
