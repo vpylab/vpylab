@@ -84,3 +84,13 @@ it('시작을 먼저 탭하면 다음 그림 프레임 없이도 준비된 코�
   await waitFor(() => expect(engine.runCode).toHaveBeenCalledWith(REPO_CODE));
   expect(engine.runCode).toHaveBeenCalledTimes(1);
 });
+
+it('감상 링크의 원격 코드를 기다리는 동안에도 편집기를 마운트하지 않는다', async () => {
+  let finish;
+  globalThis.fetch.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  openSandbox('?repo=greatsong/dugun-curling&view=run');
+  expect(screen.queryByRole('textbox', { name: '편집기' })).toBeNull();
+  await act(async () => finish(new Response(REPO_CODE, { status: 200 })));
+  expect(await screen.findByRole('button', { name: /클릭하여 시작/ })).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: '편집기' })).toBeNull();
+});
