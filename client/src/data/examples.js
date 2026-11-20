@@ -2203,7 +2203,7 @@ keys_data = [
     ('시', note.B4, color.purple),
 ]
 
-key_map = {}  # 건반 도형 → (주파수, 박스)
+frequency_by_key = {}  # 건반마다 연주할 주파수
 x = -3
 for name, freq, col in keys_data:
     b = box(pos=vector(x, 0, 0),
@@ -2211,7 +2211,7 @@ for name, freq, col in keys_data:
             color=col, emissive=True)
     label(pos=vector(x, -1.2, 0), text=name,
           color=color.white, height=18)
-    key_map[b] = (freq, b)
+    frequency_by_key[b] = freq
     x += 1
 
 label(pos=vector(0, 2.5, 0),
@@ -2219,23 +2219,19 @@ label(pos=vector(0, 2.5, 0),
       color=color.white, height=18)
 
 def on_click(evt):
-    if evt.pick in key_map:
-        freq, b = key_map[evt.pick]
-        sound(freq, 0.3, 'sine', 0.35)
-        # 박스가 살짝 위로 튀었다 돌아오기
-        b.pos = b.pos + vector(0, 0.3, 0)
+    key = evt.pick
+    if key in frequency_by_key:
+        sound(frequency_by_key[key], 0.3, 'sine', 0.35)
+        key.pos.y += 0.3
 
 scene.bind('click', on_click)
 
 # 박스 위치 복귀 루프 + 이벤트 디스패치
 while True:
     rate(30)
-    for _, b in key_map.values():
-        # 원위치로 부드럽게 보간
-        if b.pos.y > 0.01:
-            b.pos = b.pos + vector(0, -0.05, 0)
-        elif b.pos.y < -0.01:
-            b.pos = vector(b.pos.x, 0, b.pos.z)
+    for key in frequency_by_key:
+        if key.pos.y > 0:
+            key.pos.y = max(0, key.pos.y - 0.05)
 `
   },
 
@@ -2712,7 +2708,7 @@ scene.background = vector(0.96, 0.96, 1.0)
 scene.center = vector(0, 0, 0)
 scene.range = 4
 
-# 건반 정의: (한글이름, 영문음표 객체, 주파수, 색)
+# 건반에 표시할 이름, 재생할 음 이름, 주파수, 색
 KEYS = [
     ('도', '도', note.C4, color.red),
     ('레', '레', note.D4, color.orange),
@@ -2724,8 +2720,7 @@ KEYS = [
     ('도↑', '높은도', note.C5, color.magenta),
 ]
 
-# 건반 박스 + id로 매핑
-key_map = {}  # 건반 도형 → 음표 이름, 주파수, 위치
+notes_by_key = {}  # 건반마다 연주할 음 이름과 주파수
 x = -3.5
 for ko, name_for_play, freq, col in KEYS:
     b = box(pos=vector(x, 0, 0),
@@ -2733,7 +2728,7 @@ for ko, name_for_play, freq, col in KEYS:
             color=col, emissive=True)
     label(pos=vector(x, -1.3, 0), text=ko,
           color=color.black, height=18)
-    key_map[b] = {'name': name_for_play, 'freq': freq, 'box': b, 'base_y': 0}
+    notes_by_key[b] = (name_for_play, freq)
     x += 1
 
 # 헤더 라벨
@@ -2746,7 +2741,7 @@ status_label = label(pos=vector(0, 2.0, 0),
 
 # 상태
 state = {
-    'recording': [],     # [(name, t_offset), ...]
+    'recording': [],     # 누른 건반과 첫 음부터 지난 시간
     'first_time': None,  # 첫 음의 절대 시각(초)
     'instrument': 'piano',
     'request': None,     # 'play' | 'clear' | None
@@ -2764,21 +2759,19 @@ def update_status():
 def on_click(evt):
     if state['playing']:
         return
-    pick = evt.pick
-    if pick not in key_map:
+    key = evt.pick
+    if key not in notes_by_key:
         return
-    k = key_map[pick]
-    # 즉시 음 재생 (피아노 음색 — sine + 짧은 attack)
-    sound(k['freq'], 0.4, 'sine', 0.32)
-    # 박스 점프 표시
-    k['box'].pos = vector(k['box'].pos.x, k['base_y'] + 0.3, k['box'].pos.z)
+    name, freq = notes_by_key[key]
+    sound(freq, 0.4, 'sine', 0.32)
+    key.pos.y = 0.3
 
     # 기록 (시각 = 첫 음 기준 상대 초)
     now = time.time()
     if state['first_time'] is None:
         state['first_time'] = now
     t_offset = now - state['first_time']
-    state['recording'].append((k['name'], t_offset))
+    state['recording'].append((key, t_offset))
     update_status()
 
 scene.bind('click', on_click)
@@ -2808,13 +2801,10 @@ print('💡 같은 멜로디가 피아노/플루트/기타/칩튠 등으로 완�
 while True:
     rate(60)
 
-    # 모든 박스를 base 위치로 부드럽게 복귀
-    for k in key_map.values():
-        b = k['box']
-        if b.pos.y > k['base_y'] + 0.005:
-            b.pos = vector(b.pos.x, b.pos.y - 0.04, b.pos.z)
-        elif b.pos.y < k['base_y']:
-            b.pos = vector(b.pos.x, k['base_y'], b.pos.z)
+    # 올라간 건반을 제자리로 되돌리기
+    for key in notes_by_key:
+        if key.pos.y > 0:
+            key.pos.y = max(0, key.pos.y - 0.04)
 
     # 명령 처리
     req = state['request']
@@ -2832,7 +2822,8 @@ while True:
         title_label.text = f'▶ {state["instrument"]} 연주 중...'
         rec = state['recording']
         prev_t = 0
-        for i, (name, t) in enumerate(rec):
+        for key, t in rec:
+            name, freq = notes_by_key[key]
             wait = max(0.05, t - prev_t)
             prev_t = t
             sleep(wait)
@@ -2840,16 +2831,8 @@ while True:
             try:
                 play_instrument(state['instrument'], name, 0.4)
             except Exception:
-                # fallback: 주파수로 직접 재생
-                for k in key_map.values():
-                    if k['name'] == name:
-                        sound(k['freq'], 0.4, 'sine', 0.3)
-                        break
-            # 해당 건반 점프 표시
-            for k in key_map.values():
-                if k['name'] == name:
-                    k['box'].pos = vector(k['box'].pos.x, k['base_y'] + 0.3, k['box'].pos.z)
-                    break
+                sound(freq, 0.4, 'sine', 0.3)
+            key.pos.y = 0.3
         state['playing'] = False
         title_label.text = '🎹 건반을 클릭해 멜로디를 만드세요'
         print(f'▶ {state["instrument"]} 연주 끝.')

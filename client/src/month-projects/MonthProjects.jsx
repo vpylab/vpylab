@@ -4,7 +4,11 @@ import '../index.css';
 import '../classroom/classroom.css';
 import './month-projects.css';
 
-const files = import.meta.glob('../../../demos/month-projects/**/*.py', { eager: true, query: '?raw', import: 'default' });
+const files = import.meta.glob([
+  '../../../demos/month-projects/*/main.py',
+  '../../../demos/month-projects/*/milestones/*.py',
+  '../../../demos/month-projects/*/scaffolds/*.py',
+], { eager: true, query: '?raw', import: 'default' });
 const documents = import.meta.glob('../../../demos/month-projects/**/*.json', { eager: true, import: 'default' });
 const prefix = '../../../demos/month-projects/';
 const teams = [
