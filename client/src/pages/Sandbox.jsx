@@ -970,9 +970,11 @@ export default function Sandbox() {
         return;
       }
       pendingPlayRef.current = null;
-      // 다음 프레임에서 실행 (코드 state 반영 보장)
-      const epoch=playEpoch.current;
-      requestAnimationFrame(() => {if(epoch===playEpoch.current)startProgram(playCode);});
+      // 지연된 WebKit 화면 갱신과 독립적으로 준비된 코드를 실행합니다.
+      const epoch = playEpoch.current;
+      queueMicrotask(() => {
+        if (epoch === playEpoch.current) startProgram(playCode);
+      });
     }
   }, [isReady, code, startProgram]);
 
