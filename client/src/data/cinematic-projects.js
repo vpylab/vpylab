@@ -6,7 +6,7 @@ scene.background = vector(0.001, 0.002, 0.006)
 scene.range = 18
 scene.lights = []
 scene.ambient = color.gray(0.18)
-sun = sphere(radius=1.15, color=vector(1, 0.86, 0.50), texture=textures.sun, emissive=True)
+sun = sphere(radius=1.15, color=color.white, texture=textures.sun, emissive=True)
 local_light(pos=sun.pos, color=vector(1, 0.96, 0.88), intensity=95)
 
 # 별은 밝기별로 모아 세 개의 점 집합으로 그립니다.
@@ -119,6 +119,7 @@ while True:
     moon.pos = earth.pos + 0.95*vector(cos(m), 0.12*sin(m), 0.993*sin(m))
     spin = 2.8 + 9*t
     earth.axis = vector(cos(spin), 0, sin(spin))
+    sun.axis = vector(cos(.42*t), 0, -sin(.42*t))
     mode = view.index
     if mode != last_view:
         for cloud in layers + [released]:
@@ -196,6 +197,7 @@ while True:
 export const cometCloseupCode = cometCode.replace('view = menu(choices=', 'view = menu(selected="혜성 따라가기", choices=');
 
 export const solarStudyCode = `from vpython import *
+from time import monotonic
 import random
 scene.background = color.black
 scene.lights = []
@@ -203,7 +205,7 @@ scene.ambient = color.gray(.08)
 scene.fov = 55*pi/180
 scene.camera.pos = vector(0,14,24)
 scene.camera.axis = -scene.camera.pos
-sun = sphere(radius=1.5, color=vector(1,.68,0), emissive=True, shininess=0)
+sun = sphere(radius=1.5, color=color.white, texture=textures.sun, emissive=True, shininess=0)
 local_light(pos=sun.pos, color=color.white, intensity=400)
 random.seed(18)
 stars = []
@@ -218,14 +220,45 @@ planets = []
 for distance, radius, tint, speed, phase in data:
     curve(pos=[distance*vector(cos(i*pi/64),0,sin(i*pi/64)) for i in range(129)], color=color.gray(.033))
     planets.append(sphere(radius=radius, color=vector(*tint), shininess=.2))
+earth = planets[2]
+earth.texture = textures.earth
+earth.color = color.white
 moon = sphere(radius=.14, color=color.gray(.65))
-pace = slider(min=0,max=3,value=1,step=.1,text="공전 속도")
+# 시계와 슬라이더는 같은 재생 배율을 사용합니다.
+speed_scale = 1
+def slide(control):
+    global speed_scale
+    speed_scale = control.value
+
+pace = slider(min=0, max=4, value=1, step=.125, text="공전 속도", bind=slide)
+def change_speed(event):
+    global speed_scale
+    if event.key == "up":
+        speed_scale = min(4, 2*speed_scale if speed_scale else 1)
+    elif event.key == "down":
+        speed_scale = speed_scale/2 if speed_scale >= .25 else 0
+    else:
+        return
+    pace.value = speed_scale
+
+scene.bind("keydown", change_speed)
+scene.caption = "드래그로 회전 · 스크롤로 확대 · ↑ 빠르게 · ↓ 느리게"
 t = 0
+previous = monotonic()
 while True:
     rate(60)
+    now = monotonic()
+    # 탭에 돌아오는 순간의 긴 공백은 건너뜁니다.
+    t += min(now-previous, .1)*speed_scale
+    previous = now
     for planet, (distance, radius, tint, speed, phase) in zip(planets,data):
         a = phase - speed*pi*t/2
         planet.pos = distance*vector(cos(a),0,sin(a))
-    moon.pos = planets[2].pos + .9*vector(cos(2*t+2),0,sin(2*t+2))
-    t += pace.value/60
+    # 달은 함께 공전하는 지구의 자전 좌표계에서 한 번 더 돕니다.
+    earth_orbit = data[2][4] - data[2][3]*pi*t/2
+    earth_spin = earth_orbit - 3*t
+    earth.axis = vector(cos(earth_spin), 0, sin(earth_spin))
+    lunar_angle = earth_spin - 2*t
+    moon.pos = earth.pos + .9*vector(cos(lunar_angle), 0, sin(lunar_angle))
+    sun.axis = vector(cos(.1*t), 0, -sin(.1*t))
 `;

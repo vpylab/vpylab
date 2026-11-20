@@ -2,9 +2,25 @@ import * as THREE from 'three';
 
 // 후광은 광원이 아닙니다. 다른 물체는 학생이 배치한 조명만 비춥니다.
 const glows = new WeakMap();
+// 원반 가장자리에서는 광구의 얕은 층을 보므로 중심보다 어둡고 따뜻하게 보입니다.
+function shadePhotosphere(shader) {
+  const chunk = '#include <emissivemap_fragment>';
+  shader.fragmentShader = shader.fragmentShader.replace(chunk, `${chunk}
+    float mu = max(dot(normal, normalize(vViewPosition)), 0.0);
+    totalEmissiveRadiance *= mix(vec3(.64, .40, .24), vec3(1.16), sqrt(mu));
+  `);
+}
+
 export function updateSolarGlow(mesh) {
   const material = mesh.material;
   const active = material?.userData?.textureSpec === 'preset:sun' && material.emissiveIntensity > 0;
+  if (active && material.onBeforeCompile !== shadePhotosphere) {
+    material.onBeforeCompile = shadePhotosphere;
+    material.needsUpdate = true;
+  } else if (!active && material?.onBeforeCompile === shadePhotosphere) {
+    delete material.onBeforeCompile;
+    material.needsUpdate = true;
+  }
   let halo = glows.get(mesh);
   if (active && !halo) {
     const canvas = document.createElement('canvas');
