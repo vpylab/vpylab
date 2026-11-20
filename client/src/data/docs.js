@@ -1339,13 +1339,13 @@ while True:
     category: 'widgets',
     title: { ko: '입력창 (winput)', en: 'winput' },
     description: {
-      ko: '숫자 또는 텍스트 입력. Enter 또는 blur 시 bind 호출. type=\'numeric\' (기본) 또는 \'string\'.',
-      en: 'Numeric or text input. Fires on Enter or blur. type=\'numeric\' or \'string\'.',
+      ko: '숫자 또는 텍스트 입력. Enter 또는 포커스 이동 시 bind 호출. type=\'numeric\' (기본) 또는 \'string\'. VPyLab 확장 datetime-local은 날짜·시각을 선택하면 시간대 없는 문자열을 전달합니다.',
+      en: 'Numeric or text input. Fires on Enter or blur. type=\'numeric\' or \'string\'. The VPyLab datetime-local extension returns a date/time string without a time zone on change.',
     },
     signature: "winput(prompt='', type='numeric', bind=fn)",
     params: [
       { name: 'prompt', type: 'string',   default: "''",        desc: { ko: '안내 문구', en: 'Prompt label' } },
-      { name: 'type',   type: 'string',   default: "'numeric'", desc: { ko: 'numeric | string', en: 'numeric | string' } },
+      { name: 'type',   type: 'string',   default: "'numeric'", desc: { ko: 'numeric | string | datetime-local', en: 'numeric | string | datetime-local' } },
       { name: 'bind',   type: 'function', default: 'None',      desc: { ko: '제출 콜백', en: 'Submit callback' } },
     ],
     code: `from vpython import *
@@ -1988,7 +1988,7 @@ labels = ['월', '화', '수', '목', '금', '토']
     signature: "box(texture=textures.wood)  # 또는 texture='https://...'",
     params: [
       { name: 'preset', type: 'string', default: '-', desc: { ko: 'textures.wood처럼 미리 정의된 프리셋', en: 'Preset like textures.wood' } },
-      { name: 'URL',    type: 'string', default: '-', desc: { ko: '교차 출처 사용(CORS)을 허용하는 서버의 HTTPS 이미지 파일 주소', en: 'Direct HTTPS image URL on a host that permits cross-origin use (CORS)' } },
+      { name: 'URL',    type: 'string', default: '-', desc: { ko: '같은 사이트의 / 경로 또는 교차 출처 사용(CORS)을 허용하는 HTTPS 이미지 주소', en: 'A site-relative path starting with / or a direct HTTPS image URL allowing cross-origin use (CORS)' } },
       { name: 'data',   type: 'string', default: '-', desc: { ko: "data:image/... 형태의 인라인 이미지", en: 'data:image/... inline image' } },
     ],
     code: `from vpython import *

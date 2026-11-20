@@ -20,7 +20,7 @@ import {
   registerSound,
 } from './object-registry';
 import { processSoundCommand, setNotePlayCallback, setSoundEventCallback } from './sound-system';
-import { resolveTexture, whenTexturesReady, surfacePlaceholder, finishSurfaceImage } from './texture-system';
+import { resolveTexture, isImageURL, whenTexturesReady, surfacePlaceholder, finishSurfaceImage } from './texture-system';
 import { postEvent } from './pyodide-singleton';
 import {
   DEFAULT_OBJECT_PROPS, asNumber, asVectorArray, resolveBoxSize, getRegistryProps,
@@ -227,7 +227,7 @@ const CELESTIAL_SURFACES = new Set(['sun', 'moon', 'jupiter', 'saturn']);
 
 // 지구 지도나 사진은 발광을 켰을 때 같은 이미지를 발광색으로도 사용합니다.
 function isImageSurface(spec) {
-  return spec === 'preset:earth' || spec === 'earth' || /^(?:https?:|data:image\/)/.test(spec);
+  return spec === 'preset:earth' || spec === 'earth' || isImageURL(spec);
 }
 
 // 조명 및 사용자 shininess가 바뀌어도 동일한 재질 규칙을 사용합니다.

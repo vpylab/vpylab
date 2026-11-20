@@ -1356,7 +1356,7 @@ ball = sphere(pos=vector(0, 0, 0), radius=0.5,
               color=color.coral, emissive=True)
 
 label(pos=vector(0, 1.8, 0),
-      text="우상단 슬라이더로 크기를 바꿔보세요",
+      text="슬라이더로 공의 크기를 바꿔보세요",
       color=color.black, height=14)
 
 # 슬라이더 콜백 — 슬라이더 값을 공의 반지름으로
@@ -1364,7 +1364,7 @@ def on_slide(evt):
     ball.radius = evt.value
 
 slider(min=0.1, max=2.0, step=0.05, value=0.5,
-       length=200, bind=on_slide)
+       text='반지름', length=200, bind=on_slide)
 
 # 버튼 콜백 — 색을 무작위로
 def on_color(evt):
