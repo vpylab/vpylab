@@ -2,6 +2,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import CodeVocabulary from '../components/learning/CodeVocabulary';
 import { useI18n } from '../i18n/useI18n';
+import { ensureAudioResumed } from '../engine/sound-system';
 import { tutorials, getTutorial } from '../data/tutorials';
 import { creativeLabs } from '../data/creative-labs';
 import { lightSoundLabs } from '../data/light-sound-labs';
@@ -35,11 +36,11 @@ export default function Tutorials() {
           <CodeVocabulary code={tutorial.displayCode || tutorial.code} locale={lang}/>
           {tutorial.supportCode && <details className="mb-6"><summary className="text-sm cursor-pointer">{ko ? '제공 함수 펼치기 · 실습 화면에 함께 들어 있습니다' : 'View supplied function · Included in the workspace'}</summary><pre className="mt-4 border p-4 overflow-x-auto text-xs leading-relaxed" style={{ borderColor: 'var(--color-border)' }} tabIndex={0}><code>{tutorial.supportCode}</code></pre></details>}
           <ol className="list-decimal pl-5 text-sm leading-relaxed space-y-4 mb-8">
-            <li>{ko ? '실습 화면을 열고 실행 버튼을 누르세요. 코드를 모두 이해하지 않아도 괜찮아요.' : 'Open the workspace and press Run. You do not need to understand every line.'}</li>
+            <li>{ko ? '예제 실행하기를 누르고 어떤 변화가 보이는지 살펴보세요.' : 'Select Run example and watch what happens.'}</li>
             <li>{tutorial.change[lang]}</li>
             <li>{tutorial.reflect[lang]}</li>
           </ol>
-          <Link to={workspaceUrl} className="btn-primary no-underline inline-flex">{ko ? '직접 체험하기' : 'Try it'} →</Link>
+          <Link to={workspaceUrl} state={{ runTutorial: true }} onClick={ensureAudioResumed} className="btn-primary no-underline inline-flex">{ko ? '예제 실행하기' : 'Run example'} →</Link>
           {tutorial.tasks && <section className="mt-10"><h2 className="font-semibold mb-4">{ko ? '내가 정해서 바꾸기' : 'Make your own choices'}</h2><ul className="list-disc pl-5 text-sm space-y-3 leading-relaxed">{tutorial.tasks.map((task, index) => <li key={index}>{task[lang]}</li>)}</ul></section>}
           {tutorial.peerTest && <section className="mt-8"><h2 className="font-semibold mb-3">{ko ? '친구에게 시험하기' : 'Ask a peer to test'}</h2><p className="text-sm leading-relaxed">{tutorial.peerTest[lang]}</p></section>}
           {tutorial.team && <section className="mt-8"><h2 className="font-semibold mb-4">{ko ? '함께 만드는 방법' : 'Working together'}</h2><ol className="list-decimal pl-5 text-sm space-y-3 leading-relaxed">{tutorial.team.map((step, index) => <li key={index}>{step[lang]}</li>)}</ol></section>}

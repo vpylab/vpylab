@@ -1,4 +1,4 @@
-import { getDefaultCode } from '../../data/default-code';
+import { DEFAULT_CODE } from '../../data/default-code';
 import { useRef, useCallback, useEffect, useState } from 'react';
 import Editor, { loader } from '@monaco-editor/react';
 import * as monaco from './monaco-python';
@@ -92,7 +92,7 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
         height="100%"
         language="python"
         theme={MONACO_THEME_MAP[theme] || 'vs-dark'}
-        value={code ?? getDefaultCode(locale)}
+        value={code ?? DEFAULT_CODE}
         onChange={onChange}
         onMount={handleMount}
         beforeMount={instance=>{const getLocale=()=>useAppStore.getState().locale||'ko';registerPythonHelp(instance,getLocale);registerColorHelp(instance,getLocale);}}

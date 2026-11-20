@@ -1,6 +1,6 @@
 import './theater.css';
 import { localizeLessonCode } from '../i18n/owned-content';
-import { DEFAULT_CODE, getDefaultCode } from '../data/default-code';
+import { DEFAULT_CODE, isStarterCode } from '../data/default-code';
 import { useUiText, getUiLocale } from "../i18n/ui-text";
 import { readPracticeDraft, writePracticeDraft } from '../utils/practice-drafts';
 import { clearSandboxDraft, readSandboxDraft, writeSandboxDraft } from '../utils/sandbox-draft';
@@ -17,10 +17,10 @@ import RuntimeStatus from '../components/shared/RuntimeStatus';
 import { needsTapBeforeAutoStart } from '../engine/pending-start';
 import useAudioState from '../hooks/useAudioState';
 import usePyodide from '../hooks/usePyodide';
-import { getStatus as getPythonStatus } from '../engine/pyodide-singleton';
+import { getStatus as getPythonStatus, softStop } from '../engine/pyodide-singleton';
 import { processBatch, clearScene } from '../engine/vpython-bridge';
 import { clearRegistry } from '../engine/object-registry';
-import { runSound, errorSound, stopBgm, stopAllSounds, initAudioOnUserGesture, isAudioUnlocked, isTouchPlaybackEnvironment, resumeAndRun, openRecordingAudioStream } from '../engine/sound-system';
+import { runSound, errorSound, stopAllSounds, initAudioOnUserGesture, isAudioUnlocked, isTouchPlaybackEnvironment, resumeAndRun, openRecordingAudioStream } from '../engine/sound-system';
 import { MAX_RECORDING_SECONDS, canRecordCanvas, startCanvasRecording, downloadRecording } from '../engine/video-recorder';
 import { captureThumbnail } from '../engine/thumbnail';
 import { createShareLink, decodeCodeFromURL, loadSharedCode, SHARE_RUN_VIEW } from '../utils/share';
@@ -73,7 +73,6 @@ function getProjectRole(project, members, userId) {
 // GitHub 팀 프로젝트 애드온(오픈소스 판). 설정된 배포에서만, 만들기 화면이 뜬 뒤에 따로 불러옵니다.
 const GitHubAddon = GITHUB_ADDON ? lazy(() => import('../components/github/GitHubAddon.jsx')) : null;
 
-const isStarterCode = (value) => !value || value === DEFAULT_CODE || value === getDefaultCode('en');
 
 function waitForSaveTimeout(ms, message) {
   return new Promise((resolve) => {
@@ -130,7 +129,7 @@ export default function Sandbox() {
   const audio=useAudioState(),playEpoch=useRef(0),stopSourceRef=useRef(null);
   const [homePin,setHomePin]=useState(null);
   const lastStartedCode=useRef(null);
-  const [code, setCode] = useState(() => getDefaultCode(locale));
+  const [code, setCode] = useState(DEFAULT_CODE);
   const [outputs, setOutputs] = useState([]);
   const [activeTab, setActiveTab] = useState('editor');
   const [mobileMore, setMobileMore] = useState(false);
@@ -180,6 +179,7 @@ export default function Sandbox() {
   const recordingRef = useRef(null);
   const [recordedVideo, setRecordedVideo] = useState(null); // 드라이브를 연결한 경우 저장 위치를 고를 영상 { blob, name, seconds }
   const [theaterWaiting, setTheaterWaiting] = useState(false); // 클릭 대기 중
+  const [tutorialWaiting, setTutorialWaiting] = useState(false);
   const [playStartRequired, setPlayStartRequired] = useState(false);
   const [repoLoadStatus, setRepoLoadStatus] = useState(null); // 'loading' | 'error' | null
   const sceneRef = useRef(null);
@@ -199,8 +199,8 @@ export default function Sandbox() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   // 초기화 시 되돌릴 "원본 코드" — 예제/lesson/remix 로드 시 갱신, 미설정 시 DEFAULT_CODE
-  const initialCodeRef = useRef(getDefaultCode(locale));
-  const codeRef = useRef(getDefaultCode(locale));
+  const initialCodeRef = useRef(DEFAULT_CODE);
+  const codeRef = useRef(DEFAULT_CODE);
   const homeDraftTitle=useRef(null),consumedSharedSource=useRef(null);
   const practiceContextRef = useRef(null);
   const draftWriteFailedRef = useRef(false);
@@ -570,7 +570,7 @@ export default function Sandbox() {
     if (restoringRevision) return;
     // 개인 코드를 구글 드라이브에 저장하는 배포에서는 운영 계정에 자동 저장하지 않습니다.
     if (!ACCOUNT_SAVE) return;
-    if (!user || !code || (code === DEFAULT_CODE || code === getDefaultCode("en"))) return;
+    if (!user || isStarterCode(code)) return;
     if (activeProject) return;
     // 로드 중일 때만 차단 — 'error' 상태에서 자동 저장이 영구 차단되지 않도록
     if (repoLoadStatus === 'loading') return;
@@ -698,6 +698,12 @@ export default function Sandbox() {
   }, []);
 
   useEffect(() => {
+    const showAudioError = event => addOutput(event.detail, 'warning');
+    window.addEventListener('vpylab-audio-error', showAudioError);
+    return () => window.removeEventListener('vpylab-audio-error', showAudioError);
+  }, [addOutput]);
+
+  useEffect(() => {
     if (!activeProject?.id || !activeGithubSetupStatus?.state) return;
     const state = activeGithubSetupStatus.state;
     const message = activeGithubSetupStatus.message || activeGithubSetupStatus.error || '';
@@ -799,12 +805,23 @@ export default function Sandbox() {
       addOutput(ui("튜토리얼을 찾을 수 없습니다."), 'error');
       return;
     }
-    stopAllSounds();
-    import('../engine/pyodide-singleton').then(m => m.softStop()).catch(() => {});
+    const epoch = ++playEpoch.current;
+    softStop();
     if (sceneRef.current) clearScene(sceneRef.current);
     loadPracticeCode(item.code, `tutorial/${item.id}/${item.activeStep || 'base'}`);
-    addOutput(ui`튜토리얼 "${item.title[getUiLocale()]}" 준비됨. 실행 버튼을 눌러주세요.`, 'success');
-  }, [searchParams, addOutput, updateCode, loadPracticeCode, ui]);
+    setTutorialWaiting(true);
+    if (location.state?.runTutorial && codeRef.current.trim()) {
+      pendingPlayRef.current = codeRef.current;
+    } else {
+      addOutput(ui`튜토리얼 "${item.title[getUiLocale()]}" 준비됨. 실행 버튼을 눌러주세요.`, 'success');
+    }
+    return () => {
+      if (playEpoch.current === epoch) {
+        playEpoch.current = epoch + 1;
+        pendingPlayRef.current = null;
+      }
+    };
+  }, [searchParams, location.key, location.state?.runTutorial, addOutput, loadPracticeCode, ui]);
 
   useEffect(() => {
     const showcaseId = searchParams.get('showcase');
@@ -848,8 +865,12 @@ export default function Sandbox() {
       stopAllSounds();
       import('../engine/pyodide-singleton').then(m => m.softStop()).catch(() => {});
       if (sceneRef.current) clearScene(sceneRef.current);
-      loadPracticeCode(localizeLessonCode(cid, lesson.code, getUiLocale()), `lesson/${lessonParam}`);  // 초기화 시 이 차시로 복귀
-      addOutput(ui`코스 차시 "${lesson.title?.[getUiLocale()] || lid}" 로드됨. 실행 버튼을 눌러주세요.`, 'success');
+      loadPracticeCode(localizeLessonCode(cid, lesson.starterCode ?? lesson.code, getUiLocale()), `lesson/${lessonParam}`);  // 초기화 시 이 차시로 복귀
+      if (lesson.starterCode === '' && !codeRef.current) {
+        addOutput(ui`첫 줄에 ${lesson.code.trim()}를 입력하고 실행을 누르세요.`, 'log');
+      } else {
+        addOutput(ui`코스 차시 "${lesson.title?.[getUiLocale()] || lid}" 로드됨. 실행 버튼을 눌러주세요.`, 'success');
+      }
     } else {
       addOutput(lesson
         ? ui("이 차시는 절차 안내입니다. 학습 코스에서 교재를 열고 현재 작품으로 실습하세요.")
@@ -928,8 +949,8 @@ export default function Sandbox() {
     },
     onBatch: handleBatch,
     onReady: () => addOutput(ui("Python 엔진 준비 완료!"), 'success'),
-    onDone: () => {
-      stopBgm();
+    onDone: ({ stopped } = {}) => {
+      if (stopped) stopAllSounds();
     },
     locale,
   });
@@ -946,6 +967,7 @@ export default function Sandbox() {
     stopAllSounds();
     if(getPythonStatus()!=='ready'){pendingPlayRef.current=sourceCode;stopExecution();return;}
     userStartedRef.current = false;
+    setTutorialWaiting(false);
     if (sceneRef.current) clearScene(sceneRef.current);
     clearRegistry();
     if (sceneRef.current?._cameraSystem) {
@@ -985,7 +1007,7 @@ export default function Sandbox() {
         if (epoch === playEpoch.current) startProgram(playCode);
       });
     }
-  }, [isReady, code, startProgram]);
+  }, [isReady, code, location.key, startProgram]);
 
   const handlePendingPlayStart = () => {
     const playCode = pendingPlayRef.current || codeRef.current;
@@ -1013,7 +1035,7 @@ export default function Sandbox() {
     if (sceneRef.current) clearScene(sceneRef.current);
     // 이 브라우저에 남긴 자유 코딩 초안도 지웁니다(공용 컴퓨터에서 다음 사람에게 남지 않게).
     clearSandboxDraft();
-    updateCode(initialCodeRef.current || getDefaultCode(locale));
+    updateCode(initialCodeRef.current);
     setOutputs([]);
   };
 
@@ -1110,7 +1132,7 @@ export default function Sandbox() {
 
       // 에디터에 기본 예제가 아닌 코드가 있으면 교체 전에 확인
       const hasUserCode = (codeRef.current || '').trim().length > 0
-        && codeRef.current !== DEFAULT_CODE && codeRef.current !== getDefaultCode("en");
+        && !isStarterCode(codeRef.current);
       if (hasUserCode && !window.confirm(ui("현재 코드를 팀 프로젝트로 교체할까요? 저장하지 않은 내용은 사라집니다."))) {
         addOutput(ui("팀 프로젝트에 합류했습니다. 프로젝트 패널에서 열 수 있습니다."), 'success');
         return;
@@ -1701,9 +1723,8 @@ export default function Sandbox() {
           onNewCode={() => {
             practiceContextRef.current = null;
             detachGitHubSource();
-            const starter = getDefaultCode(locale);
-            updateCode(starter);
-            homeDraftTitle.current = null; initialCodeRef.current = starter;
+            updateCode(DEFAULT_CODE);
+            homeDraftTitle.current = null; initialCodeRef.current = DEFAULT_CODE;
             setDriveDialog(null);
           }}
           onClose={() => setDriveDialog(null)}
@@ -1793,7 +1814,7 @@ export default function Sandbox() {
             className={`${activeTab === '3d' ? 'flex' : 'hidden'} md:flex w-full`}
             style={{ height: '60%', minHeight: 0, borderBottom: '1px solid var(--color-border)' }}
           >
-            <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: handleRun, onStop: handleStop, isRunning:isRunning||audio.playing, isReady }} />
+            <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: handleRun, onStop: handleStop, isRunning:isRunning||audio.playing, isReady }} tutorialPrompt={tutorial && tutorialWaiting && !playStartRequired && ['idle', 'loading', 'ready'].includes(engineStatus) ? (isReady ? 'ready' : 'loading') : null} />
           </div>
 
           {/* 리사이저 (데스크톱) */}
@@ -2029,7 +2050,7 @@ export default function Sandbox() {
       {/* 저장된 코드 목록과 각 코드의 이력 */}
       {showSavedCodes && (
         <SavedCodeList
-          currentCode={(code === DEFAULT_CODE || code === getDefaultCode("en")) ? undefined : code}
+          currentCode={isStarterCode(code) ? undefined : code}
           onClose={() => setShowSavedCodes(false)}
           onLoadCode={(loadedCode, codeId) => {
             stopAllSounds(); stopSourceRef.current?.(); playEpoch.current++; pendingPlayRef.current=null;

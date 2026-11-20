@@ -211,11 +211,12 @@ test('real corpus: harvest is non-trivial; a shipped starter is unchanged, a cha
   const modules = new Set(real.refs.map((r) => r.module));
   for (const m of ['missions', 'examples', 'docs', 'courses', 'default-code']) assert.ok(modules.has(m), m);
 
-  const { DEFAULT_CODE } = await import(new URL(`file://${path.join(DATA_DIR, 'default-code.js')}`).href);
-  const same = classify(DEFAULT_CODE, real);
+  const { DEFAULT_CODE, LEGACY_BOUNCING_BALL } = await import(new URL(`file://${path.join(DATA_DIR, 'default-code.js')}`).href);
+  assert.equal(classify(DEFAULT_CODE, real).stage, 'empty');
+  const same = classify(LEGACY_BOUNCING_BALL, real);
   assert.equal(same.stage, 'unchanged');
   assert.match(same.nearestRef, /^default-code/);
-  const changed = classify(DEFAULT_CODE.replace('radius=0.5', 'radius=1.75').replace('rate(100)', 'rate(60)'), real);
+  const changed = classify(LEGACY_BOUNCING_BALL.replace('radius=0.5', 'radius=1.75').replace('rate(100)', 'rate(60)'), real);
   assert.equal(changed.stage, 'tweak');
 
   const missions = (await import(new URL(`file://${path.join(DATA_DIR, 'missions.js')}`).href)).default;

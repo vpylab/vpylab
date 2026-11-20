@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import firstLines from '../data/first-lines-course';
+import { localizeCourse } from '../i18n/owned-content';
 import Header from '../components/layout/Header';
 import { useI18n } from '../i18n/useI18n';
 import { getMissionById } from '../data/missions';
@@ -10,6 +12,7 @@ const physicalMissionIds = ['PC-1', 'PC-2', 'PC-3'];
 export default function Missions() {
   const { locale: lang } = useI18n();
   const ko = lang === 'ko';
+  const firstCourse = localizeCourse(firstLines, lang);
   const progress = useAppStore(s => s.missionProgress);
   const next = trainingSteps.find(step => !progress[step.missionId]?.passed);
   const completed = trainingSteps.filter(step => progress[step.missionId]?.passed).length;
@@ -20,15 +23,15 @@ export default function Missions() {
         <h1 className="font-display text-3xl font-bold mb-4">{ko ? '트레이닝' : 'Training'}</h1>
         <p className="text-sm leading-relaxed mb-10" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '작은 작품을 완성하는 트레이닝 코스입니다. 처음이라면 기초부터, 문법을 배웠다면 핵심 연습부터 시작하세요.' : 'Training courses for finishing a small project. Start with foundations, or try core practice if you know the basics.'}</p>
         <section aria-labelledby="foundation-title" className="border p-6 mb-8" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-bg-panel)' }}>
-          <p className="text-xs mb-3" style={{ color: 'var(--color-accent)' }}>{ko ? '처음이라면 여기부터 · 기초 8차시' : 'Start here · 8 foundation lessons'}</p>
-          <h2 id="foundation-title" className="font-display text-xl font-bold mb-3">{trainingCourses[0].title[lang]}</h2>
-          <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>{trainingCourses[0].description[lang]}</p>
-          <p className="text-xs mb-5" style={{ color: 'var(--color-text-secondary)' }}>{trainingCourses[0].prerequisite[lang]}</p>
-          <Link to={`/courses/${trainingCourses[0].id}`} className="btn-primary no-underline inline-flex">{ko ? '기초 코스 시작하기' : 'Start foundations'} →</Link>
+          <p className="text-xs mb-3" style={{ color: 'var(--color-accent)' }}>{ko ? `처음이라면 여기부터 · 기초 ${firstCourse.sessions}단계` : `Start here · ${firstCourse.sessions} short steps`}</p>
+          <h2 id="foundation-title" className="font-display text-xl font-bold mb-3">{firstCourse.title[lang]}</h2>
+          <p className="text-sm leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>{firstCourse.description}</p>
+          <Link to={`/courses/${firstCourse.id}/${firstCourse.lessons[0].id}`} className="btn-primary no-underline inline-flex">{ko ? '기초 코스 시작하기' : 'Start foundations'} →</Link>
         </section>
+        <p className="text-sm mb-8"><Link to={`/courses/${trainingCourses[0].id}`} style={{ color: 'var(--color-accent)' }}>{ko ? '이어서 배우기 · 반복과 조건으로 빛과 소리 알림 만들기 (8차시) →' : 'Continue learning · Make signals with loops and conditions (8 lessons) →'}</Link></p>
         <section aria-labelledby="practice-title" className="mb-10">
           <div className="flex justify-between items-center gap-4 mb-3"><h2 id="practice-title" className="font-display text-xl font-bold">{ko ? '배운 것을 내 힘으로' : 'Practice on your own'}</h2><span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>{completed} / {trainingSteps.length} {ko ? '조건 확인' : 'checks passed'}</span></div>
-          <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '기초를 배운 뒤 선택하는 6단계 연습입니다. 변수·반복·조건·리스트를 도움을 조금씩 줄이며 연습합니다. 순서는 추천이며 어느 단계든 열 수 있어요.' : 'An optional six-step practice course after foundations. Practice variables, loops, conditions, and lists with less help. Follow the suggested order or open any step.'}</p>
+          <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '반복과 조건을 배운 뒤 선택하는 6단계 연습입니다. 변수·반복·조건·리스트를 도움을 조금씩 줄이며 연습합니다. 순서는 추천이며 어느 단계든 열 수 있어요.' : 'Six optional practice steps after learning loops and conditions. Practice variables, loops, conditions, and lists with less help. Follow the suggested order or open any step.'}</p>
           {next && <Link to={`/mission/${next.missionId}`} className="text-sm inline-block mb-5" style={{ color: 'var(--color-accent)' }}>{ko ? (completed ? '이어서 연습하기' : '핵심 연습 시작하기') : (completed ? 'Continue practice' : 'Start core practice')} →</Link>}
           <ol>{trainingSteps.map((step, index) => {
             const mission = getMissionById(step.missionId);

@@ -5,6 +5,7 @@ import { I18nProvider } from '../i18n';
 import { downloadPython } from '../utils/code-file';
 import { readSandboxDraft, writeSandboxDraft, SANDBOX_DRAFT_MAX_BYTES } from '../utils/sandbox-draft';
 import Sandbox from './Sandbox';
+import { LEGACY_BOUNCING_BALL } from '../data/default-code';
 
 vi.mock('../components/editor/CodeEditor', async () => ({
   DEFAULT_CODE: (await import('../data/default-code')).DEFAULT_CODE,
@@ -18,11 +19,11 @@ vi.mock('../utils/code-file', async importOriginal => ({
   ...await importOriginal(), downloadPython: vi.fn(),
 }));
 
-function openEditor() {
+function openEditor(path = '/sandbox') {
   const router = createMemoryRouter([
     { path: '/sandbox', element: <Sandbox /> },
     { path: '/docs', element: <h1>문서</h1> },
-  ], { initialEntries: ['/docs', '/sandbox'] });
+  ], { initialEntries: ['/docs', path] });
   render(<I18nProvider><RouterProvider router={router} /></I18nProvider>);
   return router;
 }
@@ -47,6 +48,23 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
   vi.useRealTimers();
+});
+
+it.each([null, LEGACY_BOUNCING_BALL, LEGACY_BOUNCING_BALL + '# 내 실험'])('자유 만들기는 빈 코드로 시작하고 직접 수정한 초안은 복구한다', draft => {
+  if (draft) writeSandboxDraft(draft);
+  openEditor();
+  const expected = draft?.endsWith('# 내 실험') ? draft : '';
+  expect(screen.getAllByRole('textbox', { name: '편집기' })[0]).toHaveValue(expected);
+});
+
+it('첫 차시의 연습은 빈 줄에서 시작하고 자유 코딩 초안을 보존한다', () => {
+  writeSandboxDraft('box()');
+  openEditor('/sandbox?lesson=first-lines/draw');
+  expect(screen.getAllByRole('textbox', { name: '편집기' })[0]).toHaveValue('');
+  expect(screen.getAllByText(/첫 줄에 sphere\(\)를 입력/).length).toBeGreaterThan(0);
+  edit('sphere()');
+  waitForDraft();
+  expect(readSandboxDraft()).toBe('box()');
 });
 
 it('크기 초과 시 이전 초안을 유지하고 최신 코드 내려받기와 이동 경고를 제공한다', async () => {

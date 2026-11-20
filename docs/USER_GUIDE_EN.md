@@ -8,7 +8,7 @@ Start with **Which side is day?** in [Nine short light, sound and space experime
 
 ## Where to start
 
-- **Training**: start with the eight light and sound lessons. Predict a result, run the code, change one thing, and explain what happened. The four optional project lessons cover saving, GitHub, versions, and sharing.
+- **Training**: start with the five steps in **My first line of code**. Begin with `sphere()` in a blank editor. Continue with the eight light and sound lessons to learn loops and conditions. Predict a result, run the code, change one thing, and explain what happened. The four optional project lessons cover saving, GitHub, versions, and sharing.
 - **Create**: write and run Python. Use **Run** and **Stop**, including when scheduled sounds continue after the Python body finishes.
 - **Tutorials**: try a feature briefly, then explore a small project with a partner.
 - **Forge**: shape one reusable object with sliders. Make a character, bell, star, heart, dome, cup, or ring.
@@ -17,6 +17,10 @@ Start with **Which side is day?** in [Nine short light, sound and space experime
 - **Guide**: read the full in-app instructions for individual and team work.
 
 The English foundation lessons use `play_note_and_wait("C4", 0.4)`; the Korean alias `음표("도", 0.4)` remains supported. This helper waits for the note duration; `play_note()` starts the sound and continues immediately. Light and sound commands beyond VPython are marked as VPyLab extensions.
+
+## Background music and sound effects
+
+Choose an MP3 or M4A from the [Dugun Learning gallery](https://greatsong.github.io/dugun-assets/). Pass its file URL or repository path to `bgm()` or `play_sfx()`. For example, `bgm("audio/music/calm/calm01_piano_thoughts_15s.mp3", loop=False)` plays the piano track once. Omit `loop=False` to repeat it. Use `stop_bgm()` to end the music. Downloaded HTML streams these tracks online. Credit the music to Dugun Learning (greatsong), CC BY-NC 4.0.
 
 ## Create and learn without AI
 

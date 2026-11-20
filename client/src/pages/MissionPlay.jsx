@@ -13,7 +13,7 @@ import usePyodide from '../hooks/usePyodide';
 import { processBatch, clearScene } from '../engine/vpython-bridge';
 import { gradeMission } from '../engine/grading-engine';
 import { clearRegistry } from '../engine/object-registry';
-import { runSound, successSound, errorSound, stopBgm, stopAllSounds, initAudioOnUserGesture, resumeAndRun } from '../engine/sound-system';
+import { runSound, successSound, errorSound, stopAllSounds, initAudioOnUserGesture, resumeAndRun } from '../engine/sound-system';
 import { getMissionById } from '../data/missions';
 import { getTrainingPosition } from '../data/training';
 
@@ -139,8 +139,8 @@ function MissionSession({ missionId }) {
     locale: lang,
     onBatch: handleBatch,
     onReady: () => addOutput(ui("Python 엔진 준비 완료!"), 'success'),
-    onDone: () => {
-      stopBgm();
+    onDone: ({ stopped } = {}) => {
+      if (stopped) stopAllSounds();
       if (pendingGradeRef.current) {
         pendingGradeRef.current = false;
         setTimeout(() => handleGradeInternal(), 100);

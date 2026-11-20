@@ -1782,8 +1782,8 @@ play_sequence(melody)`,
     category: 'sound',
     title: { ko: '효과음 재생 (효과음)', en: '효과음 / sfx' },
     description: {
-      ko: '내장 효과음을 재생합니다. 게임, 장면 전환, 미디어아트 피드백에 유용합니다. 효과음(), sfx(), play_sfx()를 모두 사용할 수 있습니다.',
-      en: 'Plays a built-in sound effect. Useful for games, scene changes, and media-art feedback. 효과음(), sfx(), and play_sfx() are all supported.',
+      ko: '내장 이름이나 두근두근러닝 MP3·M4A의 audio/ 경로 또는 파일 주소로 효과음을 한 번 재생합니다. 효과음(), sfx(), play_sfx()를 모두 사용할 수 있습니다.',
+      en: 'Play a built-in effect or a Dugun Learning MP3 or M4A once, using its audio/ path or file URL. 효과음(), sfx(), and play_sfx() are all supported.',
     },
     signature: "효과음(name)",
     params: [
@@ -1805,21 +1805,23 @@ sleep(0.5)
     category: 'sound',
     title: { ko: '배경음악 (배경음악 / 배경음악정지)', en: 'BGM' },
     description: {
-      ko: '내장 배경음악을 반복 재생하거나 정지합니다. 작품의 분위기를 빠르게 만들 수 있어 갤러리 예제에 잘 어울립니다.',
-      en: 'Starts or stops a built-in background music loop. Great for giving gallery pieces an immediate mood.',
+      ko: '내장곡 이름이나 두근두근러닝 음원의 audio/ 경로, 갤러리 파일 주소, GitHub 원본 주소를 넣으세요. MP3·M4A를 재생하며, 새 곡을 시작하면 이전 곡이 멈춥니다.',
+      en: 'Play a built-in theme or a Dugun Learning MP3 or M4A using its audio/ path, gallery file URL, or GitHub raw URL. Starting another track stops the previous one.',
     },
-    signature: "배경음악(name)  /  배경음악정지()",
+    signature: "배경음악(name, loop=True)  /  배경음악정지()",
     params: [
       { name: 'name', type: 'string', default: '-', desc: {
         ko: "배경음악 이름: 'adventure', 'explore', 'battle', 'peaceful', 'victory'",
         en: "BGM name: 'adventure', 'explore', 'battle', 'peaceful', 'victory'",
       } },
+      { name: 'loop', type: 'bool', default: 'True', desc: {
+        ko: 'False이면 한 번 재생합니다.', en: 'Use False to play once.',
+      } },
     ],
-    code: `from vpython import *
-배경음악("adventure")
-sphere(color=color.gold, radius=0.5)
-sleep(5)
-배경음악정지()`,
+    code: `# 음악 · 두근두근러닝(greatsong), CC BY-NC 4.0
+# https://github.com/greatsong/dugun-assets
+배경음악("audio/music/calm/calm01_piano_thoughts_15s.mp3", loop=False)
+sphere(color=color.gold)`,
     tags: ['sound', 'audio', 'bgm', 'music', 'background', 'loop', '배경음악'],
   },
   {
