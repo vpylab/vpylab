@@ -44,9 +44,9 @@ Choose one of four home characters (Dumpling, Flashlight, Toolbox, and Pink frie
 
 ```python
 friend = make_your_module(pos=vector(0, 0, 0), scale=1)
-friend.object.pos.x += 0.1
-friend.object.opacity = 0.6
-friend.object.color = vector(1, 0.7, 0.3)
+friend.pos.x += 0.1
+friend.opacity = 0.6
+friend.color = vector(1, 0.7, 0.3)
 ```
 
 The **Place it** tab sets the values for placing the finished module in a project. Change position x, y and z, `scale`, the rotation axis and angle, and the overall color with sliders. The preview and the usage code change together. In the preview, the red line is x, the green line is y and the blue line is z. Colors are written as whole numbers from 0 to 255, such as `vector(255, 180, 80)`. **Copy this usage code** copies the lines to paste below the finished module code. These values are used on screen only and are not saved in the module.

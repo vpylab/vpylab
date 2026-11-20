@@ -55,32 +55,12 @@ def make_toolbox_93965bd6(pos=None, scale=1):
         if previous is not None:
             parts.append(cylinder(pos=previous, axis=point-previous, radius=(0.012 * (body_width / 1.8)) * scale, shininess=0.28, color=vector(0.022174, 0.033105, 0.05448)))
         previous = point
-    object_3d = compound(parts)
-    effects = []
-    visible_parts = [object_3d] + effects
-    object_offset = vector(object_3d.pos - origin)
-    class Module:
-        def __init__(self):
-            self.object = object_3d
-            self.parts = visible_parts
-            self.active = True
-        @property
-        def pos(self):
-            return vector(self.object.pos - object_offset)
-        def move_to(self, new_pos):
-            self.object.pos = vector(new_pos) + object_offset
-        def dispose(self):
-            if not self.active:
-                return
-            self.active = False
-            for item in self.parts:
-                item.visible = False
-    return Module()
+    return compound(parts, origin=origin)
 
 scene.range = 2.5
 scene.center = vector(0, 0.15, 0)
 scene.forward = vector(-0.13, -0.145, -1)
 my_module = make_toolbox_93965bd6(pos=vector(0, 0, 0), scale=1)
 # 다른 위치에 더 만들기: friend = make_toolbox_93965bd6(pos=vector(3,0,0), scale=0.7)
-# 이동: my_module.move_to(vector(2,0,0))
-# 제거: my_module.dispose()
+# 이동: my_module.pos.x += 1
+# 숨기기: my_module.visible = False

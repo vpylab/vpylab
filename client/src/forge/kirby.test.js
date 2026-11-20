@@ -33,7 +33,7 @@ it('손대지 않은 구형 시작 초안만 바꾸고 수정·저장·포크 �
 it('이미 공개한 구형 커비 코드는 변경 전과 바이트 단위로 같고 다시 포크할 수 있다',()=>{
   const old=moduleFromPublishedCode(legacyCode.trim());expect(old).not.toBeNull();expect(old.recipe.appearance).toBeUndefined();
   expect(moduleFromPublishedCode(legacyCode.replace("return Module()", "return None"))).toBeNull();
-  expect(moduleProgram(old,{legacyWrapper:true}).trim()).toBe(legacyCode.trim());
+  expect(moduleProgram(old,{publishedFormat:'wrapper'}).trim()).toBe(legacyCode.trim());
   expect(buildForgeModel(old.recipe).parts.some(p=>p.name==='smile_minus1')).toBe(true);
   expect(()=>validateRecipe({...createRecipe('kirby'),appearance:'unknown'})).toThrow();
 });
