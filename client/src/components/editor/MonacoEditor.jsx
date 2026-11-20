@@ -42,7 +42,8 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
   const handleMount = useCallback((editor) => {
     editorRef.current = editor;
     warmEditorCache();
-    editor.focus();
+    // 다운로드 중 다른 단추로 이동한 사용자의 다음 키 입력을 편집기가 가로채지 않습니다.
+    if (document.activeElement === document.body) editor.focus();
     // 폰트 합자 명시적 OFF — props만으로 안 먹는 환경 방어
     editor.updateOptions({ fontLigatures: false });
     cleanupRef.current();
@@ -128,4 +129,3 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
     </div>
   );
 }
-
