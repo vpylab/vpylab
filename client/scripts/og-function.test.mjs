@@ -62,7 +62,8 @@ describe('OG 카드 서버리스 함수', () => {
     expect(res.body).toContain('<meta name="twitter:card" content="summary_large_image" />');
     expect(res.body).toContain('<title>공 튀기기 &lt;실험&gt; · VPyLab</title>');
     // 앱 셸은 그대로 — 사람 브라우저에서는 React 앱이 뜬다
-    expect(res.body).toContain('<div id="root"></div>');
+    const shell = new DOMParser().parseFromString(res.body, 'text/html');
+    expect(shell.querySelector('#root [role="status"] progress')).not.toBeNull();
     expect(res.body).toContain('src="/assets/index-abc123.js"');
     // 기본 og 메타는 한 번만 남는다
     expect(res.body.match(/property="og:title"/g)).toHaveLength(1);
@@ -107,7 +108,8 @@ describe('OG 카드 서버리스 함수', () => {
     await createOgHandler({ env, fetchImpl: failing, cwd })(makeReq('/api/og?kind=share&id=abc12345'), res);
     expect(res.statusCode).toBe(200);
     expect(res.headers['x-vpylab-card']).toBe('default');
-    expect(res.body).toContain('<div id="root"></div>');
+    const shell = new DOMParser().parseFromString(res.body, 'text/html');
+    expect(shell.querySelector('#root [role="status"] progress')).not.toBeNull();
   });
 
   it('함수 번들에 index.html이 없으면 배포에서 받아 오고, 그것도 없으면 최소 HTML을 돌려준다', async () => {

@@ -33,7 +33,7 @@ const MONACO_THEME_MAP = {
   'cyber-neon': 'vs-dark',
 };
 
-export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = false }) {
+export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = false, onReady }) {
   const editorRef = useRef(null),hostRef=useRef(null),cleanupRef=useRef(()=>{});
   const [tip,setTip]=useState(null);
   const locale=useAppStore(s=>s.locale),owner=useAuthStore(s=>s.user?.id);
@@ -44,7 +44,8 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
     editorRef.current = editor;
     warmEditorCache();
     // 다운로드 중 다른 단추로 이동한 사용자의 다음 키 입력을 편집기가 가로채지 않습니다.
-    if (document.activeElement === document.body) editor.focus();
+    if (onReady) onReady(editor);
+    else if (document.activeElement === document.body) editor.focus();
     // 폰트 합자 명시적 OFF — props만으로 안 먹는 환경 방어
     editor.updateOptions({ fontLigatures: false });
     cleanupRef.current();
@@ -83,7 +84,7 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
     const scroll=editor.onDidScrollChange(e=>{if(e.scrollTopChanged||e.scrollLeftChanged)dismiss();}),blur=editor.onDidBlurEditorWidget(dismiss),mouse=editor.onMouseDown(e=>{if(!e.target.element?.closest('.suggest-widget'))dismiss();}),keys=editor.onKeyDown(e=>{if(e.keyCode===monaco.KeyCode.Escape)dismiss();});
     cleanupRef.current=()=>{clearTimeout(pending);clearTimeout(hideTimer);changed.dispose();scroll.dispose();blur.dispose();mouse.dispose();keys.dispose();};
 
-  }, []);
+  }, [onReady]);
 
   return (
     <div ref={hostRef} className="h-full w-full overflow-hidden flex flex-col relative" style={{ backgroundColor: 'var(--color-bg-primary)' }}>

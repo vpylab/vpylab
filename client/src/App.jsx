@@ -67,9 +67,10 @@ function AppContent() {
     <>
       <AuthModal />
       <Suspense fallback={
-        <div className="h-screen flex items-center justify-center"
+        <div role="status" className="h-screen flex flex-col gap-3 items-center justify-center"
           style={{ backgroundColor: 'var(--color-bg-primary)', color: 'var(--color-text-muted)' }}>
           {t('common.loading')}
+          <progress aria-label={t('common.loading')} className="w-24 h-1" />
         </div>
       }>
         <Outlet />

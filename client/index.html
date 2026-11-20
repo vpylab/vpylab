@@ -32,7 +32,12 @@
     <link rel="dns-prefetch" href="//unpkg.com">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div role="status" style="min-height:100dvh;display:grid;place-content:center;justify-items:center;gap:.75rem;font:600 1rem system-ui,sans-serif">
+        <span>VPyLab</span>
+        <progress aria-label="VPyLab" style="width:6rem;height:.3rem;accent-color:#3066f5"></progress>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
