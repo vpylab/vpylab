@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
-  createGoogleAuth, missingScopes, AuthRequiredError, ALL_SCOPES, DRIVE_FILE_SCOPE, explainAuthError, loadGis,
+  createGoogleAuth, missingScopes, AuthRequiredError, DRIVE_FILE_SCOPE, explainAuthError, loadGis,
   readStoredToken, TOKEN_STORAGE_KEY,
 } from './google-auth.js';
 import { memoryStorage } from './fake-google.js';
@@ -32,11 +32,12 @@ describe('missingScopes', () => {
 });
 
 describe('createGoogleAuth', () => {
-  it('클라이언트 ID와 전체 범위로 토큰 클라이언트를 만든다', () => {
+  it('이전에 승인한 다른 서비스 범위를 합치지 않고 신원과 드라이브 파일 권한만 요청한다', () => {
     const { gis, state } = fakeGis();
     createGoogleAuth({ clientId: 'cid', gis });
     expect(state.config.client_id).toBe('cid');
-    expect(state.config.scope).toBe(ALL_SCOPES.join(' '));
+    expect(state.config.scope.split(' ')).toEqual(['openid', 'email', 'profile', DRIVE_FILE_SCOPE]);
+    expect(state.config.include_granted_scopes).toBe(false);
   });
 
   it('승인 응답으로 토큰과 만료 시각을 기록한다', async () => {

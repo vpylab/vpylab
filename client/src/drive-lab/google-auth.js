@@ -117,6 +117,8 @@ export function createGoogleAuth({ clientId, gis, now = () => Date.now(), tokenS
   const client = gis.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: ALL_SCOPES.join(' '),
+    // 같은 구글 프로젝트에서 예전에 승인한 다른 서비스의 권한을 합치지 않습니다.
+    include_granted_scopes: false,
     callback: (response) => {
       const done = pending;
       pending = null;
