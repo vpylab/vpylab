@@ -18,6 +18,7 @@ it.skipIf(!hasPython())('두 공의 여덟 단계가 한·영에서 같은 순�
       const scene = scenes.get(lesson.id + ':' + locale);
       expect(scene.error).toBeNull();
       expect(lesson.code).toContain(lesson.practice.line);
+      expect([lesson.code, ...Object.values(lesson.practice)].join(' ')).not.toContain('_id');
       if (locale === 'en') expect([lesson.code, lesson.summary, ...Object.values(lesson.practice)].join(' ')).not.toMatch(/[가-힣]/);
       const balls = scene.commands.filter(c => c.type === 'sphere');
       expect(balls).toHaveLength(index < 2 ? 1 : 2);
@@ -52,4 +53,26 @@ it.skipIf(!hasPython())('두 공의 여덟 단계가 한·영에서 같은 순�
       expect(commands.filter(c => c.action === 'sound').map(c => c.name)).toEqual(id === 'sound' ? ['C4', 'G4', 'G4'] : []);
     }
   }
+});
+
+it.skipIf(!hasPython())('클릭 결과는 실제 도형이며 예전 ID 비교와 사전 조회도 동작한다',()=>{
+  const code = [
+    'left = sphere()',
+    'right = sphere()',
+    'assembly = compound([right])',
+    'expected = [left, assembly, assembly, None]',
+    'old_colors = {left._id: color.red, assembly._id: color.green}',
+    'def click(event):',
+    '    picked = event.pick',
+    '    assert picked is expected.pop(0)',
+    '    if picked is not None:',
+    '        assert picked == picked._id and picked._id == picked',
+    '        picked.color = old_colors[picked]',
+    '    print("checked")',
+    'scene.bind("click", click)',
+  ].join('\n');
+  const events = ['obj_1', 'obj_2', 'obj_3', null].map(pick=>({name:'click',pick}));
+  const result = runPythonJobs([{id:'pick',label:'identity',code,events}]).get('pick:identity');
+  expect(result.error).toBeNull();
+  expect(result.stdout.trim().split('\n')).toEqual(Array(4).fill('checked'));
 });

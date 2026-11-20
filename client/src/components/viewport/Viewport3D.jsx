@@ -138,10 +138,13 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       raycaster.setFromCamera(ndc, camera);
       // 1) 객체 픽 — meshRegistry의 모든 mesh를 순회하지 않고 scene 자식 사용
       const targets = [];
-      scene.traverse((o) => {
-        if (o.userData?.vpId && o.visible !== false) targets.push(o);
+      scene.traverseVisible((o) => {
+        if (!o.geometry && !o.isSprite) return;
+        let owner = o;
+        while (owner && !owner.userData.vpId) owner = owner.parent;
+        if (owner) targets.push(o);
       });
-      const hits = raycaster.intersectObjects(targets, true);
+      const hits = raycaster.intersectObjects(targets, false);
       let pick = null;
       let pos = null;
       if (hits.length > 0) {

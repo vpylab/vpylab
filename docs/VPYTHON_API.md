@@ -457,7 +457,7 @@ text(text='Car', group=g, depth=1, start_face_color=color.red)
 ```python
 def on_click(evt):
     # evt.pos: 월드 좌표 (vector)
-    # evt.pick: 클릭된 객체 id 또는 None
+    # evt.pick: 클릭된 도형 또는 None
     sphere(pos=evt.pos, radius=0.2, color=color.red)
 
 def on_key(evt):
@@ -482,7 +482,7 @@ while True:
 지원 이벤트: `click`, `mousedown`, `mouseup`, `mousemove`, `keydown`, `keyup`, `widget`(위젯 콜백).
 
 `scene.mouse.pos` — 현재 마우스 위치(vector)를 폴링.
-`scene.mouse.pick` — 현재 마우스 아래 객체 id 또는 `None`.
+`scene.mouse.pick` — 현재 마우스 아래 도형 또는 `None`.
 `scene.mouse.ray` — 카메라에서 마우스가 가리키는 점을 향하는 단위 벡터. `scene.mouse.camera`는 카메라 위치.
 `scene.mouse.project(normal=vector(0,1,0), point=vector(0,0,0))` — 마우스 광선을 평면에 투영한 점(`d=`로 원점 거리 지정도 가능). 만나지 않으면 `None`.
 

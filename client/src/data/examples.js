@@ -1243,7 +1243,7 @@ scene.range = 4
 import random
 
 # scene.bind('event_name', handler)로 이벤트 핸들러 등록.
-# 핸들러는 evt.pos(클릭된 월드 좌표), evt.pick(클릭된 객체 id) 정보를 받습니다.
+# 핸들러는 evt.pos(클릭된 월드 좌표), evt.pick(클릭된 도형) 정보를 받습니다.
 # rate() 호출 시점에 자동으로 디스패치됩니다.
 # ──────────────────────────────────────────
 
@@ -2185,7 +2185,7 @@ while True:
     code: `from vpython import *
 
 # 클릭 한 번이 음 한 개. 7개 색을 직접 누르며 멜로디를 만들어 보세요.
-# evt.pick으로 클릭된 객체 id를 알 수 있어 어떤 건반인지 식별합니다.
+# evt.pick으로 어느 건반을 눌렀는지 알 수 있습니다.
 # ──────────────────────────────────────────
 
 scene.background = vector(0.1, 0.1, 0.15)
@@ -2203,7 +2203,7 @@ keys_data = [
     ('시', note.B4, color.purple),
 ]
 
-key_map = {}  # id → (음, 박스)
+key_map = {}  # 건반 도형 → (주파수, 박스)
 x = -3
 for name, freq, col in keys_data:
     b = box(pos=vector(x, 0, 0),
@@ -2211,7 +2211,7 @@ for name, freq, col in keys_data:
             color=col, emissive=True)
     label(pos=vector(x, -1.2, 0), text=name,
           color=color.white, height=18)
-    key_map[b._id] = (freq, b)
+    key_map[b] = (freq, b)
     x += 1
 
 label(pos=vector(0, 2.5, 0),
@@ -2725,7 +2725,7 @@ KEYS = [
 ]
 
 # 건반 박스 + id로 매핑
-key_map = {}  # mesh_id → (이름_한글, 음표명, 주파수, 박스, 기본_y)
+key_map = {}  # 건반 도형 → 음표 이름, 주파수, 위치
 x = -3.5
 for ko, name_for_play, freq, col in KEYS:
     b = box(pos=vector(x, 0, 0),
@@ -2733,7 +2733,7 @@ for ko, name_for_play, freq, col in KEYS:
             color=col, emissive=True)
     label(pos=vector(x, -1.3, 0), text=ko,
           color=color.black, height=18)
-    key_map[b._id] = {'name': name_for_play, 'freq': freq, 'box': b, 'base_y': 0}
+    key_map[b] = {'name': name_for_play, 'freq': freq, 'box': b, 'base_y': 0}
     x += 1
 
 # 헤더 라벨
@@ -2751,7 +2751,6 @@ state = {
     'instrument': 'piano',
     'request': None,     # 'play' | 'clear' | None
     'playing': False,
-    'last_pressed_id': None,
 }
 
 INSTRUMENTS = ['피아노', '플루트', '기타', '오르간', '신스', '베이스', '트럼펫', '칩튠']
@@ -2773,7 +2772,6 @@ def on_click(evt):
     sound(k['freq'], 0.4, 'sine', 0.32)
     # 박스 점프 표시
     k['box'].pos = vector(k['box'].pos.x, k['base_y'] + 0.3, k['box'].pos.z)
-    state['last_pressed_id'] = pick
 
     # 기록 (시각 = 첫 음 기준 상대 초)
     now = time.time()
@@ -2848,7 +2846,7 @@ while True:
                         sound(k['freq'], 0.4, 'sine', 0.3)
                         break
             # 해당 건반 점프 표시
-            for kid, k in key_map.items():
+            for k in key_map.values():
                 if k['name'] == name:
                     k['box'].pos = vector(k['box'].pos.x, k['base_y'] + 0.3, k['box'].pos.z)
                     break
@@ -3330,7 +3328,7 @@ while True:
         종류, 값 = state['queue'].pop(0)
         if 종류 == 'click':
             for i, 건반 in enumerate(건반들):
-                if 건반._id == 값:
+                if 건반 == 값:
                     음재생(i)
                     break
         elif 종류 == 'key':

@@ -76,6 +76,8 @@ These measurements use desktop browsers and emulated viewports. Each linked draf
 
 ## 터치 취소와 3D 선택
 
+두 공 수업의 `이벤트.pick`과 실습 화면의 `scene.mouse.pick`은 클릭하거나 가리킨 도형을 돌려줍니다. `balls[0]`과 바로 비교할 수 있고 빈 곳은 `None`입니다. 묶은 부품을 누르면 전체 compound를 선택합니다. 이전 작품의 ID 비교 및 ID를 키로 사용한 사전 조회도 검사합니다.
+
 물체를 누른 뒤 3D 교점이 없는 빈 하늘로 이동하다 터치가 취소되면, `mouseup`의 `evt.pos`와 `evt.pick`은 그 손가락의 마지막 유효 교점을 가리킵니다. `evt.clientX`와 `evt.clientY`는 취소 직전의 화면 좌표입니다. 다음 터치는 새로 선택합니다.
 
 ## 서울 관측소 수업 자료

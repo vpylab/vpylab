@@ -295,8 +295,36 @@ def _notice_once(key, message):
     print(message)
 
 
+# 렌더러가 보낸 번호를 학생이 만든 실제 도형으로 되돌린다.
+_pick_targets = {}
+
+
+class _Pickable:
+    # 이전 작품의 pick == ball._id 및 ID로 만든 건반 사전도 계속 사용할 수 있다.
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self._id == other
+        return self is other
+
+    def __hash__(self):
+        return hash(self._id)
+
+
 def _track_scene_object(obj):
     _scene_objects.append(obj)
+    _pick_targets[obj._id] = obj
+
+
+def _picked_object(pick_id, canvas_id):
+    obj = _pick_targets.get(pick_id)
+    # compound 안의 부품을 맞힌 경우 가장 바깥쪽 완성품을 선택한다.
+    while obj is not None:
+        owner = _pick_targets.get(obj._id)
+        if owner is obj:
+            canvas_obj = _object_canvases.get(obj._id, scene)
+            return obj if canvas_obj._id == canvas_id and getattr(obj, 'visible', True) else None
+        obj = owner
+    return None
 
 
 def _untrack_scene_object(obj):
@@ -556,7 +584,7 @@ class _VectorOwner:
 
 
 # === 3D 객체 베이스 클래스 ===
-class _GObject(_VectorOwner):
+class _GObject(_VectorOwner, _Pickable):
     _vector_attrs = ('pos', 'axis', 'size', 'up', 'color', 'velocity', 'trail_color')
 
     def __init__(self, obj_type, **kwargs):
@@ -578,7 +606,7 @@ class _GObject(_VectorOwner):
         self._shininess = float(kwargs.get('shininess', 0.6))
         if not math.isfinite(self._shininess) or not 0 <= self._shininess <= 1:
             raise ValueError('shininess는 0~1 사이여야 합니다')
-        _scene_objects.append(self)
+        _track_scene_object(self)
         self._velocity = kwargs.get('velocity', vector(0, 0, 0))
         self._texture = kwargs.get('texture', None)
 
@@ -1261,11 +1289,11 @@ class helix(_GObject):
 
 
 # === 새 프리미티브: label (3D 텍스트 라벨) ===
-class label:
+class label(_Pickable):
     """3D 위치에 텍스트 라벨을 표시 — 항상 카메라를 향함(Sprite)"""
     def __init__(self, **kwargs):
         self._id = _new_id(kwargs.get('canvas'))
-        _scene_objects.append(self)
+        _track_scene_object(self)
         self._pos = kwargs.get('pos', vector(0, 0, 0))
         self._text = kwargs.get('text', '')
         self._color = kwargs.get('color', color.white)
@@ -1613,7 +1641,7 @@ def _point_items(args):
     return items
 
 
-class _PointList(_VectorOwner):
+class _PointList(_VectorOwner, _Pickable):
     """curve와 points의 공통 구현. 점마다 pos·color·radius를 저장하고 브릿지에 목록으로 보낸다."""
     _vector_attrs = ('color', 'origin', 'axis', 'up')
     _type = 'curve'
@@ -2065,7 +2093,7 @@ def _object_extent(obj):
     return pos.clone(), pos.clone()
 
 
-class compound(_VectorOwner):
+class compound(_VectorOwner, _Pickable):
     """여러 객체를 하나로 묶기. 묶은 뒤에는 하나의 객체처럼 pos·color·rotate()·clone()을 쓴다.
     origin은 묶음의 기준점(기본값은 경계 상자 중심)이고, pos를 지정하면 기준점이 그 자리로 옮겨진다.
     (하위 객체를 나중에 따로 바꾸려면 group()을 사용한다.)"""
@@ -2116,6 +2144,7 @@ class compound(_VectorOwner):
         for obj in self._objects:
             sub_ids.append(obj._id)
             _untrack_scene_object(obj)
+            _pick_targets[obj._id] = self
             if isinstance(obj, compound): obj._consumed_by_compound = True
 
         cmd = {
@@ -2660,7 +2689,7 @@ class vertex(_VectorOwner):
             'opacity': self.opacity, 'shininess': self.shininess, 'emissive': self.emissive}
 
 
-class _MeshFace:
+class _MeshFace(_Pickable):
     _count = 3
     _type = 'triangle'
 
@@ -2674,7 +2703,7 @@ class _MeshFace:
             v._faces.add(self)
         self._visible = bool(kwargs.get('visible', True))
         self._texture = kwargs.get('texture')
-        _scene_objects.append(self)
+        _track_scene_object(self)
         _add_command({'action': 'create', 'id': self._id, 'type': self._type,
                       'vertices': [v.to_dict() for v in self._vertices],
                       'texture': self._texture, 'visible': self._visible})
@@ -3131,7 +3160,8 @@ class _MouseState:
     @property
     def pick(self):
         try:
-            return js._getMousePick(self._canvas._id if self._canvas else 'scene')
+            canvas_id = self._canvas._id if self._canvas else 'scene'
+            return _picked_object(js._getMousePick(canvas_id), canvas_id)
         except Exception:
             return None
 
@@ -3232,7 +3262,7 @@ def _process_pending_events():
             info = _EventInfo(
                 name=name,
                 pos=vector(*pos) if pos else None,
-                pick=evt.get('pick'),
+                pick=_picked_object(evt.get('pick'), evt.get('canvas_id', 'scene')),
                 key=evt.get('key'),
             )
             if 'clientX' in evt:
@@ -3883,6 +3913,9 @@ class _Scene(_VectorOwner):
                 obj._visible = False
             except Exception:
                 pass
+        for pick_id in list(_pick_targets):
+            if _object_canvases.get(pick_id, scene) is self:
+                del _pick_targets[pick_id]
         _scene_objects[:] = [o for o in _scene_objects if _object_canvases.get(o._id, scene) is not self]
         # 지워진 객체를 rate()마다 갱신하려는 부착물도 함께 정리한다
         _user_lights[:] = [o for o in _user_lights if _object_canvases.get(o._id, scene) is not self]
@@ -6288,6 +6321,7 @@ def _reset_runtime_state():
     _pending_tasks.clear()
     _task_errors.clear()
     _scene_objects.clear()
+    _pick_targets.clear()
     _dirty_mesh_faces.clear()
     _attached_followers.clear()
     _notices_shown.clear()
