@@ -28,3 +28,13 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## 서울 관측 사진 비교
+
+[비교 자료](./compare.html)의 왼쪽 세 이미지는 이 실습을 145배로 실행해 캡처한 것입니다. 영상은 시간을 멈추고 같은 카메라의 시야각을 조절한 화면입니다. 세 시각의 고도와 밝은 면은 JPL Horizons의 지상 관측자 자료(달 301, 서울시청 경위도, 해발 0 km, 대기 굴절 제외, 수량 4·10)로 점검했습니다.
+
+- [서울특별시 서울한컷, 「서울 초승달 월몰」, 세 번째 사진](https://www.kogl.or.kr/recommend/recommendDivView.do?division=img&recommendIdx=98131). 2025-03-31 촬영. 공공누리 제4유형. 제공처의 원본을 표시합니다.
+- [한성과학고, 2020 과학 동아리 활동 발표대회 보고서, PDF 7쪽](https://www.kofses.or.kr/data/H09.pdf#page=7). 2020-09-24 곽민서 촬영. 보고서에 실린 상현달 사진을 좌우반전과 명암 경계 비교를 위해 인용했습니다.
+- [파이낸셜신문 황병우, 「서울 밤하늘에 떠오른 2023년 마지막 보름달」](https://www.efnews.co.kr/news/articleView.html?idxno=108908). 2023-12-27 21:40경 서울 촬영. 기사에 실린 망원 원본을 표시합니다.
+
+관측 사진의 권리는 각 저작자에게 있습니다.

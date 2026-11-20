@@ -2,7 +2,15 @@
 try {
   const response = await fetch(new URL('./observer.py', import.meta.url));
   if (!response.ok) throw new Error('실습 파일을 불러오지 못했습니다.');
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  let source = await response.text();
+  const at = new URLSearchParams(location.search).get('at');
+  if (at && /^(19\d{2}|20\d{2}|2100)-\d{2}-\d{2}T\d{2}:\d{2}$/.test(at)) {
+    const millis = Date.parse(at + ':00+09:00');
+    if (Number.isFinite(millis) && new Date(millis + 9*3600000).toISOString().slice(0,16) === at) {
+      source = source.replace('observation_start = None', 'observation_start = ' + millis / 1000);
+    }
+  }
+  const bytes = new TextEncoder().encode(source);
   const code = btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
   location.replace('/sandbox?view=run#b64=' + code);
 } catch {
