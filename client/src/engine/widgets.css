@@ -46,6 +46,13 @@
   text-align: center;
 }
 .vp-widget-panel :is([data-widget-kind=winput],[data-vpylab-input]) input { flex: 1; }
+/* 날짜와 시각 전체가 들어갈 폭을 먼저 확보하고, 좁으면 라벨 다음 줄에 놓습니다. */
+.vp-widget-panel [data-widget-kind=winput]:has(> input[type=datetime-local]) { flex-wrap: wrap; }
+.vp-widget-panel [data-widget-kind=winput] input[type=datetime-local] {
+  flex: 1 1 15rem;
+  min-inline-size: min(100%, 15rem);
+  font-variant-numeric: tabular-nums;
+}
 .vp-view-toggle { display: none; }
 
 @media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
@@ -88,6 +95,7 @@
   }
   .vp-widget-panel > :is([data-widget-kind=slider], [data-widget-kind=winput], [data-vpylab-input]) { flex: 1 1 100%; }
   .vp-widget-panel > [data-widget-kind=slider]:first-child:has(+ [data-widget-kind=button]:last-child) { flex-basis: 190px; }
+  .vp-widget-panel:has(input[type=datetime-local]) > [data-widget-kind=slider] { flex-basis: 170px; }
   .vp-widget-panel > [data-widget-kind=menu] { flex: 1 1 124px; }
   .vp-widget-panel select { width: 100%; text-overflow: ellipsis; }
   .vp-widget-panel :is(button, select, input:not([type=radio],[type=checkbox])) { min-height: 44px; }
