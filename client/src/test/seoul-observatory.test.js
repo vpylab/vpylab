@@ -52,7 +52,7 @@ it.skipIf(!hasPython())('멈춘 관측소에서 줌을 왕복해도 같은 달�
   const fixed = source.replace('observation_start = None', 'observation_start = 1743417900');
   const code = fixed.replace('while True:', `frames = []
 for factor in [1, 32, 160, 1]:
-    zoom_control.value = factor
+    zoom_control.value = level_for_zoom(factor)
     set_zoom(zoom_control)`) + `
     frames.append((moon, moon.pos, moon.radius, moon.axis, moon.up, sunlight.direction, scene.camera.pos, scene.camera.axis, stamp))
     assert abs(1/tan(scene.fov/2) - factor*min(1, aspect)) < .0001
@@ -78,7 +78,7 @@ for step in range(3):
         look_around(Pointer("mouseup", 175, 205))
     if step == 2:
         look_around(Pointer("mousemove", 260, 225))
-        zoom_control.value = 32
+        zoom_control.value = level_for_zoom(32)
         set_zoom(zoom_control)`) + `
     assert sun.visible and solar_disc.visible
     assert mag((solar_disc.pos-observer_eye) / disc_depth - (sun.pos-observer_eye)) < 1e-10
@@ -109,4 +109,27 @@ it('서울 관측 지도를 쓰는 HTML에 원본 바이트와 제작자 표시�
   const dynamic = await generateProjectHTML('surface = getattr(textures, name)');
   const dynamicMaps = JSON.parse(dynamic.match(/const planetMaps = (\{.*\});/)[1]);
   expect(Object.keys(dynamicMaps).sort()).toEqual(['earth', 'jupiter', 'moon', 'saturn', 'sun']);
+});
+
+it.skipIf(!hasPython())('서울의 밤하늘에서 축소하면 태양까지 보이고, 돌아오면 원래 달을 본다', () => {
+  const fixed = source.replace('observation_start = None', 'observation_start = 1743417900');
+  const code = fixed.replace('while True:', `for level in [level_for_zoom(145), 32, 24, 12, 0, 32, level_for_zoom(145)]:
+    change_level(level)`) + `
+    if level >= 32:
+        assert not sun.visible and not earth.visible
+        assert scene.camera.pos == observer_eye and moon.visible
+    else:
+        assert earth.visible and moon.visible and sun.visible and not ground.visible
+    if level == 0:
+        direction = norm(scene.camera.axis)
+        right = norm(cross(direction, scene.up))
+        top = cross(right, direction)
+        for body in [sun, earth, moon]:
+            sight = body.pos-scene.camera.pos
+            height = dot(sight,direction)*tan(scene.fov/2)
+            assert abs(dot(right,sight))+body.radius < height*aspect
+            assert abs(dot(top,sight))+body.radius < height
+    assert stamp == observation_start
+`;
+  expect(runPythonJobs([{id: 'seoul', label: 'pullback', code}]).get('seoul:pullback').error).toBeNull();
 });

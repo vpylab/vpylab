@@ -118,6 +118,27 @@ describe('attachPointerInput', () => {
     expect(opts.fit).not.toHaveBeenCalled();
   });
 
+  it('기본 카메라 줌을 끈 작품에서만 휠과 두 손가락 줌을 전달한다', () => {
+    bound.add('zoom');
+    const wheel = () => new WheelEvent('wheel', { deltaY: 180, cancelable: true });
+    el.dispatchEvent(wheel());
+    expect(opts.postEvent).not.toHaveBeenCalled();
+    detach();
+    detach = attachPointerInput(el, { ...opts, nativeZoomEnabled: () => false });
+    const down = wheel();
+    el.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    expect(opts.postEvent).toHaveBeenLastCalledWith({ canvas_id: 'scene', name: 'zoom', value: -1 });
+
+    el.dispatchEvent(pointer('pointerdown', { x: 0 }));
+    el.dispatchEvent(pointer('pointerdown', { id: 2, primary: false, x: 100 }));
+    el.dispatchEvent(pointer('pointermove', { id: 2, primary: false, x: 50 }));
+    expect(opts.postEvent).toHaveBeenLastCalledWith({ canvas_id: 'scene', name: 'zoom', value: -1 });
+    el.dispatchEvent(pointer('pointercancel', { id: 2, primary: false }));
+    el.dispatchEvent(pointer('pointerup'));
+    expect(log.some(e => e[1] === 'click')).toBe(false);
+  });
+
   it('연결을 풀면 더는 이벤트를 보내지 않는다', () => {
     detach();
     el.dispatchEvent(pointer('pointerdown'));
