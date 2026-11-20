@@ -1,3 +1,5 @@
+import JournalForm from '../journal/JournalForm';
+import { WorkspaceIdentity, TonePicker } from '../shared/WorkspaceIdentity';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUiText } from '../../i18n/ui-text';
@@ -53,9 +55,6 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
   // GitHub 저장소 이름: 팀이 영어로 정합니다. 비워 두면 제목으로 자동으로 정합니다.
   const [repoName, setRepoName] = useState('');
   const [message, setMessage] = useState('');
-  const [did, setDid] = useState('');
-  const [blocker, setBlocker] = useState('');
-  const [next, setNext] = useState('');
   const [inviteName, setInviteName] = useState('');
   const [notice, setNotice] = useState('');
   const pendingRef = useRef(null); // 다시 연결한 뒤 이어서 할 일
@@ -133,12 +132,12 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
   async function save(event) {
     event?.preventDefault();
     const text = message.trim();
-    if (!text) return;
+
     setNotice('');
-    const result = await store().commit(getCode(), { message: text, record: { did, blocker, next } });
+    const result = await store().commit(getCode(), { message: text || ui("코드 저장") });
     keepIfAuth(result, () => save());
     if (result.status === 'saved') {
-      setMessage(''); setDid(''); setBlocker(''); setNext('');
+      setMessage('');
       setNotice(ui("GitHub에 저장했습니다."));
       onSaved?.(result);
     } else if (result.status === 'unchanged') {
@@ -154,7 +153,7 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
       onLoaded?.(result.code, result.title);
       setNotice(ui("팀원이 저장한 최신 코드를 가져왔습니다."));
     } else if (result.status === 'saved') {
-      setMessage(''); setDid(''); setBlocker(''); setNext('');
+      setMessage('');
       setNotice(ui("GitHub에 저장했습니다."));
       onSaved?.(result);
     }
@@ -441,26 +440,19 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
       <>
         {projectSummary}
         <form onSubmit={save} className="flex flex-col gap-2" data-testid="github-commit-form">
-          <label htmlFor="github-commit-message" className="text-xs font-semibold">{ui("저장 메시지(필수)")}</label>
+          <label htmlFor="github-commit-message" className="text-xs font-semibold">{ui("오늘 한 일 한 줄 요약 (선택)")}</label>
           <input
             id="github-commit-message"
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             maxLength={200}
-            required
             autoFocus
             placeholder={ui("무엇을 바꿨는지 한 줄로 적습니다")}
             className={inputClass}
             style={box}
             data-testid="github-commit-message"
           />
-          <label htmlFor="github-record-did" className="text-xs font-semibold">{ui("한 일(선택)")}</label>
-          <input id="github-record-did" value={did} onChange={(event) => setDid(event.target.value)} maxLength={500} className={inputClass} style={box} data-testid="github-record-did" />
-          <label htmlFor="github-record-blocker" className="text-xs font-semibold">{ui("막힌 점(선택)")}</label>
-          <input id="github-record-blocker" value={blocker} onChange={(event) => setBlocker(event.target.value)} maxLength={500} className={inputClass} style={box} data-testid="github-record-blocker" />
-          <label htmlFor="github-record-next" className="text-xs font-semibold">{ui("다음 할 일(선택)")}</label>
-          <input id="github-record-next" value={next} onChange={(event) => setNext(event.target.value)} maxLength={500} className={inputClass} style={box} data-testid="github-record-next" />
-          <button type="submit" className={button} style={primary} disabled={working || !message.trim()} data-testid="github-commit-save">
+          <button type="submit" className={button} style={primary} disabled={working} data-testid="github-commit-save">
             {busy === 'save' ? ui("저장 중…") : ui("GitHub에 저장")}
           </button>
         </form>
@@ -580,12 +572,12 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
         role="dialog"
         aria-modal="true"
         aria-label={heading}
-        className="rounded-2xl w-full flex flex-col gap-3 overflow-auto"
+        className="vpy-workspace rounded-2xl w-full flex flex-col gap-3 overflow-auto"
         style={{ maxWidth: 520, maxHeight: '90vh', backgroundColor: 'var(--color-bg-panel)', color: 'var(--color-text-primary)', padding: 20, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.25))' }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="m-0 text-base font-semibold">{heading}</h2>
+          <WorkspaceIdentity team><h2 className="m-0 text-base font-semibold">{heading}</h2></WorkspaceIdentity>
           <button type="button" onClick={onClose} disabled={locked} className="w-7 h-7 rounded-md cursor-pointer border-none" style={{ backgroundColor: 'transparent', color: 'var(--color-text-muted)' }} aria-label={ui("닫기")}>✕</button>
         </div>
         {account && (
@@ -594,7 +586,9 @@ export default function GitHubProjectDialog({ mode, getCode, defaultTitle, onLoa
             <button type="button" className="underline cursor-pointer border-none bg-transparent p-0 text-xs" style={secondary} disabled={locked} onClick={disconnect} data-testid="github-disconnect">{ui("GitHub 연결 해제")}</button>
           </div>
         )}
+        <TonePicker />
         {body}
+        {project?.canPush && account && !needsReauth && !missingScope && <JournalForm key={account.login + project.fullName} findUrl={() => store().journalUrl()} projectTitle={project.title} author={account.login} disabled={working} save={entry => store().appendJournal(entry)} />}
         {pagesWarning && GITHUB_PAGES_WARNING_TEXT[pagesWarning] && (
           <p className="m-0 text-xs" role="status" style={warning} data-testid="github-pages-warning">{ui(GITHUB_PAGES_WARNING_TEXT[pagesWarning])}</p>
         )}

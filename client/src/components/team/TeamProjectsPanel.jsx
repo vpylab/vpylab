@@ -1,3 +1,4 @@
+import { WorkspaceIdentity, TonePicker } from '../shared/WorkspaceIdentity';
 import { useUiText } from "../../i18n/ui-text";
 import { useEffect, useState } from 'react';
 import useProjectStore from '../../stores/projectStore';
@@ -556,7 +557,7 @@ function Overlay({ children, onClose }) {
       onClick={onClose}
     >
       <div
-        className="w-[min(1080px,96vw)] h-[min(720px,92vh)] flex flex-col shadow-2xl"
+        className="vpy-workspace w-[min(1080px,96vw)] h-[min(720px,92vh)] flex flex-col shadow-2xl"
         style={{
           backgroundColor: 'var(--color-bg-panel)',
           border: '1px solid var(--color-border)',
@@ -580,12 +581,8 @@ function Header({ title, onClose }) {
         padding: '20px 28px',
       }}
     >
-      <div>
-        <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-          {title}
-        </h2>
-        <p className="text-xs mt-0.5 break-keep" style={{ color: 'var(--color-text-muted)' }}>{ui("생성 · 합류 · 권한 관리")}</p>
-      </div>
+      <WorkspaceIdentity team><h2>{title}</h2></WorkspaceIdentity>
+      <TonePicker />
       <button
         onClick={onClose}
         className="h-9 w-9 cursor-pointer border bg-transparent text-lg"

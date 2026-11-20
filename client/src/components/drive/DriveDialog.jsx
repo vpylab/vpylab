@@ -1,3 +1,5 @@
+import JournalForm from '../journal/JournalForm';
+import { WorkspaceIdentity, ServiceMark, TonePicker } from '../shared/WorkspaceIdentity';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useUiText } from '../../i18n/ui-text';
@@ -153,7 +155,7 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
           {ui("코드는 내 구글 드라이브의 VPyLab 폴더에 저장됩니다. VPyLab은 이 앱이 만든 파일만 볼 수 있으며 드라이브의 다른 파일은 볼 수 없습니다.")}
         </p>
         <button type="button" className={button} style={primary} disabled={working} onClick={() => signIn()} data-testid="drive-sign-in">
-          {busy === 'signin' ? ui("승인 창을 확인하십시오…") : ui("구글 계정으로 로그인")}
+          <ServiceMark service="google" /> {busy === 'signin' ? ui("승인 창을 확인하십시오…") : ui("구글 계정으로 로그인")}
         </button>
       </>
     );
@@ -268,12 +270,12 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
         role="dialog"
         aria-modal="true"
         aria-label={mode === 'save' ? ui("구글 드라이브에 저장") : ui("내 구글 드라이브")}
-        className="rounded-2xl w-full flex flex-col gap-3 overflow-auto"
+        className="vpy-workspace rounded-2xl w-full flex flex-col gap-3 overflow-auto"
         style={{ maxWidth: 480, maxHeight: '90vh', backgroundColor: 'var(--color-bg-panel)', color: 'var(--color-text-primary)', padding: 20, border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-xl, 0 24px 48px rgba(0,0,0,0.25))' }}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="m-0 text-base font-semibold">{mode === 'save' ? ui("구글 드라이브에 저장") : ui("내 구글 드라이브")}</h2>
+          <WorkspaceIdentity><h2 className="m-0 text-base font-semibold">{mode === 'save' ? ui("구글 드라이브에 저장") : ui("내 구글 드라이브")}</h2></WorkspaceIdentity>
           <button type="button" onClick={onClose} disabled={working} className="w-7 h-7 rounded-md cursor-pointer border-none" style={{ backgroundColor: 'transparent', color: 'var(--color-text-muted)' }} aria-label={ui("닫기")}>✕</button>
         </div>
         {account && (
@@ -283,7 +285,9 @@ export default function DriveDialog({ mode, getCode, defaultName, onSaved, onLoa
             <button type="button" className="underline cursor-pointer border-none bg-transparent p-0 text-xs" style={{ color: 'var(--color-text-secondary)' }} disabled={working} onClick={() => signOut(true)}>{ui("권한 철회")}</button>
           </div>
         )}
+        <TonePicker />
         {body}
+        {account && file && !needsReauth && !missingScope && !conflict && <JournalForm key={account.sub + file.id} personal findUrl={() => store().journalUrl()} projectTitle={file.name} author={account.name || account.email?.split('@')[0] || account.sub} disabled={working} save={entry => store().appendJournal(entry)} />}
         {showError && (
           <div className="flex flex-col gap-2">
             <p className="m-0 text-xs" role="alert" style={{ color: 'var(--color-error-text)' }} data-testid="drive-error">

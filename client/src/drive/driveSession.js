@@ -550,6 +550,36 @@ export const useDriveStore = create((set, get) => {
     },
 
     /** 휴지통에 있거나 찾을 수 없는 파일 대신 지금 코드를 새 파일로 저장합니다. */
+    async journalUrl() {
+      const session = sessionEpoch;
+      const file = get().file;
+      if (!file || !drive) return '';
+      const url = await drive.journalUrl(file.id);
+      return session === sessionEpoch && get().file?.id === file.id ? url : '';
+    },
+
+    async appendJournal(entry) {
+      const { file, account } = get();
+      if (!file || !account || get().busy && get().busy !== 'list') return { status: 'busy' };
+      const session = sessionEpoch;
+      const renewed = renewInGesture();
+      set({ busy: 'journal', error: null });
+      try {
+        if (renewed && !await renewed) throw new AuthRequiredError();
+        const sameProject = () => session === sessionEpoch && get().file?.id === file.id;
+        const scoped = createDriveStorage({ getToken: () => {
+          if (!sameProject()) throw new AuthRequiredError();
+          return auth.getToken();
+        }, ...(deps.fetchImpl ? {fetchImpl: deps.fetchImpl} : {}) });
+        const result = await scoped.appendJournal(file, account.name || account.email?.split('@')[0] || account.sub, entry);
+        return sameProject() ? { status: 'saved', ...result } : { status: 'stale' };
+      } catch (error) {
+        return session === sessionEpoch ? fail(error, authEpoch) : {status:'stale'};
+      } finally {
+        if (session === sessionEpoch && get().busy === 'journal') set({busy:''});
+      }
+    },
+
     async saveAsNew(code, name) {
       if (get().busy === 'save') return { status: 'busy' };
       const session = sessionEpoch;

@@ -1,4 +1,11 @@
 {
+  "오늘 한 일 한 줄 요약 (선택)": "One-line summary of today’s work (optional)",
+  "항해일지": "Project logbook",
+  "원하는 항목만 적으세요. 날짜·시각과 작성자가 자동으로 붙습니다.": "Fill in any fields you like. Date, time and author are added automatically.",
+  "공개 저장소의 기록은 누구나 볼 수 있습니다.": "Anyone can read entries in a public repository.",
+  "슬라이드 블루": "Slide blue",
+  "위버 파스텔": "Weaver pastel",
+  "살구빛 노트": "Apricot notebook",
   "다섯 행성과 태양빛": "Five planets in sunlight",
   "공전 속도를 바꾸고 수성과 목성 중 어느 쪽이 먼저 한 바퀴 도는지 관찰하세요.": "Change the orbit speed. Which finishes a lap first, Mercury or Jupiter?",
   "혜성의 두 꼬리": "The two tails of a comet",

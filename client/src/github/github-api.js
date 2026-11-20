@@ -1,3 +1,4 @@
+import { journalText } from '../utils/project-journal.js';
 /**
  * GitHub 팀 프로젝트 애드온의 GitHub API 모듈 (오픈소스 판).
  *
@@ -169,6 +170,7 @@ VPyLab에서 만든 3D 파이썬 프로젝트입니다.
 ## 파일
 
 - \`main.py\`: 최신 코드입니다. 저장할 때마다 바뀝니다.
+- \`log.md\`: 첫 항해일지를 작성하면 생기는 팀 활동 기록입니다.
 - \`history.md\`: 저장한 시각, 메시지, 작성자를 기록합니다.
 - \`index.html\`: 실행 화면입니다. 저장할 때마다 새로 만듭니다.
 
@@ -454,7 +456,8 @@ export function createGitHubApi({
   async function getContentsFile(owner, repo, path, ref) {
     try {
       const file = await request(`/repos/${owner}/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`);
-      return { sha: file.sha, text: decodeBase64Utf8(file.content) };
+      const blob = file.encoding === 'none' ? await request('/repos/' + owner + '/' + repo + '/git/blobs/' + file.sha) : file;
+      return { sha: file.sha, text: decodeBase64Utf8(blob.content) };
     } catch (error) {
       if (error.status === 404) return null;
       throw error;
@@ -946,6 +949,34 @@ export function createGitHubApi({
           if (attempt >= COMMIT_RETRY_DELAYS_MS.length) {
             throw new GitHubError('동시에 저장하는 팀원이 있어 저장하지 못했습니다.', { status: 409, reason: 'conflict' });
           }
+          await sleep(COMMIT_RETRY_DELAYS_MS[attempt]);
+        }
+      }
+    },
+
+    async journalUrl(project) {
+      const { owner, repo } = parse(project.fullName);
+      const branch = project.defaultBranch || 'main';
+      const file = await getContentsFile(owner, repo, 'log.md', branch);
+      return file ? 'https://github.com/' + owner + '/' + repo + '/blob/' + encodeURIComponent(branch) + '/log.md' : '';
+    },
+
+    async appendJournal(project, login, entry) {
+      const { owner, repo } = parse(project.fullName);
+      const branch = project.defaultBranch || 'main';
+      const marker = '<!-- vpylab-journal:' + entry.id + ' -->';
+      const url = 'https://github.com/' + owner + '/' + repo + '/blob/' + encodeURIComponent(branch) + '/log.md';
+      for (let attempt = 0; ; attempt++) {
+        const head = await getBranchHeadSha(owner, repo, branch);
+        const current = await getContentsFile(owner, repo, 'log.md', head);
+        const previous = current?.text || '# 항해일지';
+        if (previous.includes(marker)) return { url };
+        const content = previous.trimEnd() + '\n\n' + journalText(entry, login, true) + '\n' + marker + '\n';
+        try {
+          await commitFilesAtomic(owner, repo, [{ path: 'log.md', content }], '항해일지 · ' + login, branch, head);
+          return { url };
+        } catch (error) {
+          if (!isRefConflict(error) || attempt >= COMMIT_RETRY_DELAYS_MS.length) throw error;
           await sleep(COMMIT_RETRY_DELAYS_MS[attempt]);
         }
       }

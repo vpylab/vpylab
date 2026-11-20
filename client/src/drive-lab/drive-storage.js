@@ -1,3 +1,4 @@
+import { appendPersonalJournal, findPersonalJournal, DOCUMENT_MIME } from './project-journal.js';
 // 구글 드라이브 저장 어댑터 (drive.file 범위)
 //
 // 브라우저가 구글 API와 직접 통신합니다. VPyLab 운영 서버는 학생 코드를 받지 않습니다.
@@ -495,6 +496,13 @@ export function createDriveStorage({
       }
     },
     /** 계정이 바뀌거나 로그아웃할 때 부릅니다. 앞 계정의 폴더 ID를 다음 계정에서 쓰지 않게 합니다. */
+    async journalUrl(fileId) {
+      const doc = await findPersonalJournal(fileId, findMarked);
+      return doc ? 'https://docs.google.com/document/d/' + encodeURIComponent(doc.id) + '/edit' : '';
+    },
+    appendJournal(file, author, entry) {
+      return appendPersonalJournal({ file, author, entry, request, findMarked, liveFolder });
+    },
     resetFolder() { folderPromise = null; },
 
     /** 폴더 안의 파일 목록. 1,000개를 넘으면 truncated=true로 알립니다. */
@@ -512,7 +520,7 @@ export function createDriveStorage({
         });
         if (pageToken) params.set('pageToken', pageToken);
         const result = await request('file.list', `${API}/files?${params}`);
-        files.push(...(result.files || []));
+        files.push(...(result.files || []).filter(file => file.mimeType !== DOCUMENT_MIME));
         pageToken = result.nextPageToken || '';
         if (!pageToken) break;
       }

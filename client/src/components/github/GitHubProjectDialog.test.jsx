@@ -192,24 +192,21 @@ describe('GitHubProjectDialog', () => {
     expect(screen.queryByTestId('github-pull')).toBeNull();
   });
 
-  it('저장: 메시지가 없으면 저장할 수 없고, 메시지와 기록 세 칸을 한 커밋으로 올린다', async () => {
+  it('한 줄 요약을 비우고 코드를 저장한 뒤 별도로 항해일지만 남긴다', async () => {
     const fullName = await connectedWithProject('v1');
     const onSaved = vi.fn();
     render(<GitHubProjectDialog mode="commit" getCode={() => 'v2'} onSaved={onSaved} onClose={() => {}} />);
-    expect(screen.getByRole('dialog', { name: 'GitHub에 저장' })).toBeInTheDocument();
-    const save = screen.getByTestId('github-commit-save');
-    expect(save).toBeDisabled();
-    fireEvent.change(screen.getByTestId('github-commit-message'), { target: { value: '중력 추가' } });
-    fireEvent.change(screen.getByTestId('github-record-did'), { target: { value: '중력을 넣었다' } });
-    fireEvent.change(screen.getByTestId('github-record-blocker'), { target: { value: '충돌' } });
-    fireEvent.change(screen.getByTestId('github-record-next'), { target: { value: '바닥' } });
-    fireEvent.click(save);
-    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ status: 'saved' })));
+    fireEvent.click(screen.getByTestId('github-commit-save'));
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
     expect(github.file(fullName, 'main.py')).toBe('v2');
-    expect(github.file(fullName, 'history.md')).toContain('- 메시지: 중력 추가\n- 작성자: ada\n- 한 일: 중력을 넣었다\n- 막힌 점: 충돌\n- 다음 할 일: 바닥');
-    expect(screen.getByTestId('github-notice')).toHaveTextContent('GitHub에 저장했습니다.');
-    expect(screen.getByTestId('github-commit-message')).toHaveValue('');
-    expect(screen.getByRole('link', { name: '방금 저장한 내용을 GitHub에서 보기' })).toHaveAttribute('href', expect.stringMatching(new RegExp(`^https://github.com/${fullName}/commit/`)));
+    expect(github.file(fullName, 'log.md')).toBeFalsy();
+    fireEvent.click(screen.getByText('항해일지', { selector:'summary' }));
+    fireEvent.change(screen.getByLabelText('친구와의 협력'), { target:{value:'서로 다른 두 초기값을 같이 비교했다.'} });
+    github.remoteCommit(fullName, { 'main.py':'teammate' });
+    fireEvent.click(screen.getByRole('button', {name:'항해일지에 추가'}));
+    await waitFor(() => expect(github.file(fullName, 'log.md')).toContain('두 초기값'));
+    expect(github.file(fullName, 'log.md')).toContain('ada');
+    expect(github.file(fullName, 'main.py')).toBe('teammate');
   });
 
   it('저장: 연 프로젝트가 없으면 안내하고 프로젝트를 만들거나 열 수 있게 한다', async () => {

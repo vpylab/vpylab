@@ -39,7 +39,7 @@ describe('openEditionCsp', () => {
 describe('withGoogleSignIn', () => {
   it('구글 로그인·드라이브 주소를 더하고 frame-src의 none을 바꾼다', () => {
     const csp = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' https:; frame-src 'none'";
-    expect(withGoogleSignIn(csp)).toBe("default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; connect-src 'self' https://www.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; img-src 'self' https:; frame-src https://accounts.google.com/gsi/");
+    expect(withGoogleSignIn(csp)).toBe("default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; connect-src 'self' https://www.googleapis.com https://docs.googleapis.com https://oauth2.googleapis.com https://accounts.google.com/gsi/; img-src 'self' https:; frame-src https://accounts.google.com/gsi/");
   });
 });
 

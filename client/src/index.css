@@ -1577,3 +1577,41 @@ code, pre { font-family: var(--font-mono); letter-spacing: 0; }
     min-height: 44px;
   }
 }
+
+/* 팀·개인 작업 공간과 학생이 고르는 세 가지 밝은 색조 */
+[data-theme="slide-blue"],[data-theme="weaver-pastel"],[data-theme="apricot-notes"] {
+  color-scheme:light; --radius-sm:7px; --radius-md:11px; --radius-lg:16px; --radius-xl:22px;
+  --color-bg-panel:#fff; --color-text-on-accent:#fff; --color-success-text:#17664b;
+  --color-error-text:#a5243a; --color-warning-text:#88500f; --color-success:#14805e;
+  --color-error:#bc3344; --color-warning:#af691b; --color-border-subtle:var(--color-bg-secondary);
+}
+[data-theme="slide-blue"] {--color-bg-primary:#f5f7ff;--color-bg-secondary:#ebeeff;--color-bg-tertiary:#dce3ff;--color-text-primary:#202746;--color-text-secondary:#495371;--color-text-muted:#57617b;--color-border:#d5dbef;--color-accent:#3b52ba;--color-accent-hover:#293d98;--color-accent-bg:#e4eaff;--workspace-warm:#ffedd2}
+[data-theme="weaver-pastel"] {--color-bg-primary:#faf7ff;--color-bg-secondary:#f1ebfa;--color-bg-tertiary:#e3d9ef;--color-text-primary:#302540;--color-text-secondary:#594d6b;--color-text-muted:#675975;--color-border:#dfd3eb;--color-accent:#69469b;--color-accent-hover:#54357e;--color-accent-bg:#e8dfff;--workspace-warm:#d9f2e8}
+[data-theme="apricot-notes"] {--color-bg-primary:#fff8eb;--color-bg-secondary:#fff0d9;--color-bg-tertiary:#f4dfc2;--color-text-primary:#382e25;--color-text-secondary:#584d40;--color-text-muted:#695c4b;--color-border:#e7d4b9;--color-accent:#276151;--color-accent-hover:#1b4b40;--color-accent-bg:#d9eee2;--workspace-warm:#ffe1be}
+.vpy-site-header {background:var(--color-bg-panel);box-shadow:0 2px 13px color-mix(in srgb,var(--color-accent) 7%,transparent)}
+.vpy-site-header nav a {border-radius:8px}
+.vpy-site-header nav a[aria-current=page] {background:var(--color-accent-bg);padding-inline:9px;font-weight:750}
+.vpy-workspace {border-radius:20px!important}
+.vpy-workspace .toolbar-btn,.vpy-workspace input,.vpy-workspace textarea {border-radius:9px!important}
+.vpy-space-identity {display:flex;align-items:center;justify-content:space-between;gap:12px;flex:1;min-width:0;padding:10px 14px;border-radius:15px;background:var(--color-accent-bg)}
+.vpy-space-identity.personal {background:var(--workspace-warm,var(--color-accent-bg))}
+.vpy-space-identity>div {display:flex;align-items:center;gap:9px;min-width:0}
+.vpy-space-identity h2 {font-size:clamp(1.15rem,3vw,1.5rem);font-weight:800;letter-spacing:-.04em}
+.vpy-space-friend {display:block;width:64px;height:58px;object-fit:contain;background:#ffffffb8;border-radius:50%}
+.vpy-service-mark {display:inline-block;width:21px;height:21px;vertical-align:middle;object-fit:contain;flex:none;background:white;border-radius:6px;padding:2px}
+.toolbar-btn .vpy-service-mark {width:18px;height:18px;margin-inline-end:5px}
+.vpy-tone-picker {display:inline-flex;align-items:center;align-self:flex-end;gap:7px;font-size:.78rem;color:var(--color-text-secondary)}
+.vpy-tone-picker select {background:var(--color-bg-panel);border:1px solid var(--color-border);padding:4px;border-radius:7px;color:var(--color-text-primary)}
+.vpy-journal {color:var(--color-text-primary);border:1px solid var(--color-border);border-radius:12px;background:var(--color-bg-panel);padding:10px 13px}
+.vpy-journal summary {cursor:pointer;font-weight:750}.vpy-journal summary span {font:500 .75rem var(--font-mono);margin-inline-start:6px;color:var(--color-text-secondary)}
+.vpy-journal p {margin:.5rem 0;color:var(--color-text-secondary);font-size:.82rem}
+.vpy-journal-fields {display:grid;gap:9px}.vpy-journal-fields label {display:grid;gap:3px;color:var(--color-text-secondary);font-size:.8rem;font-weight:650}
+.vpy-journal-fields textarea {border:1px solid var(--color-border);border-radius:8px;padding:7px 9px;color:var(--color-text-primary);background:var(--color-bg-primary);font:inherit;resize:vertical;min-width:0;width:100%}
+.vpy-journal-save {background:var(--color-accent);color:var(--color-text-on-accent,#fff);border:0;border-radius:9px;padding:8px 13px;font-weight:700;margin-top:10px;cursor:pointer}.vpy-journal-save:disabled {opacity:.55}
+.vpy-journal a {font-size:.85rem;text-decoration:underline;color:var(--color-accent)}
+
+[data-theme="slide-blue"] .toolbar-btn,[data-theme="weaver-pastel"] .toolbar-btn,[data-theme="apricot-notes"] .toolbar-btn {border-radius:9px!important}
+button[data-testid="drive-files-button"],button[data-testid="github-project-button"],button[data-testid="team-project-button"] {background:var(--color-accent-bg);font-weight:650}
+.vpy-site-header nav a[aria-current=page] {box-shadow:inset 0 -2px var(--color-accent)}
+.vpy-workspace>.flex:has(>.vpy-space-identity) {gap:9px}
+@media(max-width:600px){.vpy-space-friend{width:46px;height:46px}.vpy-space-identity{padding:8px}.vpy-workspace .vpy-tone-picker{align-self:flex-start}.vpy-workspace .border-b:has(.vpy-tone-picker){flex-wrap:wrap;padding:14px!important}.vpy-workspace .border-b:has(.vpy-tone-picker) .vpy-tone-picker{order:3;flex-basis:100%}}

@@ -47,6 +47,7 @@ export function mergeProgress(local, server) {
 }
 
 const THEMES = [
+  'slide-blue', 'weaver-pastel', 'apricot-notes',
   'creative-light', 'deep-dark',
   'ocean-breeze', 'sunset-glow',
   'forest-night', 'lavender-dream',
@@ -55,6 +56,9 @@ const THEMES = [
 ];
 
 const THEME_META = {
+  'slide-blue': {label:'슬라이드 블루', dark:false},
+  'weaver-pastel': {label:'위버 파스텔', dark:false},
+  'apricot-notes': {label:'살구빛 노트', dark:false},
   'creative-light':  { label: '크리에이티브', icon: '☀️', dark: false },
   'deep-dark':       { label: '딥 다크', icon: '🌙', dark: true },
   'ocean-breeze':    { label: '바다 바람', icon: '🌊', dark: false },
@@ -106,7 +110,7 @@ async function runProgressSync(set) {
 
 const useAppStore = create((set) => ({
   // 테마
-  theme: localStorage.getItem('vpylab-theme') || 'creative-light',
+  theme: localStorage.getItem('vpylab-theme') || 'slide-blue',
   setTheme: (theme) => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('vpylab-theme', theme);
@@ -171,7 +175,7 @@ const useAppStore = create((set) => ({
 }));
 
 // 초기 테마 적용
-const savedTheme = localStorage.getItem('vpylab-theme') || 'creative-light';
+const savedTheme = localStorage.getItem('vpylab-theme') || 'slide-blue';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
 export default useAppStore;
