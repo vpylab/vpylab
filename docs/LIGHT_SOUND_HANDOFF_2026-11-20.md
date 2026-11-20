@@ -108,3 +108,7 @@ Open the shared run link and tap Start once to enable audio and run the scene. T
 각 빌드에서 새 브라우저 컨텍스트로 5회씩 실행했습니다. 같은 맥과 Chrome, 390 × 844 터치 화면 모사, 같은 로컬 HTTP 서버, gzip 레벨 6, LAN 글꼴 설정의 오픈소스 빌드를 사용했습니다. 구 하나와 C4 한 음이 있는 작품의 첫 생성 명령 뒤 첫 WebGL 그리기 호출을 장면 시작으로 기록했습니다. 바이트에는 서비스 워커와 Python 엔진을 포함한 서버 응답 본문이 들어갑니다. 실물 휴대폰·학교 네트워크의 소요 시간은 별도 측정해야 합니다.
 
 Five fresh browser contexts per build used the same Mac, Chrome, emulated 390 × 844 touch screen, local HTTP server, gzip level 6 and open build with local fonts. The first WebGL draw following the first Python object-creation batch marked scene onset. Byte counts include completed response bodies for the page, workers and Python engine. Physical-device and school-network timings remain unmeasured.
+
+### 학생 코드의 클릭 처리
+
+무지개 피아노와 피아노 레코더는 클릭한 건반을 직접 사용합니다. 레코더는 건반과 누른 시간을 함께 기록합니다. 수업 자료나 대장간 출력에 내부 식별자가 들어오면 `student-code-api.test.js`에서 자료 이름과 위치를 확인할 수 있습니다.
