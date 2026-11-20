@@ -188,7 +188,7 @@ function createWorker() {
       updateStatus('ready');
       settleInitialization();
       // 재방문 때 네트워크 없이 시작하도록 방금 받은 핵심 파일을 Service Worker 캐시에 둡니다.
-      warmPyodideCache(message.source);
+      warmPyodideCache(message.source, message.stdlib);
       retainIdleWorker();
     } else if (message.type === 'error' && status === 'loading') {
       failWorker(message.error || 'Python 엔진을 준비하지 못했습니다.', 'init');

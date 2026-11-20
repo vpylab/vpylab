@@ -7,8 +7,9 @@
  * - 교실 LAN 모드처럼 선택 패키지까지 같이 제공할 때는 `bundledPackages`에 적힌 휠을
  *   로컬 경로로 남겨 둡니다.
  */
+import process from 'node:process';
 import { createRequire } from 'node:module';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -110,17 +111,31 @@ export function preparePyodideAssets({ publicDir, bundledPackages = new Set(), r
   return { directory: target, files, copied, bytes };
 }
 
+// 원본 ZIP은 느린 연결과 CDN 대체 경로에서 계속 씁니다. 파이썬 버전은 npm 패키지와 같습니다.
+async function prepareCompiledStdlib(directory) {
+  const script = fileURLToPath(new URL('./precompile-stdlib.py', import.meta.url));
+  const source = join(directory, 'python_stdlib.zip');
+  const target = join(directory, 'python_stdlib.compiled-v1.zip');
+  if (existsSync(target) && statSync(target).mtimeMs >= Math.max(statSync(source).mtimeMs, statSync(script).mtimeMs)) return;
+  const { loadPyodide } = await import('pyodide');
+  const python = await loadPyodide({ indexURL: pyodidePackageDir() });
+  python.runPython(readFileSync(script, 'utf8'));
+  const temporary = target + '.' + process.pid + '.tmp';
+  writeFileSync(temporary, python.FS.readFile('vpylab-stdlib.zip'));
+  renameSync(temporary, target);
+}
+
 /** Vite 플러그인: 개발 서버와 빌드 시작 때 핵심 파일을 public/으로 준비합니다. */
 export function pyodideAssets() {
   let publicDir = join(clientRoot, 'public');
-  const run = () => {
+  const run = async () => {
     const result = preparePyodideAssets({ publicDir });
+    await prepareCompiledStdlib(result.directory);
     if (result.copied.length) console.log(`[pyodide] ${result.copied.join(', ')} → ${PYODIDE_PUBLIC_PATH}`);
   };
   return {
     name: 'vpylab-pyodide-assets',
     configResolved(config) { if (config.publicDir) publicDir = config.publicDir; },
-    buildStart() { run(); },
-    configureServer() { run(); },
+    buildStart: run,
   };
 }

@@ -222,6 +222,38 @@ function importPyodideScript() {
   throw new Error(`Pyodide 로드 실패: 학교/회사 네트워크가 CDN을 막았거나 일시 장애가 있습니다. 새로고침 후 다시 실행해 주세요. (${errors.slice(-2).join(' | ')})`);
 }
 
+const ORIGINAL_STDLIB = 'python_stdlib.zip';
+const COMPILED_STDLIB = 'python_stdlib.compiled-v1.zip';
+let loadedStdlib = ORIGINAL_STDLIB;
+
+// Pyodide는 다른 핵심 파일과 동시에 표준 라이브러리를 fetch합니다. 이미 받은 응답을 그대로
+// 전달해 순서를 유지하고, 이전 버전이 오프라인에 저장돼 있으면 그 파일로도 시작합니다.
+async function loadPythonRuntime() {
+  const options = { indexURL: PYODIDE_CDN };
+  if (PYODIDE_CDN !== PYODIDE_LOCAL_BASE || !nativeFetch) return self.loadPyodide(options);
+  const connection = self.navigator?.connection;
+  const smaller = connection?.saveData || /^(slow-2g|2g|3g)$/.test(connection?.effectiveType)
+    || (connection?.downlink > 0 && connection.downlink < 5);
+  const preferred = smaller ? ORIGINAL_STDLIB : COMPILED_STDLIB;
+  const alternative = smaller ? COMPILED_STDLIB : ORIGINAL_STDLIB;
+  options.stdLibURL = PYODIDE_LOCAL_BASE + preferred;
+  const originalFetch = self.fetch;
+  self.fetch = async (input, init) => {
+    if (String(input?.url ?? input) !== options.stdLibURL) return nativeFetch(input, init);
+    try {
+      const response = await nativeFetch(input, init);
+      if (response.ok) {
+        loadedStdlib = preferred;
+        return response;
+      }
+    } catch { /* 같은 버전의 다른 ZIP이 캐시에 남아 있을 수 있습니다. */ }
+    loadedStdlib = alternative;
+    return nativeFetch(PYODIDE_LOCAL_BASE + alternative, init);
+  };
+  try { return await self.loadPyodide(options); }
+  finally { self.fetch = originalFetch; }
+}
+
 /**
  * Pyodide 초기화
  */
@@ -235,9 +267,7 @@ async function initPyodide() {
     sendProgress(40, 'Python 엔진 초기화 중...');
 
     // 2. Pyodide WASM 로드 (fetch 필요) — JS 로드에 성공한 출처 사용
-    pyodide = await self.loadPyodide({
-      indexURL: PYODIDE_CDN,
-    });
+    pyodide = await loadPythonRuntime();
 
     sendProgress(70, 'VPython API 준비 중...');
 
@@ -256,7 +286,12 @@ del _vpylab_types, __vpylab_transform_source__
     // 4. VPython API를 'vpython' 모듈로 등록 (한 번만)
     if (vpythonApiCode) {
       // vpython-api.py 코드를 실행하여 전역에 로드 (트레이스백에서 학생 코드와 구분되도록 파일 이름 지정)
-      await pyodide.runPythonAsync(vpythonApiCode, { filename: API_FILENAME });
+      // 큰 모듈을 대화형 셀로 처리하면 전체 AST를 한 번 더 만듭니다. Python 모듈로 한 번만 컴파일합니다.
+      pyodide.globals.set('__vpylab_api_source__', vpythonApiCode);
+      await pyodide.runPythonAsync(`
+exec(compile(__vpylab_api_source__, '${API_FILENAME}', 'exec'))
+del __vpylab_api_source__
+`);
       // 'vpython' 모듈로 등록 — from vpython import * 가 동작하도록
       await pyodide.runPythonAsync(`
 import sys
@@ -295,8 +330,8 @@ _vpython_names = [
 import math as _math_for_export
 _vpython_names += [_n for _n in dir(_math_for_export) if not _n.startswith('_')]
 for _name in _vpython_names:
-    if _name in dir():
-        setattr(vpython_module, _name, eval(_name))
+    if _name in globals():
+        setattr(vpython_module, _name, globals()[_name])
 sys.modules['vpython'] = vpython_module
 `);
       // vpython API 로딩 완료
@@ -339,7 +374,7 @@ if 'pyodide' in sys.modules:
 
     sendProgress(100, '준비 완료!');
     // source: 핵심 파일을 받은 출처. 메인 스레드가 Service Worker 캐시를 채울 때 사용합니다.
-    self.postMessage({ type: 'ready', source: PYODIDE_CDN, version: PYODIDE_VERSION });
+    self.postMessage({ type: 'ready', source: PYODIDE_CDN, stdlib: loadedStdlib, version: PYODIDE_VERSION });
   } catch (err) {
     self.postMessage({
       type: 'error',
