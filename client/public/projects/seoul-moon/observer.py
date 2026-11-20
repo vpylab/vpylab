@@ -168,6 +168,9 @@ pole = vector(0, 0, 1)
 earth = sphere(radius=0.995, texture=textures.earth, shininess=0)
 moon = sphere(radius=0.2724, texture="/projects/seoul-moon/lroc-color.jpg", shininess=0)
 sun = sphere(emissive=True, texture=textures.sun, color=color.white, shininess=0)
+# 지상에서는 광구의 밝기가 표면 무늬를 씻어냅니다. 같은 위치의 발광 원반 위에
+# 옅은 태양 재질을 겹칩니다. 달을 비추는 광원은 위의 sunlight 하나입니다.
+solar_disc = sphere(radius=.398, emissive=True, color=color.white, shininess=0, visible=False)
 ray = arrow(color=color.yellow, emissive=True, shaftwidth=0.045, visible=False)
 # 관측소의 좌표축은 남쪽(+x), 천정(+y), 서쪽(+z)입니다.
 vertical = vector(0, 1, 0)
@@ -192,6 +195,7 @@ horizon_mode = "관측소 · 동쪽"
 rise_mode = "지평선 확대"
 phase_mode = "달 위상 · 북쪽 위"
 tracking_mode = "서울 하늘 · 달 추적"
+solar_mode = "서울 하늘 · 태양 추적"
 
 def local_vector(v, east, north, up):
     return vector(-dot(v, north), dot(v, up), -dot(v, east))
@@ -327,12 +331,13 @@ def show_rise(event):
 
 picker = winput(prompt="한국 시각", type="datetime-local", bind=set_date)
 picker.text = clock_text()
-selected_view = horizon_mode if observation_start is None else tracking_mode
+recorded_view = tracking_mode
+selected_view = horizon_mode if observation_start is None else recorded_view
 
 def initial_zoom(mode):
     if mode in [phase_mode, tracking_mode]:
         return 145
-    if mode == rise_mode:
+    if mode in [rise_mode, solar_mode]:
         return 8
     return 1
 
@@ -342,8 +347,48 @@ def set_zoom(event):
     global magnification
     magnification = event.value
 
+# 천체의 위치와 별개로 관측자가 돌린 수평·수직 각도를 기억합니다.
+yaw_offset = 0
+pitch_offset = 0
+base_pitch = 0
+last_pointer = None
+
+def aim(direction):
+    global base_pitch
+    length = mag(direction)
+    base_pitch = asin(max(-1, min(1, direction.y / length)))
+    if yaw_offset == 0 and pitch_offset == 0:
+        return direction
+    yaw = atan2(direction.x, -direction.z) + yaw_offset
+    pitch = max(radians(-89.9), min(radians(89.9), base_pitch + pitch_offset))
+    return length * vector(sin(yaw)*cos(pitch), sin(pitch), -cos(yaw)*cos(pitch))
+
+def look_around(event):
+    global last_pointer, yaw_offset, pitch_offset
+    if event.event == "mouseup":
+        last_pointer = None
+        return
+    if selected_view in ["전체 조망", "지구·달 중심"]:
+        return
+    point = (event.clientX, event.clientY)
+    if event.event == "mousedown":
+        last_pointer = point
+    elif last_pointer is not None:
+        # 화면 중앙에서 한 픽셀에 해당하는 시야각. 고배율일수록 미세하게 움직입니다.
+        scale = 2 / (magnification * max(1, min(scene.width, scene.height)))
+        pitch = base_pitch + pitch_offset
+        yaw_offset -= (point[0] - last_pointer[0]) * scale / max(.02, cos(pitch))
+        pitch += (point[1] - last_pointer[1]) * scale
+        pitch_offset = max(radians(-89.9), min(radians(89.9), pitch)) - base_pitch
+        last_pointer = point
+
+scene.bind("mousedown mousemove mouseup", look_around)
+
 def select_view(mode):
-    global selected_view, magnification
+    global selected_view, magnification, yaw_offset, pitch_offset, last_pointer
+    yaw_offset = 0
+    pitch_offset = 0
+    last_pointer = None
     selected_view = mode
     magnification = initial_zoom(mode)
     zoom_control.value = magnification
@@ -351,7 +396,7 @@ def select_view(mode):
 def choose_view(event):
     select_view(event.selected)
 
-view = menu(choices=[horizon_mode, tracking_mode, rise_mode, phase_mode, "전체 조망", "지구·달 중심"], selected=selected_view, bind=choose_view)
+view = menu(choices=[horizon_mode, tracking_mode, solar_mode, rise_mode, phase_mode, "전체 조망", "지구·달 중심"], selected=selected_view, bind=choose_view)
 button(text="일출", bind=show_rise)
 button(text="월출", bind=show_rise)
 pace = slider(min=0, max=24, step=0.05, value=0, text="시간/초", bind=set_speed)
@@ -373,11 +418,12 @@ while True:
     mode = selected_view
     instant = int(stamp) if speed == 0 else stamp
     aspect = scene.width / max(1, scene.height)
-    state = (instant, mode, aspect, notice, rise_heading.x, rise_heading.z, running, speed, magnification)
+    state = (instant, mode, aspect, notice, rise_heading.x, rise_heading.z, running, speed, magnification, yaw_offset, pitch_offset)
     if state == previous:
         continue
     new_view = previous == None or mode != previous[1]
-    reframe = new_view or aspect != previous[2] or state[4:6] != previous[4:6] or magnification != previous[-1]
+    reframe = new_view or aspect != previous[2] or state[4:6] != previous[4:6] or magnification != previous[8]
+    look_changed = reframe or state[9:] != previous[9:]
     previous = state
     solar, lunar, eye, up, greenwich, elongation = sky_positions(instant)
     east = norm(cross(pole, up))
@@ -391,7 +437,7 @@ while True:
     waxing = "차오르는 달" if elongation < pi else "기우는 달"
     status = datetime.fromtimestamp(instant, kst).strftime("%Y-%m-%d  %H:%M KST")
     status += f"\n기하 고도 · 해 {sun_alt:.1f}° · 달 {altitude:.1f}° · 밝은 면 {lit:.1f}%"
-    if mode in [horizon_mode, tracking_mode, rise_mode, phase_mode]:
+    if mode in [horizon_mode, tracking_mode, solar_mode, rise_mode, phase_mode]:
         status += f" · {magnification:.0f}×"
     if speed == 0 and running:
         status += " · 실시간"
@@ -407,46 +453,54 @@ while True:
         scene.userpan = outer
         sunlight.intensity = 3
         for shape in station:
-            shape.visible = mode in [horizon_mode, rise_mode, tracking_mode]
+            shape.visible = mode in [horizon_mode, rise_mode, tracking_mode, solar_mode]
+        solar_disc.visible = False
         marker_dome.visible = outer
         marker_base.visible = outer
         earth.visible = outer
         ray.visible = mode == "지구·달 중심"
         scene.ambient = color.gray(.14) if outer else color.black
 
-    if mode in [horizon_mode, tracking_mode, rise_mode, phase_mode] and reframe:
+    if mode in [horizon_mode, tracking_mode, solar_mode, rise_mode, phase_mode] and reframe:
         # 같은 눈 위치에서 초점거리만 바꿉니다. 투영된 원반 지름은 배율에 비례합니다.
         scene.fov = 2*atan2(1, magnification * min(1,aspect))
-    if mode in [horizon_mode, rise_mode, tracking_mode]:
+    if mode in [horizon_mode, rise_mode, tracking_mode, solar_mode]:
         if new_view:
             moon.radius = .2724
             sun.radius = .4
-            sun.texture = None
         if reframe:
             scene.up = vertical
-            if mode == rise_mode:
-                axis = 12*rise_heading + vector(0,.55,0)
-            else:
-                axis = vector(0,4.5,-12)
             scene.camera.pos = observer_eye
+        if look_changed:
             # 가까운 지면이 카메라의 근거리 절단면에 잘리지 않게 시선 길이를 잡습니다.
-            scene.camera.axis = norm(axis)
+            if mode == rise_mode:
+                scene.camera.axis = aim(norm(12*rise_heading + vector(0,.55,0)))
+            elif mode == horizon_mode:
+                scene.camera.axis = aim(norm(vector(0,4.5,-12)))
         scene.ambient = color.gray(.12 * min(1, max(0, (sun_alt+6)/16)))
         scene.background = daylight_color(sun_alt)
         # 낮하늘의 산란광 때문에 달의 명암 대비가 약해집니다.
         daylight = min(1,max(0,(sun_alt+6)/16))
         moon.opacity = 1 - .80*daylight
         sunlight.intensity = 3 + 18*daylight
-        sun.color = vector(1, .65, .28) + min(1,max(0,sun_alt/12))*vector(0,.35,.72)
+        height_factor = min(1, max(0, sun_alt/12))
+        solar_disc.color = vector(1,.70,.34) + height_factor * vector(0,.30,.66)
+        sun.opacity = .24 - .18 * height_factor
         moon.pos, moon.visible = sky_disc(moon_sight, altitude, .2724, .2724, east, north, up)
         sun.pos, sun.visible = sky_disc(solar_sight, sun_alt, 109.1, .4, east, north, up)
+        solar_disc.pos = sun.pos
+        solar_disc.visible = sun.visible
         moon.axis = local_vector(prime, east, north, up)
         moon.up = local_vector(lunar_north, east, north, up)
         sunlight.direction = local_vector(light, east, north, up)
         if mode == tracking_mode:
-            scene.camera.axis = norm(moon.pos - observer_eye)
+            scene.camera.axis = aim(norm(moon.pos - observer_eye))
             if not moon.visible:
                 status += " · 달이 지평선 아래에 있습니다"
+        elif mode == solar_mode:
+            scene.camera.axis = aim(norm(sun.pos - observer_eye))
+            if not sun.visible:
+                status += " · 해가 지평선 아래에 있습니다"
     elif mode == phase_mode:
         # 달 북쪽을 화면 위에 고정합니다. 달에서 본 태양·관측자의 각도는 그대로 보존합니다.
         toward = -norm(moon_sight)
@@ -465,7 +519,7 @@ while True:
             scene.up = vertical
         distance = mag(moon_sight)
         scene.camera.pos = vector(0,0,distance)
-        scene.camera.axis = vector(0,0,-distance)
+        scene.camera.axis = aim(vector(0,0,-distance))
         status += " · " + waxing
         if altitude < 0:
             status += " (지평선 아래)"
@@ -481,8 +535,7 @@ while True:
             scene.fov = radians(48)
             moon.radius = .2724
             sun.radius = 1.15
-            sun.color = color.white
-            sun.texture = textures.sun
+            sun.opacity = 1
         moon.axis = prime
         moon.up = lunar_north
         moon.pos = 3.3 * norm(lunar)

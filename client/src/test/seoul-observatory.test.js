@@ -63,3 +63,34 @@ for frame in frames:
   const result = runPythonJobs([{ id: 'seoul', label: 'zoom', code }]).get('seoul:zoom');
   expect(result.error).toBeNull();
 });
+
+it.skipIf(!hasPython())('태양을 향해 시작하고, 드래그 후에도 눈 위치와 조명은 고정된다', () => {
+  const fixed = source.replace('observation_start = None', 'observation_start = 1795144500')
+    .replace('recorded_view = tracking_mode', 'recorded_view = solar_mode');
+  const code = fixed.replace('while True:', `class Pointer:
+    def __init__(self, name, x, y):
+        self.event, self.clientX, self.clientY = name, x, y
+
+for step in range(3):
+    if step == 1:
+        look_around(Pointer("mousedown", 120, 180))
+        look_around(Pointer("mousemove", 175, 205))
+        look_around(Pointer("mouseup", 175, 205))
+    if step == 2:
+        look_around(Pointer("mousemove", 260, 225))
+        zoom_control.value = 32
+        set_zoom(zoom_control)`) + `
+    assert sun.visible and solar_disc.visible and solar_disc.pos == sun.pos
+    assert scene.camera.pos == observer_eye
+    if step == 0:
+        initial = scene.camera.axis
+        assert initial == norm(sun.pos-observer_eye)
+        direction = sunlight.direction
+    if step == 1:
+        turned = scene.camera.axis
+        assert mag(turned-initial) > .01
+    if step == 2:
+        assert scene.camera.axis == turned and sunlight.direction == direction
+`;
+  expect(runPythonJobs([{ id: 'seoul', label: 'look', code }]).get('seoul:look').error).toBeNull();
+});
