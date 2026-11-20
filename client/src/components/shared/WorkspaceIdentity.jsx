@@ -15,8 +15,16 @@ export function TonePicker() {
 }
 
 export function WorkspaceIdentity({ team = false, children }) {
-  return <div className={'vpy-space-identity ' + (team?'team':'personal')}>
-    <div><ServiceMark service={team?'github':'drive'}/>{children}</div>
-    <img className="vpy-space-friend" src={'/mong/' + (team?'gori':'mongsil') + '.png'} alt="" />
+  const ko = useAppStore(s => s.locale === 'ko');
+  const subtitle = team ? (ko ? '팀원과 함께 만드는 작품' : 'Create with your teammates')
+    : (ko ? '내 작품과 나만의 항해일지' : 'Your code and personal logbook');
+  return <div className={'vpy-space-identity ' + (team ? 'team' : 'personal')}>
+    <div className="vpy-identity-copy"><span className="vpy-provider"><ServiceMark service={team ? 'github' : 'drive'} />{team ? 'GitHub' : 'Google Drive'}</span>
+      {children}<p>{subtitle}</p>
+    </div>
+    <div className="vpy-friends" aria-hidden="true">
+      <img className="vpy-space-friend" src={'/mong/' + (team ? 'gori' : 'mongsil') + '.png'} alt="" />
+      <img className="vpy-second-friend" src={'/mong/' + (team ? 'doran' : 'dugeun') + '.png'} alt="" />
+    </div>
   </div>;
 }

@@ -571,7 +571,10 @@ export const useDriveStore = create((set, get) => {
           if (!sameProject()) throw new AuthRequiredError();
           return auth.getToken();
         }, ...(deps.fetchImpl ? {fetchImpl: deps.fetchImpl} : {}) });
-        const result = await scoped.appendJournal(file, account.name || account.email?.split('@')[0] || account.sub, entry);
+        const append = () => scoped.appendJournal(file, account.name || account.email?.split('@')[0] || account.sub, entry);
+        const result = globalThis.navigator?.locks
+          ? await navigator.locks.request('vpylab:journal:' + account.sub + ':' + file.id, append)
+          : await append();
         return sameProject() ? { status: 'saved', ...result } : { status: 'stale' };
       } catch (error) {
         return session === sessionEpoch ? fail(error, authEpoch) : {status:'stale'};

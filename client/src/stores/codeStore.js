@@ -151,7 +151,6 @@ const useCodeStore = create((set, get) => ({
     source = 'manual',
     skipRevision = false,
     skipParentLookup = false,
-    journal = false,
     expectedCode,
   }) => {
     const user = await getCurrentUser();
