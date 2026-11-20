@@ -487,3 +487,36 @@ while True:
   const beforeCrash = run.commands.slice(0, marks[7]).filter(c => c.id === trailId && c.action !== 'create');
   expect(beforeCrash.some(c => c.action === 'curve_set' || c.action === 'curve_append')).toBe(true);
 });
+
+it.skipIf(!hasPython())('scene.pause()는 안내를 보이고 키가 아닌 클릭에서만 이어 가며 안내를 지운다', () => {
+  const code = `공 = sphere(color=color.red)
+scene.pause("눌러서 시작")
+공.color = color.green
+scene.pause()
+공.color = color.blue
+`;
+  const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+    input: JSON.stringify({ api: exportedApi(generateStandaloneHTML(code)), transform: source, jobs: [{ id: 'pause', code, events: [
+      { type: 'key', name: 'keydown', key: 'a', label: 'key' },
+      { type: 'mouse', payload: { name: 'click', pos: [0, 0, 0], pick: null }, label: 'first' },
+      { type: 'mouse', payload: { name: 'click', pos: [0, 0, 0], pick: null }, label: 'second' },
+    ] }] }) + '\n',
+    encoding: 'utf8', timeout: 15000,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  const [run] = JSON.parse(result.stdout);
+  expect(run.error).toBeNull();
+  const labels = ['start', 'key', 'first', 'second'];
+  const marks = labels.map(label => run.commands.findIndex(c => c.action === 'event_done' && c.event === label));
+  const part = label => run.commands.slice(labels.indexOf(label) ? marks[labels.indexOf(label) - 1] + 1 : 0, marks[labels.indexOf(label)]);
+  const colors = commands => commands.filter(c => c.action === 'update' && c.color).map(c => c.color);
+  const [notice1] = part('start').filter(c => c.action === 'pause_notice');
+  expect(notice1.text).toBe('눌러서 시작');
+  expect(colors([...part('start'), ...part('key')])).toEqual([]);
+  expect(part('first')).toContainEqual({ action: 'widget_delete', id: notice1.id });
+  expect(colors(part('first'))).toEqual([[0, 1, 0]]);
+  const [notice2] = part('first').filter(c => c.action === 'pause_notice');
+  expect(notice2.text).toBe('▶ 화면을 클릭하면 계속합니다');
+  expect(part('second')).toContainEqual({ action: 'widget_delete', id: notice2.id });
+  expect(colors(part('second'))).toEqual([[0, 0, 1]]);
+});
