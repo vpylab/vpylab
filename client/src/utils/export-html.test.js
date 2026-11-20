@@ -55,6 +55,54 @@ describe.skipIf(!hasPython())('교재 작품의 편집기와 공유 HTML 실행 
   });
 });
 
+it.skipIf(!hasPython())('전체 색상은 이름과 번호로 읽고 각 색이 추첨에 한 번씩 들어간다', () => {
+  const code = `assert 색상 is color
+assert len(색상) == 30
+assert 색상[0] is color.red and 색상[-1] is color.ivory
+assert 색상['분홍'] is 색상['pink'] is 색상['핑크']
+assert 색상['회색'](0.2).x == 0.2
+colors = list(색상)
+names = str(색상).split(', ')
+assert len(set(names)) == len(colors)
+assert all(name.isalpha() and '가' <= name[0] <= '힣' and 색상[name] is colors[i] for i, name in enumerate(names))
+presets = [value for value in vars(type(색상)).values() if isinstance(value, vector)]
+assert {id(c) for c in colors} == {id(c) for c in presets}
+assert 색상[1:4] == colors[1:4]
+assert len({(c.x, c.y, c.z) for c in colors}) == len(colors)
+assert all(c is color[i] for i, c in enumerate(colors))
+try:
+    color[len(color)]
+except IndexError:
+    pass
+else:
+    raise AssertionError('index out of range')
+try:
+    색상['없는 색']
+except KeyError:
+    pass
+else:
+    raise AssertionError('unknown color')
+random.seed(42)
+picks = [random.choice(색상) for _ in range(100)]
+import random
+random.seed(42)
+assert picks == [random.choice(colors) for _ in range(100)]
+sphere(color=picks[0])`;
+  const job = { id: 'palette', label: 'palette', code };
+  const editor = runPythonJobs([job]).get('palette:palette');
+  expect(editor.error).toBeNull();
+  const html = generateStandaloneHTML(code);
+  const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+    input: JSON.stringify({ api: exportedApi(html), transform: source, jobs: [job] }),
+    encoding: 'utf8', timeout: 10000,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  const [exported] = JSON.parse(result.stdout);
+  expect(exported.error).toBeNull();
+  expect(exported.commands.find(c => c.type === 'sphere')?.color)
+    .toEqual(editor.commands.find(c => c.type === 'sphere').color);
+});
+
 it('독립 HTML의 표준 대기 별칭이 요청 시간 뒤 복귀하며 색과 음을 세 번 보낸다', () => {
   const code = `from vpython import *
 import time as clock

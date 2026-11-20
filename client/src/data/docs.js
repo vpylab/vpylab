@@ -1556,10 +1556,10 @@ for i, c in enumerate(colors_list):
     category: 'colors',
     title: { ko: '한글 색상 (색상)', en: 'Korean Color Aliases' },
     description: {
-      ko: "한글로 색상을 지정할 수 있습니다. 색상['빨강'] 또는 색상['빨'] 형식으로 사용합니다.",
-      en: "Colors can be specified in Korean. Use 색상['빨강'] or 색상['빨'] format.",
+      ko: "print(색상)은 한글 이름 30개를 번호 순서대로 보여줍니다. 색상[0]과 색상['빨강']은 모두 첫 번째 색인 빨강을 꺼냅니다. random.choice(색상)은 기본 팔레트의 30색 중 하나를 같은 확률로 뽑습니다. 분홍과 핑크처럼 같은 색의 별칭은 한 번만 셉니다.",
+      en: "print(색상) shows the 30 Korean names in index order. Look up red by name with 색상['빨강'] or by its position with 색상[0]. In VPyLab, random.choice(color) picks one of the 30 preset colors with equal probability. Aliases for the same color share a single slot.",
     },
-    signature: "색상['빨강'], 색상['빨'], 색상['초록'], 색상['파랑'], ...",
+    signature: "색상['빨강'], 색상[0], random.choice(색상)",
     params: [
       { name: "색상['빨강'] / 색상['빨'] / 색상['빨간']", type: 'vector', default: 'color.red', desc: { ko: '빨강', en: 'Red' } },
       { name: "색상['주황'] / 색상['주']",    type: 'vector', default: 'color.orange',  desc: { ko: '주황', en: 'Orange' } },
@@ -1577,11 +1577,10 @@ for i, c in enumerate(colors_list):
       { name: "색상['금색'] / 색상['황금']",   type: 'vector', default: 'color.gold',    desc: { ko: '금색', en: 'Gold' } },
       { name: "색상['민트'] / 색상['라벤더']", type: 'vector', default: '-',             desc: { ko: '확장 색상도 한글 이름으로 접근 가능', en: 'Extended colors are available by Korean names too' } },
     ],
-    code: `from vpython import *
-sphere(pos=vector(-1, 0, 0), radius=0.5, color=색상['빨'])
-sphere(pos=vector(0, 0, 0), radius=0.5, color=색상['초록'])
-sphere(pos=vector(1, 0, 0), radius=0.5, color=색상['파랑'])`,
-    tags: ['color', 'korean', 'hangul', '색상', '한글'],
+    code: `print(색상)
+sphere(pos=vec(-1.5, 0, 0), color=색상['분홍'])
+sphere(pos=vec(1.5, 0, 0), color=random.choice(색상))`,
+    tags: ['color', 'korean', 'hangul', '색상', '한글', 'random.choice', '무작위'],
   },
   {
     id: 'custom-rgb',

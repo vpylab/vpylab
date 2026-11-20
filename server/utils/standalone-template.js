@@ -1224,6 +1224,7 @@ import json
 import asyncio
 import re
 import math
+import random as _random_module
 from math import *
 
 _command_buffer = []
@@ -1337,6 +1338,13 @@ class _ColorPalette:
     beige=vector(0.96,0.96,0.86); mint=vector(0.6,1,0.8); peach=vector(1,0.85,0.73)
     lavender=vector(0.71,0.49,0.86); maroon=vector(0.5,0,0); teal=vector(0,0.5,0.5)
     ivory=vector(1,1,0.94)
+    # 출력과 번호 조회는 같은 대표 이름을 씁니다. 다른 별칭은 추첨 확률에 영향을 주지 않습니다.
+    _color_names = (
+        '빨강', '초록', '파랑', '노랑', '청록', '자홍', '주황', '흰색', '검정', '회색',
+        '보라', '분홍', '갈색', '금색', '은색', '남색', '하늘색', '연두', '올리브', '산호',
+        '연어', '보랏빛', '남보라', '베이지', '민트', '복숭아', '라벤더', '적갈', '틸', '상아',
+    )
+
     _name_map = {
         '빨':'red','빨강':'red','빨간':'red','초':'green','초록':'green','녹':'green','녹색':'green',
         '파':'blue','파랑':'blue','파란':'blue','노':'yellow','노랑':'yellow','노란':'yellow',
@@ -1352,7 +1360,17 @@ class _ColorPalette:
         '라벤더':'lavender','적갈':'maroon','밤색':'maroon','청록색':'teal','틸':'teal',
         '상아':'ivory','아이보리':'ivory',
     }
+    def __str__(self):
+        return ', '.join(self._color_names)
+
+    def __len__(self):
+        return len(self._color_names)
+
     def __getitem__(self, key):
+        if isinstance(key, slice):
+            return [self[name] for name in self._color_names[key]]
+        if not isinstance(key, str):
+            key = self._color_names[key]
         if key in self._name_map: return getattr(self, self._name_map[key])
         if hasattr(self, key) and not key.startswith('_'): return getattr(self, key)
         raise KeyError(f"'{key}' 색상을 찾을 수 없습니다")
@@ -1360,6 +1378,21 @@ class _ColorPalette:
 
 color = _ColorPalette()
 색상 = color
+
+class _RandomCompat:
+    """GlowScript의 random() — 0 이상 1 미만의 난수.
+    random.randint(1, 6)처럼 표준 random 모듈의 함수도 그대로 쓸 수 있다."""
+    def __call__(self):
+        return _random_module.random()
+
+    def __getattr__(self, name):
+        return getattr(_random_module, name)
+
+    def __repr__(self):
+        return "<random: random()은 0~1 난수, random.randint(a, b) 등도 사용 가능>"
+
+
+random = _RandomCompat()
 
 
 # 위치·색은 슬롯마다 독립된 벡터를 보관하고 성분 변경도 화면에 보냅니다.
