@@ -36,6 +36,7 @@ export default function Missions() {
           })}</ol>
           <p className="text-xs leading-relaxed mt-4" style={{ color: 'var(--color-text-secondary)' }}>{ko ? '자동 검사는 코드의 조건을 확인합니다. 왜 바꿨는지 설명하고, 다른 값에서도 되는지 살펴보며 마무리하세요. 이 기기의 연습 기록은 그대로 이어집니다.' : 'Automatic checks verify code conditions. Explain your changes and try other values to finish. Practice records on this device are preserved.'}</p>
         </section>
+        <p className="text-sm mb-8"><Link to="/courses/space-from-earth" style={{ color: 'var(--color-accent)' }}>{ko ? 'STEAM 실습 · 지구에서 시작하는 태양계 (10단계) →' : 'STEAM lab · Build a Solar System from Earth (10 steps) →'}</Link></p>
         <section aria-labelledby="physical-title" className="mb-10">
           <p className="text-xs mb-2" style={{ color: 'var(--color-accent)' }}>{ko ? '시범 운영 · 피지컬 컴퓨팅 시뮬레이션' : 'Pilot · Physical computing simulation'}</p>
           <h2 id="physical-title" className="font-display text-xl font-bold mb-3">{ko ? '센서로 읽고, 판단하고, 빛과 소리로 알리기' : 'Sense, decide, and signal with light and sound'}</h2>

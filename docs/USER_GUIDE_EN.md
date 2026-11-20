@@ -2,6 +2,10 @@
 
 Open [VPyLab in English](https://vpylab.vercel.app/?lang=en), or choose **More → Language → English** (on a phone, **Menu → Language**). Your browser remembers the language. Switching languages keeps your current code and Forge draft.
 
+## A first classroom session
+
+Start with **Which side is day?** in [Nine short light, sound and space experiments](LIGHT_SOUND_SPACE_LAB.md). Ask students to point to the bright side before running the code. Move the light and compare the result with their prediction. Follow with **A star plays two notes** to introduce sound or **Two orbital rhythms** to connect orbit periods with beats.
+
 ## Where to start
 
 - **Training**: start with the eight light and sound lessons. Predict a result, run the code, change one thing, and explain what happened. The four optional project lessons cover saving, GitHub, versions, and sharing.
@@ -40,6 +44,8 @@ friend.object.pos.x += 0.1
 friend.object.opacity = 0.6
 friend.object.color = vector(1, 0.7, 0.3)
 ```
+
+The **Place it** tab sets the values for placing the finished module in a project. Change position x, y and z, `scale`, the rotation axis and angle, and the overall color with sliders. The preview and the usage code change together. In the preview, the red line is x, the green line is y and the blue line is z. Colors are written as whole numbers from 0 to 255, such as `vector(255, 180, 80)`. **Copy this usage code** copies the lines to paste below the finished module code. These values are used on screen only and are not saved in the module.
 
 The Kirby starter uses the same eyes, mouth, body, and limbs as the home Pink friend. Its preview uses the same stage lighting; the copied object excludes the stage. Previously edited or saved shapes stay intact. For an older draft, **Use the home character shape** updates the shape while keeping its title and credits. Undo restores it.
 

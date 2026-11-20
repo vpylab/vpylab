@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useId } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import useAppStore from '../../stores/appStore';
@@ -35,7 +35,9 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
   const wrapperRef = useRef(null);
   const fullscreen = useFullscreen(wrapperRef);
   // 교실 앱은 I18nProvider 없이 이 구성 요소를 쓰므로 선택적 훅을 씁니다.
-  const { t } = useOptionalI18n();
+  const { t, locale } = useOptionalI18n();
+  const [viewMenuOpen, setViewMenuOpen] = useState(false);
+  const viewMenuId = useId();
   const rendererRef = useRef(null);
   const cameraRef = useRef(null);
   const controlsRef = useRef(null);
@@ -406,11 +408,12 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
         // 전체 화면 API가 없는 브라우저(iOS Safari)는 화면을 채우는 고정 배치로 대체합니다.
         ...(fullscreen.pseudo ? { position: 'fixed', inset: 0, zIndex: 9999, width: '100vw', height: '100vh', backgroundColor: 'var(--color-bg-primary)' } : {}),
       }}
+      data-single-canvas={extraCanvases.length === 0 ? 'true' : undefined}
       data-vpylab-viewport=""
       data-vpylab-canvas-id={canvasId}
       data-fullscreen={fullscreen.active ? 'true' : undefined}
     >
-      <div className="relative w-full" style={{ height: extraCanvases.length ? (defaultHasObjects ? 320 : 0) : '100%', overflow: 'hidden' }}>
+      <div className="vp-stage-frame relative w-full" style={{ height: extraCanvases.length ? (defaultHasObjects ? 320 : 0) : '100%', overflow: 'hidden' }}>
       <div ref={containerRef} className="w-full h-full" />
 
       {webglUnavailable && (
@@ -454,7 +457,12 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
       />
 
       {/* 화면 조작부: 전체 화면 · 화면에 맞추기 · 자동 맞춤 · 좌표축 */}
-      {!webglUnavailable && <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+      {!webglUnavailable && <div className="vp-view-control absolute top-2 right-2 flex flex-col gap-1 items-end">
+        <button type="button" className="vp-view-toggle" aria-expanded={viewMenuOpen} aria-controls={viewMenuId}
+          onClick={() => setViewMenuOpen(open => !open)}>
+          {locale === 'en' ? 'View' : '보기'} <span aria-hidden="true">{viewMenuOpen ? '▴' : '▾'}</span>
+        </button>
+        <div id={viewMenuId} className="vp-view-tools flex flex-col gap-1 items-end" data-open={viewMenuOpen}>
         {/* 전체 화면 */}
         <button
           type="button"
@@ -516,6 +524,7 @@ export default function Viewport3D({ sceneRef, onSceneReady, initialCameraPositi
           />
           {t('viewport.axes')}
         </label>
+        </div>
       </div>}
       </div>
       {canvasId === 'scene' && <AudioNoteIndicator />}

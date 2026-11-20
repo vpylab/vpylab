@@ -165,6 +165,22 @@ function createWorker() {
     }
     if (message.runId != null && message.runId !== activeRunId) return;
 
+    if (message.type === 'presentation') {
+      // 앞선 배치가 메인 스레드에서 처리된 뒤에 다음 Python 대기를 시작한다.
+      // 숨겨진 탭에서는 다음 프레임을 무기한 기다리지 않는다.
+      const acknowledge = () => {
+        if (instance === worker && message.runId === activeRunId) {
+          instance.postMessage({ type: 'presented', runId: message.runId, token: message.token });
+        }
+      };
+      if (document.visibilityState === 'hidden') acknowledge();
+      else {
+        const timer = setTimeout(() => { cancelAnimationFrame(frame); acknowledge(); }, 100);
+        const frame = requestAnimationFrame(() => { clearTimeout(timer); acknowledge(); });
+      }
+      return;
+    }
+
     // 정지 직후 큐에 남은 묶음이 예약음을 다시 만들지 못하게 합니다.
     if(message.type==='batch'&&soundSuppressed&&Array.isArray(message.commands))message={...message,commands:message.commands.filter(command=>command.action!=='sound')};
     if(message.type==='error'){soundSuppressed=true;stopAllSounds();}
@@ -214,7 +230,7 @@ export function initIfNeeded() {
   }, INIT_TIMEOUT);
   try {
     worker = createWorker();
-    worker.postMessage({ type: 'init', vpythonApi: vpythonApiRaw, transformSource: transformRaw, physicalKit: physicalKitRaw });
+    worker.postMessage({ type: 'init', presentationSupport: true, vpythonApi: vpythonApiRaw, transformSource: transformRaw, physicalKit: physicalKitRaw });
   } catch (error) {
     failWorker(`Python 엔진 초기화 실패: ${error.message}`, 'init');
   }

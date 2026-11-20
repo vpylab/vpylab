@@ -40,7 +40,12 @@ describe.skipIf(!hasPython())('교재 작품의 편집기와 공유 HTML 실행 
       const original = editor.get(`${exported.id}:export`);
       expect(exported.error, exported.id).toBeNull();
       expect(finalObjects(exported.commands), exported.id).toEqual(finalObjects(original.commands));
-      const sounds = commands => commands.filter(command => command.action === 'sound');
+      // beatTime은 실행마다 기점이 다른 Worker 단조 시계다. 작품의 음과 연주 순서는 모두 비교한다.
+      const sounds = commands => commands.filter(command => command.action === 'sound').map(command => {
+        const event = { ...command };
+        delete event.beatTime;
+        return event;
+      });
       expect(sounds(exported.commands), exported.id).toEqual(sounds(original.commands));
       const range = commands => commands.filter(command => command.action === 'scene' && command.property === 'range').map(({action,property,value})=>({action,property,value}));
       expect(range(exported.commands), exported.id).toEqual(range(original.commands));
@@ -48,6 +53,37 @@ describe.skipIf(!hasPython())('교재 작품의 편집기와 공유 HTML 실행 
       expect(background(exported.commands), exported.id).toEqual(background(original.commands));
     }
   });
+});
+
+it('독립 HTML의 표준 대기 별칭이 요청 시간 뒤 복귀하며 색과 음을 세 번 보낸다', () => {
+  const code = `from vpython import *
+import time as clock
+from time import sleep as wait
+def sleep(x):
+    return x + 1
+assert sleep(4) == 5
+lamp = sphere()
+for i, note in enumerate(["C4", "D4", "E4"]):
+    lamp.color = [color.red, color.green, color.blue][i]
+    play_note(note, 0.01)
+    if i < 2:
+        start = clock.monotonic()
+        if i == 0: wait(0.03)
+        else: clock.sleep(0.03)
+        assert clock.monotonic() - start >= 0.03
+`;
+  const job = { id: 'sleep', code, realTime: true };
+  const html = generateStandaloneHTML(code);
+  const result = spawnSync('python3', ['-I', 'src/test/run-export-python.py'], {
+    input: JSON.stringify({ api: exportedApi(html), transform: source, jobs: [job] }),
+    encoding: 'utf8', timeout: 10000,
+  });
+  expect(result.status, result.stderr).toBe(0);
+  const [run] = JSON.parse(result.stdout);
+  expect(run.error).toBeNull();
+  const batches = run.batchEnds.map((end, i) => run.commands.slice(run.batchEnds[i - 1] ?? 0, end));
+  expect(batches.map(batch => batch.filter(cmd => cmd.action === 'sound').map(cmd => cmd.name))).toEqual([['C4'], ['D4'], ['E4']]);
+  expect(batches.map(batch => batch.find(cmd => cmd.action === 'update')?.color)).toEqual([[1,0,0], [0,1,0], [0,0,1]]);
 });
 
 function startExport(width, height) {
@@ -100,6 +136,50 @@ it('작품에 지정한 환경광과 사용자 광원만 켜고 혜성의 입자
   expect(plume.material.userData.flowTime.value).toBe(1.25);
   expect(plume.frustumCulled).toBe(false);
   expect(plume.material.depthWrite).toBe(false);
+});
+
+it('내려받은 HTML은 도형 생성·갱신·배경의 바이트 RGB를 같은 정규화 색으로 그린다', () => {
+  const { processCmd, meshes, scene } = startExport(390, 844);
+  processCmd({ action: 'create', id: 'star', type: 'sphere', pos: [255, 2, 0], color: [255, 2, 0] });
+  const mesh = meshes.get('star');
+  expect(mesh.position.toArray()).toEqual([255, 2, 0]);
+  expect(mesh.material.color.toArray()).toEqual([1, 2 / 255, 0]);
+  processCmd({ action: 'update', id: 'star', color: [1, 0, 0] });
+  expect(mesh.material.color.toArray()).toEqual([1, 0, 0]);
+  processCmd({ action: 'scene', property: 'background', value: [0, 128, 255] });
+  expect(scene.background.toArray()).toEqual([0, 128 / 255, 1]);
+});
+
+it('구의 발광을 다시 켜면 직사각형 무늬와 기본 지도가 같은 텍스처를 쓴다', () => {
+  const { processCmd, meshes } = startExport(390, 844);
+  processCmd({ action: 'create', type: 'sphere', id: 'globe', texture: 'data:image/png;base64,AA==', emissive: true });
+  const material = meshes.get('globe').material;
+  expect(material.map).toBeInstanceOf(THREE.Texture);
+  expect(material.emissiveMap).toBe(material.map);
+  processCmd({ action: 'update', id: 'globe', emissive: false });
+  expect(material.emissiveMap).toBeNull();
+  processCmd({ action: 'update', id: 'globe', emissive: true });
+  expect(material.emissiveMap).toBe(material.map);
+});
+
+it('점광원의 기본 환산과 명시한 세기를 생성과 갱신에서 구분한다', () => {
+  const { processCmd, meshes } = startExport(390, 844);
+  for (const explicit of [true, false]) {
+    const id = String(explicit);
+    processCmd({ action: 'create', type: 'local_light', id, distance_falloff: explicit, intensity: 1 });
+    const light = meshes.get(id);
+    expect(light.decay).toBe(explicit ? 2 : 0);
+    processCmd({ action: 'update', id, intensity: 2 });
+    expect(light.intensity).toBeCloseTo(explicit ? 2 : 2 * Math.PI / 0.9);
+  }
+});
+
+it('시점 선택에 따라 회전·확대·이동 조작을 잠그고 다시 푼다', () => {
+  const { processCmd, controls } = startExport(390, 844);
+  for (const enabled of [false, true]) {
+    for (const property of ['userspin', 'userzoom', 'userpan']) processCmd({action: 'scene', property, value: enabled});
+    expect([controls.enableRotate, controls.enableZoom, controls.enablePan]).toEqual([enabled, enabled, enabled]);
+  }
 });
 
 describe('공유 페이지의 시야 범위', () => {

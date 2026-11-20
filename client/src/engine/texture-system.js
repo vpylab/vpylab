@@ -10,11 +10,9 @@ const TEXTURE_CACHE = new Map();
 const textureLoads = new Map();
 
 export function whenTexturesReady() { return Promise.all([...textureLoads.values()]); }
-// crossOrigin='anonymous'면 CORS 헤더가 없는 서버의 이미지가 실패함.
-// 텍스처는 화면에만 사용하므로 픽셀 읽기가 필요 없어 빈 문자열로 두어
-// 일반 <img> 처럼 동작하게 한다 (canvas는 tainted 되지만 렌더링은 정상).
+// WebGL accepts cross-origin images when their server permits anonymous CORS requests.
 const URL_LOADER = new THREE.TextureLoader();
-URL_LOADER.setCrossOrigin('');
+URL_LOADER.setCrossOrigin('anonymous');
 
 // Vite가 파일을 작품과 같은 출처에서 제공하며 실제로 선택한 재질만 내려받습니다.
 const surfaceImages = {
@@ -56,10 +54,16 @@ export function finishSurfaceImage(material, spec, renderer) {
 
 export const PRESET_NAMES = Object.keys(PRESET_GENERATORS);
 
+export function isImageURL(spec) {
+  if (typeof spec !== 'string') return false;
+  const sitePath = spec.startsWith('/') && !spec.startsWith('//') && !spec.includes('\\');
+  return sitePath || spec.startsWith('https://') || spec.startsWith('http://') || spec.startsWith('data:image/');
+}
+
 /**
  * 텍스처 spec → Three.Texture
  * - "preset:<name>": 프로시저럴 프리셋
- * - "https://..." / "http://..." / "data:...": 외부 이미지 로드
+ * - "/projects/..." / "https://..." / "http://..." / "data:...": 외부 이미지 로드
  * - falsy: null 반환
  */
 export function resolveTexture(spec) {
@@ -74,23 +78,25 @@ export function resolveTexture(spec) {
     if (Object.hasOwn(surfaceImages, name)) {
       textureLoads.set(spec, new Promise(done => {
         new THREE.ImageLoader().load(surfaceImages[name], image => {
+          // 작은 임시 캔버스를 이미 그렸다면 GPU 저장소가 그 크기로 고정돼 있습니다.
+          // 같은 재질 참조를 유지하면서 최종 이미지 크기로 다시 할당합니다.
+          texture.dispose();
           texture.image = image;
           texture.needsUpdate = true;
           done();
         }, undefined, done);
       }));
     }
-  } else if (
-    spec.startsWith('http://') ||
-    spec.startsWith('https://') ||
-    spec.startsWith('data:image')
-  ) {
+  } else if (isImageURL(spec)) {
     let complete;
     const ready = new Promise(resolve => { complete = resolve; });
-    textureLoads.set(spec, ready);
-    texture = URL_LOADER.load(spec, () => complete(), undefined, err => {
+    textureLoads.set(spec, ready.then(loaded => {
+      if (!loaded) TEXTURE_CACHE.delete(spec);
+      textureLoads.delete(spec);
+    }));
+    texture = URL_LOADER.load(spec, () => complete(true), undefined, err => {
       console.warn(`[texture] 로드 실패: ${spec}`, err?.message || err);
-      complete();
+      complete(false);
     });
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = THREE.RepeatWrapping;

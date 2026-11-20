@@ -41,29 +41,27 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('monaco-editor') || id.includes('@monaco-editor/react')) {
-            return 'monaco';
-          }
-          if (id.includes('/three/') || id.includes('@react-three/')) {
-            return 'three';
-          }
-          if (
-            id.includes('/react-dom/') ||
-            id.includes('/react/') ||
-            id.includes('/react-router')
-          ) {
-            return 'vendor';
-          }
-          if (id.includes('@supabase/')) {
-            return 'supabase';
-          }
+        codeSplitting: {
+          groups: [
+            // React와 Vite의 공통 preload 도우미가 Monaco에 섞이면 첫 HTML부터 편집기를 받습니다.
+            { name: 'monaco', test: /\/node_modules\/monaco-editor\//, includeDependenciesRecursively: false },
+            { name: 'three', test: /\/(three|@react-three)\// },
+            { name: 'vendor', test: /\/(react-dom|react|react-router(?:-dom)?)\//, priority: 1 },
+            { name: 'supabase', test: /\/@supabase\// },
+          ],
         },
       },
     },
   },
   server: {
-    fs: { allow: [fileURLToPath(new URL('.', import.meta.url)), fileURLToPath(new URL('../server/shared/instruments/', import.meta.url)), fileURLToPath(new URL('../server/shared/planets/', import.meta.url))] },
+    fs: {
+      allow: [
+        fileURLToPath(new URL('.', import.meta.url)),
+        fileURLToPath(new URL('../server/shared/instruments/', import.meta.url)),
+        fileURLToPath(new URL('../server/shared/planets/', import.meta.url)),
+        fileURLToPath(new URL('../server/shared/widgets/', import.meta.url)),
+      ],
+    },
     port: 4033,
     strictPort: true,
     proxy: {

@@ -7,6 +7,8 @@ export function usedPlanetPresets(code) {
     names.add(attr || literal);
     return '';
   });
-  if (/\btextures\b|텍스처/.test(rest)) return planetNames.slice();
-  return planetNames.filter(name => names.has(name));
+  const selected = /\btextures\b|텍스처/.test(rest) ? planetNames.slice() : planetNames.filter(name => names.has(name));
+  // 서울 관측소의 관측 지도는 기본 재질과 별개로 정확한 작품 주소를 쓴 경우에만 싣습니다.
+  if (/(["'])\/projects\/seoul-moon\/lroc-color\.jpg\1/.test(code)) selected.push('lroc-color');
+  return selected;
 }

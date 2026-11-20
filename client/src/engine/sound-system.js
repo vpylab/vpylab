@@ -19,6 +19,7 @@ import { createRoomBus } from './room-audio.js';
 
 let roomBus = null;
 let audioCtx = null;
+let beatClockOffset = null;
 let audioUnlocked = false;
 let audioUnlockPending = null;
 let iosMediaUnlocked = false;
@@ -171,7 +172,7 @@ function retireVoice(voice) {
   try {
     holdParameter(voice.gain.gain, time);
     voice.gain.gain.linearRampToValueAtTime(0, time + STOP_FADE);
-    voice.source.stop(time + STOP_FADE + 0.002);
+    voice.source.stop(voice.start > time ? time : time + STOP_FADE + 0.002);
   } catch { /* 이미 종료된 소스입니다. */ }
   clearTimeout(voice.timer);
   voice.timer = setTimeout(voice.cleanup, 25);
@@ -192,6 +193,7 @@ function _st(fn, ms) {
 
 /** 예약음을 취소하고 짧게 감쇠한 뒤 모든 소스·필터를 연결 해제합니다. */
 export function stopAllSounds() {
+  beatClockOffset = null;
   roomBus?.close();
   roomBus = null;
   audioGeneration += 1;
@@ -620,17 +622,17 @@ export function noteToFreq(name) {
 /**
  * 노트 이름으로 재생
  */
-export function playNote(name, duration = 0.5, type = 'sine', volume = 0.4) {
+export function playNote(name, duration = 0.5, type = 'sine', volume = 0.4, startAt = null) {
   const freq = noteToFreq(name);
   if (freq === null) return;
   if (_onNotePlay) _onNotePlay(name, duration, type);
-  beep(freq, duration, type, volume);
+  beep(freq, duration, type, volume, 'lesson', startAt);
 }
 
 /**
  * 여러 주파수를 동시에 재생 (화음)
  */
-export function playChord(frequencies, duration = 1.0, type = 'sine', volume = 0.25) {
+export function playChord(frequencies, duration = 1.0, type = 'sine', volume = 0.25, startAt = null) {
   if (!frequencies || frequencies.length === 0) return;
   const notes = frequencies.slice(0, 24);
   if (_onNotePlay) {
@@ -644,7 +646,7 @@ export function playChord(frequencies, duration = 1.0, type = 'sine', volume = 0
   const outerBudget = partialBudget;
   partialBudget = Math.max(1, Math.floor((MAX_AUDIO_VOICES - live) / notes.length));
   try {
-    for (const freq of notes) beep(freq, duration, type, volume / Math.sqrt(notes.length));
+    for (const freq of notes) beep(freq, duration, type, volume / Math.sqrt(notes.length), 'lesson', startAt);
   } finally {
     partialBudget = outerBudget;
   }
@@ -1128,6 +1130,20 @@ export function getCurrentBgm() {
 // 6) Python 브릿지 인터페이스 — processSoundCommand
 // ===================================================================
 
+// Worker의 단조 시계를 오디오 시계에 한 번 맞춘다. 한 화면 주기만큼 여유를 두어
+// 매 배치의 도착 시간 차이가 재생 간격으로 옮겨 가지 않게 한다.
+function beatStartTime(beatTime) {
+  if (!Number.isFinite(beatTime) || masterMuted || masterVolume === 0) return null;
+  const ctx = getAudioContext();
+  if (!ctx || ctx.state !== 'running') return null;
+  const now = ctx.currentTime;
+  const start = beatTime + beatClockOffset;
+  if (beatClockOffset === null || start < now - 0.016 || start > now + 0.050) {
+    beatClockOffset = now + 0.016 - beatTime;
+  }
+  return Math.max(now, beatTime + beatClockOffset);
+}
+
 /**
  * Worker에서 온 사운드 커맨드를 처리
  * vpython-bridge.js의 processBatch에서 호출됨
@@ -1138,7 +1154,7 @@ export function getCurrentBgm() {
 export function processSoundCommand(cmd) {
   switch (cmd.method) {
     case 'beep':
-      beep(cmd.frequency || 440, cmd.duration || 0.3, cmd.type || 'sine', cmd.volume ?? 0.3);
+      beep(cmd.frequency || 440, cmd.duration || 0.3, cmd.type || 'sine', cmd.volume ?? 0.3, 'lesson', beatStartTime(cmd.beatTime));
       break;
 
     case 'play':
@@ -1146,11 +1162,11 @@ export function processSoundCommand(cmd) {
       break;
 
     case 'note':
-      playNote(cmd.name, cmd.duration || 0.5, cmd.type || 'sine', cmd.volume ?? 0.4);
+      playNote(cmd.name, cmd.duration || 0.5, cmd.type || 'sine', cmd.volume ?? 0.4, beatStartTime(cmd.beatTime));
       break;
 
     case 'chord':
-      playChord(cmd.frequencies || [], cmd.duration || 1.0, cmd.type || 'sine', cmd.volume ?? 0.25);
+      playChord(cmd.frequencies || [], cmd.duration || 1.0, cmd.type || 'sine', cmd.volume ?? 0.25, beatStartTime(cmd.beatTime));
       break;
 
     case 'sequence':

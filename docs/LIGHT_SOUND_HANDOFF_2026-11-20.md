@@ -53,3 +53,32 @@
 - 실행 링크: `/sandbox?view=run#b64=<base64url 코드>`, 예제 링크: `/sandbox?example=<id>`.
 - iOS 판정(`sound-system.js`의 `isIOSDevice`)은 `MacIntel` + 터치 점 2개 이상도 iOS로 봅니다. 데스크톱의 휴대폰 흉내로 iOS 경로를 탈 수 있지만 실제 기기 확인을 대신하지는 못합니다.
 - `main`에 병합하면 운영 두 사이트에 자동 배포됩니다. 병합은 관리자가 승인한 뒤에만 합니다.
+
+## 11월 20일 후속 초안 검증
+
+| 수업에서 확인할 사항 | 검토용 결과 |
+|---|---|
+| 표준 대기와 음악 | [#48](https://github.com/vpylab/vpylab/pull/48)에서 세 음을 세 배치로 전송하고 각 화면을 처리한 뒤 표준 대기를 시작합니다. [#45](https://github.com/vpylab/vpylab/pull/45)의 48음은 오디오 시계에서 평균 간격 125.00ms였습니다. 화면 간격 표준편차는 8.25ms였습니다. |
+| 모바일 감상 | [#49](https://github.com/vpylab/vpylab/pull/49)의 같은 맥·로컬 gzip·빈 캐시 최종 5회씩에서 첫 장면 중앙값 3,897→1,228ms(초기 비교 3,979→2,522ms), 코드 보기 전 Monaco 요청은 매회 3→0건이었습니다. |
+| 조명·표면·혜성 | [#44](https://github.com/vpylab/vpylab/pull/44)는 같은 URL의 실패 후 재시도, [#46](https://github.com/vpylab/vpylab/pull/46)은 점광원의 거리별 명암, [#47](https://github.com/vpylab/vpylab/pull/47)은 지구·목성·토성 그림의 출처를 다룹니다. [#50](https://github.com/vpylab/vpylab/pull/50)은 #39의 고정 핵 모드 전송량을 줄입니다. 실물 태블릿 GPU·발열·배터리는 측정 전입니다. |
+| 내려받은 작품 | [#42](https://github.com/vpylab/vpylab/pull/42) 미리보기에서 내려받은 태양·혜성 두 작품과 악기 작품에서 필요한 지도·입자·음색·위젯을 검증했습니다. |
+| 국제 수업 | [두 행성의 합주 활동지](../client/public/projects/light-sound-lab/duet.html)는 공식 Web VPython 3.2에서 실행한 시각 모델과 VPyLab 전용 음 확장을 함께 담습니다. Web VPython에는 소리 기능이 없습니다. 교사 검토와 실제 수업 자료 수집은 별도 단계입니다. |
+
+These measurements use desktop browsers and emulated viewports. Each linked draft records its preview, test conditions and remaining classroom checks. The production classroom site is https://vpylab.vercel.app. Use the preview linked from the relevant PR to test proposed changes.
+
+## 휴대폰에서 감상하고 편집하기 · Viewing and editing on a phone
+
+공유된 실행 링크를 열고 시작 단추를 한 번 누르면 소리와 장면을 함께 실행합니다. 감상 중에는 편집기를 내려받지 않습니다. **코드 보기**를 누르면 같은 작품을 편집할 수 있습니다. 인터넷 없이 다시 편집할 계획이라면 연결된 동안 한 번 코드 보기를 열어 편집기까지 준비하세요. 학교 기기에서는 수업 전에 소리, 파일 내려받기와 재실행을 확인하세요.
+
+Open the shared run link and tap Start once to enable audio and run the scene. The editor downloads when you choose **View code**. For a later offline class, open the editor once while connected. Check sound, file downloads and rerunning on the school's devices before the lesson.
+
+| 맥의 Chromium 터치 모사 · Chrome touch emulation on Mac | main 1e6be2b | 변경 후 · After |
+|---|---:|---:|
+| 첫 장면까지 중앙값 · Median navigation to first scene | 3,979 ms | 2,522 ms |
+| 첫 탭에서 첫 장면까지 중앙값 · Median tap to first scene | 2,777 ms | 1,962 ms |
+| 첫 장면까지 응답 본문 바이트 중앙값 · Median HTTP response body bytes by first scene | 8,000,689 | 6,966,449 |
+| 코드 보기 전 편집기 JS·CSS·워커 요청 수 · Editor requests before View code | 3 / run | 0 / run |
+
+각 빌드에서 새 브라우저 컨텍스트로 5회씩 실행했습니다. 같은 맥과 Chrome, 390 × 844 터치 화면 모사, 같은 로컬 HTTP 서버, gzip 레벨 6, LAN 글꼴 설정의 오픈소스 빌드를 사용했습니다. 구 하나와 C4 한 음이 있는 작품의 첫 생성 명령 뒤 첫 WebGL 그리기 호출을 장면 시작으로 기록했습니다. 바이트에는 서비스 워커와 Python 엔진을 포함한 서버 응답 본문이 들어갑니다. 실물 휴대폰·학교 네트워크의 소요 시간은 별도 측정해야 합니다.
+
+Five fresh browser contexts per build used the same Mac, Chrome, emulated 390 × 844 touch screen, local HTTP server, gzip level 6 and open build with local fonts. The first WebGL draw following the first Python object-creation batch marked scene onset. Byte counts include completed response bodies for the page, workers and Python engine. Physical-device and school-network timings remain unmeasured.

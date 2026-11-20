@@ -125,6 +125,17 @@ self._getWidgetValue = (id) => _widgetValues[id] ?? null;
 self._getInputValue = (id) => _inputValues[id] ?? null;
 self._getPressedKeys = () => _pressedKeysJson;
 self._getCurrentRunId = () => currentRunId;
+let nextPresentationId = 0;
+const pendingPresentations = new Map();
+
+function waitForPresentation() {
+  if (shouldStop) return Promise.resolve();
+  const token = ++nextPresentationId;
+  return new Promise(resolve => {
+    pendingPresentations.set(token, resolve);
+    self.postMessage({ type: 'presentation', runId: currentRunId, token });
+  });
+}
 
 function sendRunMessage(runId, type, payload = {}) {
   self.postMessage({ type, runId, ...payload });
@@ -816,7 +827,16 @@ self.onmessage = async (event) => {
   const { type, code, vpythonApi, transformSource, physicalKit } = event.data;
 
   switch (type) {
+    case 'presented': {
+      const resolve = pendingPresentations.get(event.data.token);
+      if (resolve && event.data.runId === currentRunId) {
+        pendingPresentations.delete(event.data.token);
+        resolve();
+      }
+      break;
+    }
     case 'init':
+      if (event.data.presentationSupport) self._waitForPresentation = waitForPresentation;
       if (vpythonApi) vpythonApiCode = vpythonApi;
       if (transformSource) transformSourceCode = transformSource;
       if (physicalKit) physicalKitCode = physicalKit;
@@ -830,6 +850,8 @@ self.onmessage = async (event) => {
     case 'stop':
       // 소프트 스톱 — rate()에서 플래그 확인 후 Python 예외 발생
       shouldStop = true;
+      for (const resolve of pendingPresentations.values()) resolve();
+      pendingPresentations.clear();
       clearInputQueues();
       if(pyodide&&!isRunningCode&&!isDispatchingEvents){try{pyodide.runPython('_event_handlers.clear()');}catch{/* 다음 실행의 reset에서 회수 */}}
       break;

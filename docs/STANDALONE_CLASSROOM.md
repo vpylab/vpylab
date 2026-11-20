@@ -13,3 +13,8 @@ In Create, use **Tools → Download HTML**. Open the file in a browser and press
 | 고급 작품 · Advanced works | 장면 포인터 이벤트와 2D 그래프를 사용하는 작품은 편집기에서 여세요. / Use the editor for scene pointer events and 2D graphs. |
 
 Web VPython 3.2에서는 공통 도형과 벡터를 이용한 시각 모형을 실행합니다. 이 페이지의 소리 명령은 VPyLab 확장입니다. / Web VPython 3.2 runs the shared visual model. The audio commands here belong to VPyLab.
+
+
+서울 달 관측소를 내려받으면 작품에서 쓰는 LROC 달 지도와 출처도 파일에 포함됩니다. 날짜·시각 입력에서 한국 시각을 바꾸면 장면 아래에 새 시각과 해·달의 고도가 표시됩니다.
+
+The downloaded Seoul Moon Observatory includes the LROC lunar map and its credit. Change the date and time in KST to see the updated Sun and Moon altitudes in the scene caption.

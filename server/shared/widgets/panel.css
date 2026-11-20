@@ -1,0 +1,124 @@
+.vp-widget-panel {
+  position: absolute;
+  top: 8px;
+  right: 108px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(280px, calc(100% - 124px));
+  max-height: 60%;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--widget-line, var(--color-border, #a6a6a6));
+  border-radius: 12px;
+  background: var(--widget-panel, var(--color-bg-panel, rgba(255,255,255,.94)));
+  box-shadow: 0 3px 12px #0002;
+  color: var(--widget-ink, var(--color-text-primary, #222));
+  font: 500 13px/1.4 var(--font-body, system-ui, sans-serif);
+  accent-color: var(--widget-accent, var(--color-accent, #5149a8));
+}
+.vp-widget-panel > div { min-width: 0; max-width: 100%; }
+.vp-widget-panel :where(button, select, input:not([type=range],[type=checkbox],[type=radio])) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--widget-line, var(--color-border, #a6a6a6));
+  border-radius: 9px;
+  background-color: var(--widget-field, var(--color-bg-secondary, #f5f5f5));
+  color: inherit;
+  font: inherit;
+}
+.vp-widget-panel :is(button, select) { cursor: pointer; }
+.vp-widget-panel button { font-weight: 600; overflow-wrap: anywhere; }
+.vp-widget-panel button:active:enabled { border-color: var(--widget-accent, var(--color-accent, #5149a8)); }
+.vp-widget-panel :disabled { opacity: .55; cursor: default; }
+.vp-widget-panel :focus-visible { outline: 2px solid var(--widget-accent, var(--color-accent, #5149a8)); outline-offset: -2px; }
+.vp-widget-panel .vp-slider-label, .vp-input-label { overflow-wrap: anywhere; max-width: 40%; }
+.vp-widget-panel input[type=range] { min-width: 0; cursor: pointer; }
+.vp-widget-panel [data-widget-value] {
+  min-width: 3em;
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: var(--widget-field, var(--color-bg-secondary, #f5f5f5));
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.vp-widget-panel :is([data-widget-kind=winput],[data-vpylab-input]) input { flex: 1; }
+/* 날짜와 시각 전체가 들어갈 폭을 먼저 확보하고, 좁으면 라벨 다음 줄에 놓습니다. */
+.vp-widget-panel [data-widget-kind=winput]:has(> input[type=datetime-local]) { flex-wrap: wrap; }
+.vp-widget-panel [data-widget-kind=winput] input[type=datetime-local] {
+  flex: 1 1 15rem;
+  min-inline-size: min(100%, 15rem);
+  font-variant-numeric: tabular-nums;
+}
+.vp-view-toggle { display: none; }
+
+@media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
+  [data-single-canvas]:has(> .vp-widget-panel) {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    touch-action: auto !important;
+  }
+  [data-single-canvas] > .vp-stage-frame {
+    min-width: 0;
+    min-height: 0;
+    touch-action: none;
+  }
+  /* 다중 캔버스에서도 본 장면 다음에 그 장면의 위젯을 둡니다. */
+  [data-vpylab-viewport]:not([data-single-canvas]):has(> .vp-widget-panel) {
+    display: flex;
+    flex-direction: column;
+    touch-action: pan-y !important;
+  }
+  [data-vpylab-viewport]:not([data-single-canvas]) > div { flex-shrink: 0; }
+  [data-vpylab-viewport]:not([data-single-canvas]) > .vp-stage-frame { order: -2; }
+  [data-vpylab-viewport]:not([data-single-canvas]) > .vp-widget-panel { order: -1; }
+
+  [data-vpylab-viewport] > .vp-widget-panel {
+    position: static;
+    grid-row: 2;
+    flex-flow: row wrap;
+    align-content: flex-start;
+    align-items: center;
+    gap: 6px 8px;
+    max-width: none;
+    max-height: clamp(64px, 22dvh, 164px);
+    padding: 7px max(12px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+    border-width: 1px 0 0;
+    border-radius: 0;
+    box-shadow: none;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+    scrollbar-width: thin;
+  }
+  .vp-widget-panel > :is([data-widget-kind=slider], [data-widget-kind=winput], [data-vpylab-input]) { flex: 1 1 100%; }
+  .vp-widget-panel > [data-widget-kind=slider]:first-child:has(+ [data-widget-kind=button]:last-child) { flex-basis: 190px; }
+  .vp-widget-panel:has(input[type=datetime-local]) > [data-widget-kind=slider] { flex-basis: 170px; }
+  .vp-widget-panel > [data-widget-kind=menu] { flex: 1 1 124px; }
+  .vp-widget-panel select { width: 100%; text-overflow: ellipsis; }
+  .vp-widget-panel :is(button, select, input:not([type=radio],[type=checkbox])) { min-height: 44px; }
+  .vp-widget-panel button { min-width: 44px; }
+  .vp-widget-panel [data-widget-kind=checkbox] label, .vp-widget-panel [data-widget-kind=radio] label {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .vp-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 48px;
+    min-height: 38px;
+    padding: 0 10px;
+    background: var(--color-bg-secondary, #f5f5f5);
+    color: var(--color-text-primary, #222);
+    border: 1px solid var(--color-border, #a6a6a6);
+    font-size: 13px;
+  }
+
+  .vp-view-tools[data-open="false"] { display: none; }
+  .vp-view-tools :is(button, label) { min-height: 36px; }
+}

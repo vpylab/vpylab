@@ -1,5 +1,6 @@
+import './theater.css';
 import { localizeLessonCode } from '../i18n/owned-content';
-import { getDefaultCode } from '../data/default-code';
+import { DEFAULT_CODE, getDefaultCode } from '../data/default-code';
 import { useUiText, getUiLocale } from "../i18n/ui-text";
 import { readPracticeDraft, writePracticeDraft } from '../utils/practice-drafts';
 import { clearSandboxDraft, readSandboxDraft, writeSandboxDraft } from '../utils/sandbox-draft';
@@ -8,7 +9,7 @@ import { useState, useRef, useCallback, useEffect, useLayoutEffect, lazy, Suspen
 import { Link, useSearchParams, useLocation, useParams } from 'react-router-dom';
 import { useI18n } from '../i18n/useI18n';
 import Header from '../components/layout/Header';
-import CodeEditor, { DEFAULT_CODE } from '../components/editor/CodeEditor';
+import CodeEditor from '../components/editor/CodeEditor';
 import SoundSettings from '../components/editor/SoundSettings';
 import Viewport3D from '../components/viewport/Viewport3D';
 import OutputConsole from '../components/console/OutputConsole';
@@ -57,7 +58,7 @@ import SendCodeModal from '../components/codeshare/SendCodeModal';
 import CodeSharePanel from '../components/codeshare/CodeSharePanel';
 import CodeShareToast from '../components/codeshare/CodeShareToast';
 import useCodeShareStore from '../stores/codeShareStore';
-import EXAMPLES, { EXAMPLE_CATEGORIES } from '../data/examples';
+import EXAMPLES, { EXAMPLE_CATEGORIES, getExampleCode } from '../data/examples';
 import { getLesson } from '../data/courses';
 import { getTutorial } from '../data/tutorials';
 import { getDocById } from '../data/docs';
@@ -331,6 +332,11 @@ export default function Sandbox() {
   // /s/:id 주소로 열면 공유 코드를 직접 불러옵니다. 주소창은 /s/이름 그대로 둡니다.
   const { id: sharedRouteId } = useParams();
   const loadedSharedRouteId = useRef(null);
+  // 공유 코드 조회 중인 첫 렌더가 숨은 편집기를 먼저 내려받지 않게 합니다.
+  const [editorEntry, setEditorEntry] = useState(null);
+  const awaitsTheater = sharedRouteId || (location.state?.sharedCode && location.state?.autoPlay)
+    || (runViewParam && (repoParam || /^(#b64=|#code=)/.test(window.location.hash)));
+  const showCodeEditor = !awaitsTheater || editorEntry === location.key;
 
   // 자유 코딩 초안 되살리기: 빈 만들기 화면으로 들어왔고 이 브라우저에 남은 코드가 있으면 이어서 엽니다.
   // 새로 고침 전에 드라이브 파일을 열어 두었으면 아래의 드라이브 연결 복구가 그 파일을 엽니다.
@@ -441,6 +447,7 @@ export default function Sandbox() {
     loadSharedCode(sharedRouteId).then(({ code: sharedCode, title, error }) => {
       if (cancelled) return;
       if (error || !sharedCode) {
+        setEditorEntry(location.key);
         setOutputs([{ text: tRef.current('sharedCode.notFound'), type: 'warning', id: Date.now() }]);
         return;
       }
@@ -454,7 +461,7 @@ export default function Sandbox() {
       setTheaterWaiting(true);
     });
     return () => { cancelled = true; };
-  }, [sharedRouteId, updateCode]);
+  }, [sharedRouteId, updateCode, location.key]);
 
   // 예전 방식(location.state로 넘어온 공유 코드) 로드
   useEffect(() => {
@@ -524,6 +531,7 @@ export default function Sandbox() {
               return;
             }
           }
+          setEditorEntry(location.key);
           setRepoLoadStatus('error');
           setOutputs([{ text: e.message || ui("GitHub 프로젝트 코드를 불러오지 못했습니다."), type: 'error', id: Date.now() }]);
         }
@@ -549,8 +557,10 @@ export default function Sandbox() {
       if (isExternal) {
         setOutputs([{ text: location.state?.homeDraft ? ui("내 메인의 코드 사본을 열었습니다. 수정 후 다시 내 메인으로 설정해 주세요.") : tRef.current('share.externalCode'), type: 'warning', id: Date.now() }]);
       }
+    } else if (runViewParam && !sharedRouteId) {
+      setEditorEntry(location.key);
     }
-  }, [location.state?.sharedCode, location.state?.sharedTitle, location.state?.autoPlay, location.state?.homeDraft, location.key, repoAutorun, repoParam, playParam, runViewParam, updateCode, ui]);
+  }, [sharedRouteId, location.state?.sharedCode, location.state?.sharedTitle, location.state?.autoPlay, location.state?.homeDraft, location.key, repoAutorun, repoParam, playParam, runViewParam, updateCode, ui]);
 
   // 자동 저장: 코드 변경 시 2초 debounce
   // 활성 프로젝트가 있으면 GitHub commit 흐름(수동 저장)을 사용하므로 자동 저장은 건너뜁니다.
@@ -759,8 +769,9 @@ export default function Sandbox() {
       // softStop 직접 호출 (stopExecution은 아래에서 디스트럭처되므로 TDZ 회피)
       import('../engine/pyodide-singleton').then(m => m.softStop()).catch(() => {});
       if (sceneRef.current) clearScene(sceneRef.current);
-      updateCode(ex.code);
-      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = ex.code;  // 초기화 시 이 예제로 복귀
+      const exampleCode = getExampleCode(ex, getUiLocale());
+      updateCode(exampleCode);
+      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = exampleCode;  // 초기화 시 이 예제로 복귀
       addOutput(ui`예제 "${ui(ex.title)}" 로드됨. 실행 버튼을 눌러주세요.`, 'success');
     } else {
       addOutput(ui`예제 ID "${exampleId}"를 찾을 수 없습니다.`, 'error');
@@ -968,9 +979,11 @@ export default function Sandbox() {
         return;
       }
       pendingPlayRef.current = null;
-      // 다음 프레임에서 실행 (코드 state 반영 보장)
-      const epoch=playEpoch.current;
-      requestAnimationFrame(() => {if(epoch===playEpoch.current)startProgram(playCode);});
+      // 지연된 WebKit 화면 갱신과 독립적으로 준비된 코드를 실행합니다.
+      const epoch = playEpoch.current;
+      queueMicrotask(() => {
+        if (epoch === playEpoch.current) startProgram(playCode);
+      });
     }
   }, [isReady, code, startProgram]);
 
@@ -1536,8 +1549,7 @@ export default function Sandbox() {
     const theaterPreparing = !theaterWaiting && !playStartRequired && ['idle', 'loading', 'error'].includes(engineStatus);
 
     return (
-      // 왼쪽 위 [코드 보기]·왼쪽 아래 [정지] 단추가 scene.title·caption을 가리지 않게 글자를 안쪽으로 옮깁니다.
-      <div className="h-screen w-screen relative" style={{ backgroundColor: '#000', '--vpylab-title-top': '4rem', '--vpylab-caption-bottom': '4rem' }}>
+      <div className="vp-theater">
         {draftGuard}
         <Viewport3D sceneRef={sceneRef} onSceneReady={handleSceneReady} controls={{ onRun: handleRun, onStop: handleStop, isRunning:isRunning||audio.playing, isReady }} />
 
@@ -1571,40 +1583,19 @@ export default function Sandbox() {
           </div>
         )}
 
-        {/* 좌상단: 코드 보기 버튼 */}
         {!theaterWaiting && (
-          <button
-            onClick={() => { handleStop(); setTheaterMode(false); }}
-            className="text-[13px] pointer-coarse:text-[15px] pointer-coarse:min-h-11"
-            style={{
-              position: 'fixed', top: 16, left: 16, zIndex: 100,
-              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
-              border: 'none', borderRadius: 10,
-              color: 'white', padding: '8px 14px', fontWeight: 600,
-              cursor: 'pointer', transition: 'opacity 0.2s',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-          >
-            {'</>'}{ui("코드 보기")}</button>
-        )}
-
-        {/* 좌하단: 정지 버튼 (실행 중일 때만) */}
-        {(isRunning||audio.playing) && (
-          <button
-            onClick={handleStop}
-            className="text-[13px] pointer-coarse:text-[15px] pointer-coarse:min-h-11"
-            style={{
-              position: 'fixed', bottom: 16, left: 16, zIndex: 100,
-              background: 'rgba(239,68,68,0.8)', backdropFilter: 'blur(8px)',
-              border: 'none', borderRadius: 10,
-              color: 'white', padding: '8px 14px', fontWeight: 600,
-              cursor: 'pointer', transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,1)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(239,68,68,0.8)'}
-          >{ui("⏹ 정지")}</button>
+          <div className="vp-theater-actions">
+            <button type="button" onClick={() => { handleStop(); setEditorEntry(location.key); setTheaterMode(false); }}>
+              <span className="vp-code-mark" aria-hidden="true">&lt;/&gt;</span>
+              {ui("코드 보기")}
+            </button>
+            {(isRunning || audio.playing) && (
+              <button type="button" onClick={handleStop}>
+                <span className="vp-stop-mark" aria-hidden="true" />
+                {t('editor.stop')}
+              </button>
+            )}
+          </div>
         )}
       </div>
     );
@@ -1789,7 +1780,7 @@ export default function Sandbox() {
           className={`${activeTab === 'editor' ? 'flex' : 'hidden'} md:flex flex-col w-full md:w-[45%] md:min-w-[300px]`}
           style={{ borderRight: '1px solid var(--color-border)' }}
         >
-          <CodeEditor code={code} readOnly={restoringRevision} onChange={(val) => { if (!useRevisionStore.getState().restoring) updateCode(val || ''); }} />
+          {showCodeEditor && <CodeEditor code={code} readOnly={restoringRevision} onChange={(val) => { if (!useRevisionStore.getState().restoring) updateCode(val || ''); }} />}
         </div>
 
         {/* 리사이저 (데스크톱) */}
@@ -1904,7 +1895,7 @@ export default function Sandbox() {
                     color: exampleCategory === cat.id ? 'white' : 'var(--color-text-secondary)',
                   }}
                 >
-                  {cat.label}
+                  {locale === 'en' ? cat.labelEn : cat.label}
                 </button>
               ))}
             </div>
@@ -1922,8 +1913,9 @@ export default function Sandbox() {
                       stopExecution();
                       if (sceneRef.current) clearScene(sceneRef.current);
                       clearRegistry();
-                      updateCode(ex.code);
-                      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = ex.code;
+                      const exampleCode = getExampleCode(ex, getUiLocale());
+                      updateCode(exampleCode);
+                      homeDraftTitle.current=null; detachDriveSource(); initialCodeRef.current = exampleCode;
                       // 예제 로드 = 활성 프로젝트와 무관 → 컨텍스트 해제
                       useProjectStore.getState().closeProject();
                       useCodeStore.getState().setCurrentCodeId(null);

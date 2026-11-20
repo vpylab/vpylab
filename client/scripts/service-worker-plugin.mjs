@@ -26,7 +26,9 @@ export function buildPrecacheManifest(bundle, { publicDir = resolve(clientRoot, 
     if (!/\.(js|css|html|woff2?|svg)$/.test(fileName)) continue;
     const source = output.type === 'chunk' ? output.code : output.source;
     const revision = /-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/.test(fileName) ? null : revisionOf(source);
-    manifest.push({ url: fileName, revision });
+    // 편집기 전용 파일은 처음 편집할 때 저장합니다. 앱 버전 해시에는 계속 포함합니다.
+    const editor = /^assets\/(monaco-|MonacoEditor-|editor\.worker-)/.test(fileName);
+    manifest.push({ url: fileName, revision, ...(editor && { editor: true }) });
   }
   for (const fileName of publicFiles) {
     const path = resolve(publicDir, fileName);

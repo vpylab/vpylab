@@ -14,18 +14,7 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
     panelEl.setAttribute('data-vpylab-widgets', '');
     panelEl.dataset.canvasId = canvasId;
     panels.set(canvasId, panelEl);
-    panelEl.style.cssText = [
-      // 오른쪽 위에는 3D 화면 조작부(전체 화면·화면에 맞추기·자동 맞춤·XYZ)가 있으므로 그 왼쪽에 둔다
-      'position:absolute', 'top:8px', 'right:108px',
-      'max-width:min(280px, calc(100% - 124px))', 'max-height:60%',
-      'overflow:auto', 'z-index:10',
-      'padding:10px 12px', 'border-radius:8px',
-      'background:rgba(255,255,255,0.92)',
-      'box-shadow:0 2px 8px rgba(0,0,0,0.15)',
-      'font:13px/1.4 "DM Sans", "Noto Sans KR", sans-serif',
-      'color:#222',
-      'display:flex', 'flex-direction:column', 'gap:8px',
-    ].join(';');
+    panelEl.className = 'vp-widget-panel';
 
     // 3D 뷰포트 컨테이너 안에 부착 (없으면 body)
     const host = document.querySelector(`[data-vpylab-canvas-id="${canvasId}"]`) || document.querySelector('[data-vpylab-viewport]') || document.body;
@@ -52,6 +41,7 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
     const panel = ensurePanel(cmd.canvas_id);
     const wrap = document.createElement('div');
     wrap.dataset.widgetId = cmd.id;
+    wrap.dataset.widgetKind = cmd.kind;
     wrap.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
     let inputEl = null;
@@ -59,17 +49,18 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
     switch (cmd.kind) {
       case 'slider': {
         if (cmd.text) {
-          const name = document.createElement('span');
+          const name = document.createElement('label');
+          name.htmlFor = 'vp_slider_' + cmd.id;
           name.textContent = String(cmd.text);
-          name.style.cssText = 'min-width:72px;color:#444;font-weight:600;';
+          name.className = 'vp-slider-label';
           wrap.appendChild(name);
         }
         const label = document.createElement('span');
         label.dataset.widgetValue = 'true';
         label.textContent = String(cmd.value ?? cmd.min ?? 0);
-        label.style.cssText = 'min-width:36px;text-align:right;font-variant-numeric:tabular-nums;';
         inputEl = document.createElement('input');
         inputEl.type = 'range';
+        inputEl.id = 'vp_slider_' + cmd.id;
         inputEl.min = String(cmd.min ?? 0);
         inputEl.max = String(cmd.max ?? 1);
         inputEl.step = String(cmd.step ?? 0.01);
@@ -92,7 +83,6 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
         inputEl = document.createElement('button');
         inputEl.type = 'button';
         inputEl.textContent = String(cmd.text ?? 'Button');
-        inputEl.style.cssText = 'padding:6px 12px;border-radius:6px;border:1px solid #999;background:#f5f5f5;cursor:pointer;';
         inputEl.addEventListener('click', () => {
           postEvent({ name: 'widget', widget: cmd.id });
         });
@@ -145,7 +135,6 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
 
       case 'menu': {
         inputEl = document.createElement('select');
-        inputEl.style.cssText = 'padding:4px 6px;border-radius:6px;border:1px solid #999;background:#fff;';
         for (const choice of (cmd.choices || [])) {
           const opt = document.createElement('option');
           opt.value = String(choice);
@@ -164,15 +153,17 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
       }
 
       case 'winput': {
-        const promptEl = document.createElement('span');
+        const promptEl = document.createElement('label');
+        promptEl.htmlFor = 'vp_input_' + cmd.id;
         promptEl.textContent = String(cmd.prompt ?? '');
-        promptEl.style.cssText = 'min-width:60px;color:#444;';
+        promptEl.className = 'vp-input-label';
         inputEl = document.createElement('input');
-        inputEl.type = cmd.input_type === 'string' ? 'text' : 'number';
-        inputEl.style.cssText = 'flex:1;padding:4px 6px;border-radius:6px;border:1px solid #999;background:#fff;';
+        inputEl.id = promptEl.htmlFor;
+        const isDateTime = cmd.input_type === 'datetime-local';
+        inputEl.type = isDateTime ? 'datetime-local' : cmd.input_type === 'string' ? 'text' : 'number';
         const submit = () => {
           let v = inputEl.value;
-          if (cmd.input_type !== 'string') {
+          if (inputEl.type === 'number') {
             const n = parseFloat(v);
             v = Number.isFinite(n) ? n : null;
           }
@@ -182,7 +173,7 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
         };
         inputEl.addEventListener('change', submit);
         inputEl.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') submit();
+          if (e.key === 'Enter' && !isDateTime) submit();
         });
         wrap.appendChild(promptEl);
         wrap.appendChild(inputEl);
@@ -213,19 +204,18 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
     wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
 
     const promptEl = document.createElement('span');
-    promptEl.textContent = String(cmd.prompt ?? '') || '입력:';
-    promptEl.style.cssText = 'color:#222;font-weight:600;white-space:pre-wrap;';
+    const submitLabel = document.documentElement.lang.startsWith('en') ? 'Submit' : '입력';
+    promptEl.textContent = String(cmd.prompt ?? '') || submitLabel;
+    promptEl.style.whiteSpace = 'pre-wrap';
 
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;align-items:center;gap:6px;';
     const inputEl = document.createElement('input');
     inputEl.type = 'text';
-    inputEl.setAttribute('aria-label', String(cmd.prompt ?? '') || '입력');
-    inputEl.style.cssText = 'flex:1;min-width:120px;padding:4px 6px;border-radius:6px;border:1px solid #999;background:#fff;';
+    inputEl.setAttribute('aria-label', String(cmd.prompt ?? '') || submitLabel);
     const submitEl = document.createElement('button');
     submitEl.type = 'button';
-    submitEl.textContent = '입력';
-    submitEl.style.cssText = 'padding:4px 10px;border-radius:6px;border:1px solid #999;background:#f5f5f5;cursor:pointer;';
+    submitEl.textContent = submitLabel;
 
     let answered = false;
     const submit = () => {
@@ -257,8 +247,8 @@ export function createWidgetPanel(postEvent, postWidgetValue, postInputValue) {
     const wrap = document.createElement('div');
     wrap.dataset.widgetId = cmd.id;
     wrap.dataset.vpylabPause = '';
-    wrap.textContent = String(cmd.text ?? '') || '▶ 3D 화면을 클릭하면 계속합니다';
-    wrap.style.cssText = 'color:#222;font-weight:600;white-space:pre-wrap;cursor:pointer;';
+    wrap.textContent = String(cmd.text ?? '') || (document.documentElement.lang.startsWith('en') ? 'Click the 3D view to continue' : '▶ 3D 화면을 클릭하면 계속합니다');
+    wrap.style.cssText = 'font-weight:600;white-space:pre-wrap;cursor:pointer;';
     // 안내 배너를 눌러도 화면 클릭과 같이 click 이벤트를 보낸다 (scene.pause는 click을 기다린다)
     wrap.addEventListener('click', () => postEvent({ name: 'click', pos: [0, 0, 0], pick: null }));
     panel.appendChild(wrap);

@@ -903,10 +903,10 @@ box(pos=vector(0, -0.5, 0), size=vector(5, 0.1, 5), color=color.green)`,
     category: 'scene',
     title: { ko: '점 조명 (local_light)', en: 'local_light' },
     description: {
-      ko: '특정 위치에서 사방으로 빛을 내는 점 조명을 생성합니다.',
-      en: 'Creates a point light that emits light in all directions from a position.',
+      ko: '점광원을 옮기면 표면에 닿는 각도에 따라 명암이 달라집니다. Web VPython처럼 기본 밝기는 거리와 무관합니다. VPyLab에서 생성할 때 intensity를 명시하면 거리의 제곱에 따라 빛이 약해집니다.',
+      en: 'Moving the light changes the angle at which it strikes a surface. As in Web VPython, its default brightness is independent of distance. In VPyLab, supplying intensity at creation selects inverse-square falloff.',
     },
-    signature: "local_light(pos=vector(0,0,0), color=color.white, intensity=1.0)",
+    signature: "local_light(pos=vector(0,0,0), color=color.white)",
     params: [
       { name: 'pos',       type: 'vector', default: 'vector(0,0,0)', desc: { ko: '조명 위치', en: 'Light position' } },
       { name: 'color',     type: 'vector', default: 'color.white',   desc: { ko: '조명 색상', en: 'Light color' } },
@@ -914,7 +914,7 @@ box(pos=vector(0, -0.5, 0), size=vector(5, 0.1, 5), color=color.green)`,
     ],
     code: `from vpython import *
 scene_background(color.black)
-local_light(pos=vector(2, 3, 0), color=color.yellow, intensity=1.5)
+local_light(pos=vector(2, 3, 0), color=color.yellow)
 sphere(radius=0.5, color=color.white)`,
     tags: ['scene', 'light', 'point', 'local', 'lighting'],
   },
@@ -1339,13 +1339,13 @@ while True:
     category: 'widgets',
     title: { ko: '입력창 (winput)', en: 'winput' },
     description: {
-      ko: '숫자 또는 텍스트 입력. Enter 또는 blur 시 bind 호출. type=\'numeric\' (기본) 또는 \'string\'.',
-      en: 'Numeric or text input. Fires on Enter or blur. type=\'numeric\' or \'string\'.',
+      ko: '숫자 또는 텍스트 입력. Enter 또는 포커스 이동 시 bind 호출. type=\'numeric\' (기본) 또는 \'string\'. VPyLab 확장 datetime-local은 날짜·시각을 선택하면 시간대 없는 문자열을 전달합니다.',
+      en: 'Numeric or text input. Fires on Enter or blur. type=\'numeric\' or \'string\'. The VPyLab datetime-local extension returns a date/time string without a time zone on change.',
     },
     signature: "winput(prompt='', type='numeric', bind=fn)",
     params: [
       { name: 'prompt', type: 'string',   default: "''",        desc: { ko: '안내 문구', en: 'Prompt label' } },
-      { name: 'type',   type: 'string',   default: "'numeric'", desc: { ko: 'numeric | string', en: 'numeric | string' } },
+      { name: 'type',   type: 'string',   default: "'numeric'", desc: { ko: 'numeric | string | datetime-local', en: 'numeric | string | datetime-local' } },
       { name: 'bind',   type: 'function', default: 'None',      desc: { ko: '제출 콜백', en: 'Submit callback' } },
     ],
     code: `from vpython import *
@@ -1508,8 +1508,8 @@ for i, v in enumerate([52, 333, 126, 1400]):
     category: 'colors',
     title: { ko: '색상 팔레트', en: 'Color Palette' },
     description: {
-      ko: 'VPyLab에서 사용할 수 있는 30가지 기본 색상입니다. color.이름 형식으로 사용합니다.',
-      en: '30 built-in colors available in VPyLab. Use the color.name format.',
+      ko: 'color.red처럼 이름을 쓰거나 색 성분을 vector(r, g, b)로 지정하세요. 세 성분이 모두 0~1이면 그대로 씁니다. 모두 0~255 사이의 정수이고 하나라도 1보다 크면 세 성분을 255로 나눕니다. 예를 들어 vector(255, 128, 0)은 vector(1, 128/255, 0)과 같은 색입니다. vector(1, 0, 0)은 밝은 빨강이고, 가장 어두운 8비트 빨강은 vector(1/255, 0, 0)입니다. 편집기에서는 색으로 사용한 vector(r, g, b)와 color.red 앞에 색 네모가 표시됩니다. 네모를 누르면 색 선택 창이 열리고, 고른 색은 0~255 정수로 적힙니다. 색 값에서 마우스 오른쪽 버튼을 눌러 "색에 이름 붙이기"를 고르면 내색 = vector(r, g, b) 한 줄이 만들어지며, 이름을 바로 고쳐 적을 수 있습니다.',
+      en: 'Use a name such as color.red or supply vector(r, g, b). Values from 0 to 1 keep their original meaning. If all three are whole numbers from 0 to 255 and any exceeds 1, VPyLab divides them all by 255. For example, vector(255, 128, 0) matches vector(1, 128/255, 0). Use vector(1/255, 0, 0) for the darkest nonzero 8-bit red. vector(1, 0, 0) is full red. In the editor, a color swatch appears before vector(r, g, b) used as a color and before names such as color.red. Click the swatch to open a color picker. The picked color is written as whole numbers from 0 to 255. Right-click a color value and choose "Name this color" to move it to its own line, my_color = vector(r, g, b), and type the name you want.',
     },
     signature: "color.red, color.green, color.blue, ...",
     params: [
@@ -1982,13 +1982,13 @@ labels = ['월', '화', '수', '목', '금', '토']
     category: 'materials',
     title: { ko: '텍스처 속성 (texture)', en: 'texture attribute' },
     description: {
-      ko: '도형 표면에 이미지/패턴을 입힙니다. 프리셋 문자열, 외부 URL, data URI를 모두 지원합니다.',
-      en: 'Apply an image or pattern to an object surface. Accepts preset strings, external URLs, and data URIs.',
+      ko: '구에는 사각형 그림의 가로 전체가 한 바퀴 감기고 위·아래가 두 극에 모입니다. 일반 사진도 쓸 수 있습니다. 행성 표면에는 왼쪽과 오른쪽이 이어지는 가로 2 대 세로 1의 경위도 지도를 권합니다. 극 근처의 무늬는 모여 보입니다.',
+      en: 'A sphere wraps the full width of a rectangular image around its equator. The top and bottom meet at the poles. Ordinary photos work too. For a planet, use a 2:1 longitude–latitude map with matching left and right edges. Detail converges near the poles.',
     },
     signature: "box(texture=textures.wood)  # 또는 texture='https://...'",
     params: [
       { name: 'preset', type: 'string', default: '-', desc: { ko: 'textures.wood처럼 미리 정의된 프리셋', en: 'Preset like textures.wood' } },
-      { name: 'URL',    type: 'string', default: '-', desc: { ko: 'https:// 또는 http://로 시작하는 외부 이미지', en: 'External image starting with https:// or http://' } },
+      { name: 'URL',    type: 'string', default: '-', desc: { ko: '같은 사이트의 / 경로 또는 교차 출처 사용(CORS)을 허용하는 HTTPS 이미지 주소', en: 'A site-relative path starting with / or a direct HTTPS image URL allowing cross-origin use (CORS)' } },
       { name: 'data',   type: 'string', default: '-', desc: { ko: "data:image/... 형태의 인라인 이미지", en: 'data:image/... inline image' } },
     ],
     code: `from vpython import *
@@ -1997,9 +1997,9 @@ floor = box(pos=vector(0, -1, 0), size=vector(20, 0.2, 20), texture=textures.che
 log = box(pos=vector(0, 0, 0), size=vector(2, 1, 1), texture=textures.wood)
 ball = sphere(pos=vector(0, 1.5, 0), radius=0.7, texture=textures.metal)
 
-# 2) 외부 URL — 학교 위키, 위키미디어 등
+# 2) 사각형 지도를 구에 감기 / Wrap a rectangular map around a sphere
 earth = sphere(pos=vector(4, 1, 0), radius=1,
-               texture="https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Earthmap1000x500compac.jpg/1024px-Earthmap1000x500compac.jpg")
+               texture="https://raw.githubusercontent.com/mrdoob/three.js/r170/examples/textures/planets/earth_atmos_2048.jpg")
 
 # 3) 런타임에 변경 가능
 log.texture = textures.brick`,
@@ -2024,9 +2024,9 @@ log.texture = textures.brick`,
       { name: 'rug',     type: 'preset', default: '-', desc: { ko: '러그/카펫 무늬', en: 'Rug pattern' } },
       { name: 'stucco',  type: 'preset', default: '-', desc: { ko: '벽 마감재', en: 'Stucco wall' } },
       { name: 'flower',  type: 'preset', default: '-', desc: { ko: '꽃무늬 벽지', en: 'Flower wallpaper' } },
-      { name: 'earth',   type: 'preset', default: '-', desc: { ko: '지구 (바다·대륙·구름)', en: 'Earth (oceans, land, clouds)' } },
+      { name: 'earth',   type: 'preset', default: '-', desc: { ko: '지구의 바다와 육지. 2004년 7월 합성 지도, Reto Stöckli / NASA Earth Observatory', en: 'Oceans and land in July 2004. Composite by Reto Stöckli / NASA Earth Observatory' } },
       { name: 'sun',     type: 'preset', default: '-', desc: { ko: '태양 표면 — emissive=True와 함께 쓰면 후광이 보여요', en: 'Sun surface — shows a halo with emissive=True' } },
-      { name: 'moon',    type: 'preset', default: '-', desc: { ko: '달 표면 (운석 구덩이)', en: 'Moon surface with craters' } },
+      { name: 'moon',    type: 'preset', default: '-', desc: { ko: '충돌구와 어두운 평원을 합성한 수업용 달 표면', en: 'Classroom Moon surface with synthesized craters and dark plains' } },
       { name: 'jupiter', type: 'preset', default: '-', desc: { ko: '목성 (구름 띠와 큰 폭풍)', en: 'Jupiter (cloud bands and a storm)' } },
       { name: 'saturn',  type: 'preset', default: '-', desc: { ko: '토성 (부드러운 구름 띠)', en: 'Saturn (soft cloud bands)' } },
       { name: 'brick',   type: 'preset', default: '-', desc: { ko: '벽돌', en: 'Brick wall' } },
@@ -2117,8 +2117,8 @@ print(vector.random())`,
     category: 'colors',
     title: { ko: '색 변환 (hsv_to_rgb, rgb_to_hsv)', en: 'color.hsv_to_rgb / rgb_to_hsv' },
     description: {
-      ko: '색상(h)·채도(s)·명도(v)를 RGB로, 또는 그 반대로 바꿉니다. 각 성분은 0~1입니다. h를 0에서 1까지 돌리면 무지개 순서로 색이 바뀌므로 색 애니메이션에 사용합니다.',
-      en: 'Converts hue, saturation and value to RGB and back. Each component is in 0..1. Sweeping h from 0 to 1 walks through the rainbow, which is handy for color animation.',
+      ko: '색상(h)·채도(s)·명도(v)를 RGB로, 또는 그 반대로 바꿉니다. HSV 성분은 0~1이며 rgb_to_hsv의 RGB 입력은 색상 팔레트와 같은 정수 0~255 표기도 받습니다. h를 0에서 1까지 돌리면 무지개 순서로 색이 바뀌므로 색 애니메이션에 사용합니다.',
+      en: 'Converts hue, saturation and value to RGB and back. HSV components use 0..1. RGB input to rgb_to_hsv also accepts the integer byte format described in Color Palette. Sweeping h from 0 to 1 walks through the rainbow, which is handy for color animation.',
     },
     signature: "color.hsv_to_rgb(vector(h, s, v)); color.rgb_to_hsv(vector(r, g, b))",
     params: [

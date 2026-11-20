@@ -466,7 +466,11 @@ export function createTexturePainters() {
   }
 
   return {
-    sun: drawFire,
+    sun(ctx, size) {
+      // 느린 연결에서도 광구 전체에 같은 바탕색을 표시합니다.
+      ctx.fillStyle = '#f7c46f';
+      ctx.fillRect(0, 0, size, size);
+    },
     moon: drawGranite,
     jupiter: drawGasGiant,
     saturn: drawGasGiant,

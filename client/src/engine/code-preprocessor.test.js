@@ -64,13 +64,37 @@ describe.skipIf(!python)('학생 코드 변환기 — 기본 변환', { timeout:
     expect(r.log).toEqual([]);
   });
 
-  it('time.sleep()·generate()·내악기()처럼 이름이 다른 호출은 바꾸지 않는다', () => {
+  it('표준 time.sleep만 대기 경로에 연결하고 다른 이름은 보존한다', () => {
     const { code } = run('import time\ntime.sleep(0)\ndef generate(n):\n    return n\ngenerate(10)\n내악기 = print\n내악기(1)\nsleep(1)');
-    expect(code).toContain('time.sleep(0)');
+    expect(code).toContain('sleep_dispatch(time.sleep)(0)');
     expect(code).toContain('\ngenerate(10)');
     expect(code).toContain('내악기(1)');
     expect(code).toContain('await sleep(1)');
     expect(code).not.toContain('await time.sleep');
+  });
+
+  it('표준 대기의 별칭·최소 시간·이름을 가리는 사용자 함수를 보존한다', () => {
+    const result = run(`import time as clock
+from time import sleep as pause
+start = clock.monotonic()
+clock.sleep(.015)
+wait = pause
+wait(.015)
+assert clock.monotonic() - start >= .030
+def pause(value):
+    return value + 1
+def example(clock):
+    return clock.sleep(3)
+class Clock:
+    def sleep(self, value):
+        return value * 2
+print(pause(3), example(Clock()))
+try:
+    wait(-1)
+except ValueError:
+    print("negative")`);
+    expect(result.error).toBeNull();
+    expect(result.stdout).toBe('4 6\nnegative\n');
   });
 
   it('rate/sleep가 없는 코드는 그대로다', () => {

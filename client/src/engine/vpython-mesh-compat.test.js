@@ -14,6 +14,29 @@ const run = code => runPythonJobs([{ id: 'mesh', label: 'case', code: `from vpyt
 afterEach(() => clearScene(scene));
 
 describe.skipIf(!hasPython())('VPython 공유 정점·나선 실제 지오메트리', () => {
+  it('방출 입자의 시계는 기존 점 지오메트리를 유지하며 움직임과 정지를 제어한다', () => {
+    const result = run('p=points(pos=[vec(3,1,0)], shape="plume")\np.flow_time=1.5');
+    expect(result.error).toBeNull();
+    const create = result.commands.find(cmd => cmd.type === 'points');
+    processBatch([create], scene);
+    const mesh = getMesh(create.id);
+    const geometry = mesh.geometry;
+    processBatch(result.commands.filter(cmd => cmd.flow_time !== undefined && cmd.action === 'update'), scene);
+    expect(mesh.material.userData.flowTime.value).toBe(1.5);
+    expect(mesh.geometry).toBe(geometry);
+  });
+
+  it('구의 자전축을 보내면 표면 좌표계가 회전하고 반지름과 중심은 유지된다', () => {
+    const result = run('s = sphere(pos=vec(2,0,0), radius=3)\ns.axis = vec(0,0,-1)');
+    expect(result.error).toBeNull();
+    processBatch(result.commands, scene);
+    const ball = getMesh(result.commands.find(cmd => cmd.type === 'sphere').id);
+    const facing = new THREE.Vector3(1, 0, 0).applyQuaternion(ball.quaternion);
+    expect(facing.z).toBeCloseTo(-1);
+    expect(ball.geometry.parameters.radius).toBe(3);
+    expect(ball.position.toArray()).toEqual([2, 0, 0]);
+  });
+
   it('한 정점의 성분·법선·UV·투명도 변경이 연결된 두 면에 최종 상태로 반영된다', () => {
     const r = run(`a=vertex(pos=vec(0,0,0),texpos=vec(0,0,0))
 b=vertex(pos=vec(1,0,0),texpos=vec(1,0,0))

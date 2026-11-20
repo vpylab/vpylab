@@ -14,6 +14,7 @@ import asyncio
 import colorsys
 import random as _random_module
 import time as _time_module
+from weakref import WeakKeyDictionary as _WeakKeyDictionary
 from typing import Optional
 from math import *   # GlowScript처럼 from vpython import * 가 sin, cos, pi, sqrt 등 math 이름을 함께 제공한다
 
@@ -319,7 +320,7 @@ def _rotate_object(obj, angle, axis=None, origin=None):
     origin 미지정: 객체 자기 위치(자리는 그대로 두고 방향만 돈다).
     axis 미지정: 객체 자신의 axis (GlowScript와 같음). axis가 없는 객체(sphere 등)는 y축."""
     if axis is None:
-        own = getattr(obj, '_axis', None)
+        own = None if getattr(obj, '_type', None) == 'sphere' else getattr(obj, '_axis', None)
         axis = own.clone() if isinstance(own, vector) and own.mag > 0 else vector(0, 1, 0)
     else:
         axis = _coerce_vector(axis, vector(0, 1, 0))
@@ -430,7 +431,10 @@ class _ColorPalette:
     def rgb_to_hsv(c):
         """RGB 벡터 → 색상(h)·채도(s)·명도(v) 벡터 (GlowScript 호환)"""
         c = _coerce_vector(c, vector(0, 0, 0))
-        h, sat, v = colorsys.rgb_to_hsv(c.x, c.y, c.z)
+        channels = c.to_list()
+        if max(channels) > 1 and all(0 <= v <= 255 and v.is_integer() for v in channels):
+            channels = [v / 255 for v in channels]
+        h, sat, v = colorsys.rgb_to_hsv(*channels)
         return vector(h, sat, v)
 
     def __getitem__(self, key):
@@ -804,7 +808,27 @@ class _RadiusSize:
 class sphere(_GObject):
     def __init__(self, **kwargs):
         self._radius = kwargs.pop('radius', 1.0)
+        self._axis = _coerce_vector(kwargs.get('axis'), vector(1, 0, 0))
+        self._up = _coerce_vector(kwargs.get('up'), vector(0, 1, 0))
         super().__init__('sphere', radius=self._radius, **kwargs)
+
+    @property
+    def axis(self):
+        return self._axis
+
+    @axis.setter
+    def axis(self, value):
+        self._axis = _coerce_vector(value, vector(1, 0, 0))
+        _add_command({"action": "update", "id": self._id, "axis": self._axis.to_list()})
+
+    @property
+    def up(self):
+        return self._up
+
+    @up.setter
+    def up(self, value):
+        self._up = _coerce_vector(value, vector(0, 1, 0))
+        _add_command({"action": "update", "id": self._id, "up": self._up.to_list()})
 
     @property
     def radius(self):
@@ -827,7 +851,7 @@ class sphere(_GObject):
         self.radius = value.x / 2
 
     def _clone_kwargs(self):
-        return {**super()._clone_kwargs(), 'radius': self._radius}
+        return {**super()._clone_kwargs(), 'radius': self._radius, 'axis': self.axis.clone(), 'up': self.up.clone()}
 
 
 simple_sphere = sphere   # GlowScript의 삼각형 수가 적은 구 — 같은 구로 그린다
@@ -1931,17 +1955,21 @@ class curve(_PointList):
 class points(_PointList):
     """3D 점 집합 — 작은 점으로 표시.
     size: 픽셀 크기(size_units='pixels', 기본) 또는 radius로 월드 크기(size_units='world')
-    shape: 'round'(기본), 'square', VPyLab 확장 'mist'(빛이 겹치는 부드러운 입자)"""
+    shape: 'round'(기본), 'square', VPyLab 확장 'mist'(부드러운 점), 'plume'(방출 입자)"""
     _type = 'points'
 
     def __init__(self, *args, **kwargs):
         self._size = float(kwargs.get('size', 5))
         self._size_units = str(kwargs.get('size_units', 'pixels'))
+        self._flow_time = float(kwargs.get('flow_time', 0))
         self._shape = str(kwargs.get('shape', 'round'))
         super().__init__(*args, **kwargs)
 
     def _extra_create(self, kwargs):
-        return {"size": self._size, "size_units": self._size_units, "shape": self._shape}
+        options = {"size": self._size, "size_units": self._size_units, "shape": self._shape}
+        if self._shape == 'plume':
+            options['flow_time'] = self._flow_time
+        return options
 
     @property
     def size(self):
@@ -1951,6 +1979,16 @@ class points(_PointList):
     def size(self, value):
         self._size = float(value)
         _add_command({"action": "update", "id": self._id, "size": self._size})
+
+    @property
+    def flow_time(self):
+        """plume 입자의 방출 시계(초). 같은 값이면 입자가 같은 위치에 멈춘다."""
+        return self._flow_time
+
+    @flow_time.setter
+    def flow_time(self, value):
+        self._flow_time = float(value)
+        _add_command({"action": "update", "id": self._id, "flow_time": self._flow_time})
 
     @property
     def size_units(self):
@@ -2471,6 +2509,7 @@ class local_light(_VectorOwner):
             "action": "create",
             "id": self._id,
             "type": "local_light",
+            "distance_falloff": "intensity" in kwargs,
             "pos": self._pos.to_list(),
             "color": self._color.to_list(),
             "intensity": self._intensity,
@@ -5535,10 +5574,34 @@ async def rate(fps, callback=None):
     await _sleep_chunked(delay)
 
 
+# 콜백과 학생 본문은 각자의 박자를 따른다. 끝난 태스크가 남지 않게 약한 참조로 보관한다.
+_music_deadlines = _WeakKeyDictionary()
+_beat_clock = _time_module.monotonic
+
+
 async def sleep(seconds):
-    """비동기 sleep + 이벤트 디스패치. 긴 대기도 0.5초마다 하트비트·정지 확인을 한다."""
+    """음 바로 뒤의 VPyLab 대기는 박자를 유지한다. 일반 대기는 호출할 때부터 센다."""
+    notes = [cmd for cmd in _command_buffer
+             if cmd.get('action') == 'sound' and cmd.get('method') in ('note', 'chord', 'beep')]
+    task = asyncio.current_task()
+    if not notes:
+        _music_deadlines.pop(task, None)
+        _before_wait()
+        await _sleep_chunked(seconds)
+        return
+
+    interval = max(0.0, float(seconds))
+    now = _beat_clock()
+    beat = _music_deadlines.get(task, now)
+    # 긴 계산·입력·백그라운드 탭에서 돌아오면 밀린 음을 몰아 재생하지 않는다.
+    if abs(now - beat) > min(interval, 0.032):
+        beat = now
+    for cmd in notes:
+        cmd['beatTime'] = beat
+    deadline = beat + interval
+    _music_deadlines[task] = deadline
     _before_wait()
-    await _sleep_chunked(seconds)
+    await _sleep_chunked(max(0.0, deadline - _beat_clock()))
 
 
 # === 씬 제어 ===
@@ -5918,8 +5981,7 @@ async def 음표(name, duration=0.5, type='sine', volume=0.4):
     변환기가 await를 붙이며, 기다리는 동안 하트비트·정지 확인·이벤트 디스패치를 합니다.
     """
     play_note(_resolve_note_name(name), duration, type, volume)
-    _before_wait()
-    await _sleep_chunked(duration)
+    await sleep(duration)
 
 # 대기형 영문 명령. 기존 play_note는 즉시 반환하는 동작을 유지합니다.
 play_note_and_wait = 음표
@@ -5941,8 +6003,7 @@ async def 화음(frequencies, duration=1.0, type='sine', volume=0.25):
     음표와 같이 duration 만큼 기다려 다음 화음과 분리됩니다. 변환기가 await를 붙입니다.
     """
     play_chord(frequencies, duration, type, volume)
-    _before_wait()
-    await _sleep_chunked(duration)
+    await sleep(duration)
 
 
 # ===================================================================
@@ -6079,8 +6140,7 @@ async def 악기(instrument, name, duration=0.5, volume=None):
     예: 악기("피아노", "도"), 악기("기타", "솔4", 0.8)
     """
     play_instrument(instrument, name, duration, volume)
-    _send_commands()
-    await _sleep_chunked(duration)
+    await sleep(duration)
 
 
 # === input() — 화면 입력 위젯으로 받는다 ===
@@ -6136,6 +6196,16 @@ def _new_student_namespace():
     return namespace
 
 
+async def _standard_wait(seconds):
+    has_output = bool(_command_buffer or _dirty_mesh_faces)
+    _before_wait()
+    if has_output and hasattr(js, '_waitForPresentation'):
+        await js._waitForPresentation()
+        _raise_if_stopped()
+    await _sleep_chunked(seconds)
+    _raise_if_stopped()
+
+
 async def _vpylab_run(source, filename='<student>', namespace=None):
     """학생 코드를 변환(student-code-transform.py)해 모듈 수준에서 실행한다.
     함수로 감싸지 않으므로 global 선언이 동작하고, 줄 번호는 학생 코드 그대로다.
@@ -6150,7 +6220,8 @@ async def _vpylab_run(source, filename='<student>', namespace=None):
     scope = _new_student_namespace() if namespace is None else namespace
     # 실행마다 필요한 함수만 담은 얇은 객체를 넣는다 (학생이 바꿔도 다음 실행에 남지 않는다)
     import types as _types
-    scope[transform.RUNTIME_NAME] = _types.SimpleNamespace(maybe_await=transform.maybe_await)
+    scope[transform.RUNTIME_NAME] = _types.SimpleNamespace(maybe_await=transform.maybe_await,
+        sleep_dispatch=transform.make_sleep_dispatch(_standard_wait))
     try:
         result = eval(code, scope)
         if inspect.iscoroutine(result):
@@ -6182,6 +6253,7 @@ def _reset_runtime_state():
     global _command_buffer, _object_counter
     _command_buffer = []
     _object_counter = 0
+    _music_deadlines.clear()
     _active_graphs.clear()
     _event_handlers.clear()
     _widget_values.clear()

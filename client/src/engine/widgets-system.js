@@ -1,3 +1,4 @@
+import '../../../server/shared/widgets/panel.css';
 /**
  * VPyLab — UI 위젯 시스템
  * Python에서 생성한 slider/button/checkbox/radio/menu/winput을

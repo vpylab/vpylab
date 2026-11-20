@@ -31,6 +31,7 @@
 import { configureCometParticles } from '../shared/comet-particles.js';
 import { createWidgetPanel } from '../shared/widget-panel.js';
 import { createTexturePainters } from '../shared/procedural-textures.js';
+import { createRenderColorNormalizer } from '../shared/rgb-input.js';
 import { createCompoundAppearanceTools } from '../shared/compound-appearance.js';
 import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
@@ -62,7 +63,7 @@ function escapeHTML(str) {
     .replace(/'/g, '&#39;');
 }
 
-export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, transformSource, feltLayers = [], planetMaps = {}) {
+export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, transformSource, feltLayers = [], planetMaps = {}, widgetCss = '') {
   if (!transformSource) throw new Error('학생 코드 변환기가 필요합니다.');
   // Base64로 안전하게 코드 임베딩 (모든 특수문자 문제 해결)
   const base64Code = btoa(unescape(encodeURIComponent(code)));
@@ -75,7 +76,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   const sampleCredit = samples.length ? ' · <a href="https://github.com/sfzinstruments/SalamanderGrandPiano">Piano samples by Alexander Holm</a> (<a href="https://creativecommons.org/licenses/by/3.0/">CC BY 3.0</a>, excerpts converted to mono and filtered)' : '';
   const planetCredit = [
     planetMaps.earth && '<a href="https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map/">Earth · Reto Stöckli, NASA Earth Observatory</a>',
-    Object.keys(planetMaps).some(name => name !== 'earth') && '<a href="https://github.com/vpylab/vpylab">Model surfaces · VPyLab (AGPL-3.0-or-later)</a>',
+    planetMaps['lroc-color'] && '<a href="https://svs.gsfc.nasa.gov/4720/">Moon · NASA/Goddard Space Flight Center Scientific Visualization Studio, LROC, Arizona State University</a>',
+    Object.keys(planetMaps).some(name => name !== 'earth' && name !== 'lroc-color') && '<a href="https://github.com/vpylab/vpylab">Model surfaces · VPyLab (AGPL-3.0-or-later)</a>',
   ].filter(Boolean).map(credit => ' · ' + credit).join('');
   const safeTitle = escapeHTML(title);
   const safeOpenInVpylabUrl = options.openInVpylabUrl ? escapeHTML(options.openInVpylabUrl) : '';
@@ -92,16 +94,19 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com blob:; style-src 'unsafe-inline'; connect-src https://cdn.jsdelivr.net https://unpkg.com https://pypi.org https://files.pythonhosted.org blob:; img-src blob: data:; font-src https://cdn.jsdelivr.net; worker-src blob:;">
   <title>${safeTitle} — VPyLab</title>
   <style>
+    ${widgetCss}
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #0d1117; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
-    #viewport { width: 100vw; height: 100vh; }
-    #info { position: fixed; top: 12px; left: 12px; font-size: 12px; opacity: 0.5; z-index: 10; }
+    [data-vpylab-viewport] { position: relative; height: 100vh; height: 100dvh; }
+    #viewport { position: relative; width: 100%; height: 100%; overflow: hidden; }
+    #viewport canvas { display: block; }
+    #info { position: absolute; top: 12px; left: 12px; font-size: 12px; opacity: 0.5; z-index: 10; }
     #info a { color: #58a6ff; text-decoration: none; }
     #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0d1117; z-index: 100; flex-direction: column; gap: 12px; }
     #loading .bar { width: 200px; height: 4px; background: #30363d; border-radius: 9999px; overflow: hidden; }
     #loading .fill { height: 100%; background: linear-gradient(90deg, #6C5CE7, #00CEC9); transition: width 0.3s; }
     #loading.done { opacity: 0; pointer-events: none; transition: opacity 0.5s; }
-    #console { position: fixed; bottom: 0; left: 0; right: 0; max-height: 150px; overflow-y: auto; background: rgba(13,17,23,0.9); padding: 8px 12px; font-family: monospace; font-size: 12px; color: #8b949e; z-index: 10; display: none; }
+    #console { position: absolute; bottom: 0; left: 0; right: 0; max-height: 150px; overflow-y: auto; background: rgba(13,17,23,0.9); padding: 8px 92px 8px 12px; font-family: monospace; font-size: 12px; color: #8b949e; z-index: 10; display: none; }
     #console.visible { display: block; }
   </style>
 </head>
@@ -110,12 +115,15 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     <div style="font-size:14px">Python 엔진 로딩 중...</div>
     <div class="bar"><div class="fill" id="progress" style="width:0%"></div></div>
   </div>
-  <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}${sampleCredit}${planetCredit}</div>
-  <button id="stop-playback" type="button" hidden style="position:fixed;right:8px;bottom:8px;min-height:44px;z-index:30">정지 / Stop</button>
-  <div id="scene-title" style="position:fixed;left:12px;top:48px;z-index:5"></div>
-  <div id="scene-caption" style="position:fixed;left:12px;bottom:56px;z-index:5"></div>
-  <div id="viewport"></div>
-  <div id="console"></div>
+  <div data-vpylab-viewport data-single-canvas>
+    <div id="viewport" class="vp-stage-frame">
+      <div id="info">${safeTitle} · <a href="${safeRepoUrl}" target="_blank">GitHub</a>${openInVpylabLink}${sampleCredit}${planetCredit}</div>
+      <button id="stop-playback" type="button" hidden style="position:absolute;right:8px;bottom:8px;min-height:44px;z-index:30">정지 / Stop</button>
+      <div id="scene-title" style="position:absolute;left:12px;top:48px;z-index:5"></div>
+      <div id="scene-caption" style="position:absolute;left:12px;bottom:56px;z-index:5"></div>
+      <div id="console"></div>
+    </div>
+  </div>
 
   <script type="importmap">
   { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@${THREE_VERSION}/examples/jsm/" } }
@@ -124,6 +132,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   <script type="module">
   import * as THREE from 'three';
   const primitiveGeometry = (${createPrimitiveGeometry.toString()})(THREE);
+  const normalizeRenderColors = (${createRenderColorNormalizer.toString()})();
   const compoundAppearance = (${createCompoundAppearanceTools.toString()})(THREE);
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
@@ -156,10 +165,14 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   dirLight.position.set(5, 10, 7);
   scene.add(dirLight);
 
-  window.addEventListener('resize', () => {
-    cameraSystem.resize(innerWidth, innerHeight);
-    renderer.setSize(innerWidth, innerHeight);
-  });
+  function resizeViewport() {
+    const width = container.clientWidth || innerWidth;
+    const height = container.clientHeight || innerHeight;
+    cameraSystem.resize(width, height);
+    renderer.setSize(width, height);
+  }
+  window.addEventListener('resize', resizeViewport);
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(resizeViewport).observe(container);
 
   function animate() {
     requestAnimationFrame(animate);
@@ -642,6 +655,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     if (!material || !('emissive' in material)) return;
     material.emissive = enabled ? cloneColor(material.color) : new THREE.Color(0, 0, 0);
     material.emissiveIntensity = enabled ? 0.8 : 0;
+    material.emissiveMap = enabled ? material.map : null;
     material.needsUpdate = true;
   }
 
@@ -660,7 +674,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   function setTexture(material, spec) {
     let map = textureCache.get(spec) || null;
     if (!map && typeof spec === 'string') {
-      const name = spec.replace(/^preset:/, '');
+      const name = spec === '/projects/seoul-moon/lroc-color.jpg' ? 'lroc-color' : spec.replace(/^preset:/, '');
       const painter = painters[name];
       if (Object.hasOwn(planetMaps, name)) {
         map = new THREE.TextureLoader().load(planetMaps[name], undefined, undefined, () => textureCache.delete(spec));
@@ -681,7 +695,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       }
     }
     material.map = map;
-    material.emissiveMap = map;
+    material.emissiveMap = material.emissiveIntensity > 0 ? map : null;
     material.needsUpdate = true;
   }
 
@@ -698,7 +712,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     geometry.computeBoundingSphere();
   }
 
-  function processCmd(cmd) {
+  function processCmd(command) {
+    const cmd = normalizeRenderColors(command);
     if (cmd.action === 'widget_create') return widgets.createWidget(cmd);
     if (cmd.action === 'widget_update') return widgets.updateWidget(cmd);
     if (cmd.action === 'widget_delete') return widgets.deleteWidget(cmd);
@@ -868,7 +883,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
           break;
         }
         case 'local_light': {
-          const lt = new THREE.PointLight(toColor(cmd.color||[1,1,1]), cmd.intensity??1, 50);
+          const vpLight = cmd.distance_falloff === false;
+          const lt = new THREE.PointLight(toColor(cmd.color||[1,1,1]), (cmd.intensity??1)*(vpLight ? Math.PI/0.9 : 1), vpLight ? 0 : 50, vpLight ? 0 : 2);
           if(cmd.pos) lt.position.set(...cmd.pos); scene.add(lt); meshes.set(cmd.id, lt); return;
         }
         case 'distant_light': {
@@ -898,7 +914,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
         else if (m.isGroup) m.traverse(c => { if(c.material) updateMaterialColor(c.material, toColor(cmd.color)); });
         else if (m.material) updateMaterialColor(m.material, toColor(cmd.color));
       }
-      if (cmd.intensity !== undefined && m.isLight) m.intensity = cmd.intensity;
+      if (cmd.intensity !== undefined && m.isLight) m.intensity = cmd.intensity * (m.isPointLight && m.decay === 0 ? Math.PI/0.9 : 1);
       if (cmd.direction !== undefined && m.isDirectionalLight) m.position.set(-cmd.direction[0]*10,-cmd.direction[1]*10,-cmd.direction[2]*10);
       if (cmd.visible !== undefined) m.visible = cmd.visible;
       if (cmd.opacity !== undefined) {
@@ -965,6 +981,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       if (cmd.property === 'forward') cameraSystem.setForward(...cmd.value);
       if (cmd.property === 'up') cameraSystem.setUp(...cmd.value);
       if (cmd.property === 'fov') cameraSystem.setFov(cmd.value);
+      if (cmd.property === 'userzoom') controls.enableZoom = Boolean(cmd.value);
+      if (cmd.property === 'userspin') controls.enableRotate = Boolean(cmd.value);
+      if (cmd.property === 'userpan') controls.enablePan = Boolean(cmd.value);
       if (cmd.property === 'autoscale') cameraSystem.setAutoscale(cmd.value);
       if (cmd.property === 'camera_pos') cameraSystem.setCameraPos(...cmd.value);
       if (cmd.property === 'camera_axis') cameraSystem.setCameraAxis(...cmd.value);
@@ -1050,7 +1069,9 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     const code = decodeURIComponent(escape(atob('${base64Code}')));
     await packageImports.installImportedPackages(pyodide, code, logToConsole);
 
-    pyodide.globals.set('_js_camera_state', () => JSON.stringify(cameraSystem.getState()));
+    pyodide.globals.set('_js_camera_state', () => JSON.stringify({
+      ...cameraSystem.getState(), width: container.clientWidth, height: container.clientHeight,
+    }));
 
     // VPython API 정의
     await pyodide.runPythonAsync(vpythonApi);
@@ -1164,6 +1185,7 @@ def _send_commands():
       '    print("⚠️ " + _vpylab_w)',
       '_vpylab_ns = {"__name__": "__main__"}',
       '_vpylab_ns.update({_k: _v for _k, _v in globals().items() if not _k.startswith("_")})',
+      '_vpylab_transform.sleep_dispatch = _vpylab_transform.make_sleep_dispatch(sleep)',
       '_vpylab_ns[_vpylab_transform.RUNTIME_NAME] = _vpylab_transform',
       '_vpylab_result = eval(_vpylab_code, _vpylab_ns)',
       'if _vpylab_inspect.iscoroutine(_vpylab_result):',
@@ -2319,6 +2341,9 @@ class _ExportCamera:
 class _Scene:
     def __init__(self):
         self._background=vector(0.97,0.98,0.98)
+        self._width = None
+        self._height = None
+        self._userzoom = self._userspin = self._userpan = True
         self._ambient=vector(0.6,0.6,0.6)
         self._lights=None
         self._range=10.0
@@ -2337,6 +2362,37 @@ class _Scene:
             if value is not None: return vector(*value) if isinstance(value,list) else value
         except (NameError,TypeError,ValueError): pass
         return fallback
+    @property
+    def width(self): return self._width if self._width is not None else int(self._read('width', 640))
+    @width.setter
+    def width(self, value): self._width = int(value)
+
+    @property
+    def height(self): return self._height if self._height is not None else int(self._read('height', 400))
+    @height.setter
+    def height(self, value): self._height = int(value)
+
+    @property
+    def userzoom(self): return self._userzoom
+    @userzoom.setter
+    def userzoom(self, value):
+        self._userzoom = bool(value)
+        self._send('userzoom', self._userzoom)
+
+    @property
+    def userspin(self): return self._userspin
+    @userspin.setter
+    def userspin(self, value):
+        self._userspin = bool(value)
+        self._send('userspin', self._userspin)
+
+    @property
+    def userpan(self): return self._userpan
+    @userpan.setter
+    def userpan(self, value):
+        self._userpan = bool(value)
+        self._send('userpan', self._userpan)
+
     @property
     def ambient(self): return self._ambient.clone()
     @ambient.setter
@@ -2701,7 +2757,7 @@ class local_light:
         self._color = kw.get('color', color.white)
         _user_lights.append(self)
         self._intensity = kw.get('intensity', 1.0)
-        _add_command({"action":"create","id":self._id,"type":"local_light","pos":self._pos.to_list(),"color":self._color.to_list(),"intensity":self._intensity})
+        _add_command({"action":"create","id":self._id,"type":"local_light","distance_falloff":"intensity" in kw,"pos":self._pos.to_list(),"color":self._color.to_list(),"intensity":self._intensity})
     @property
     def pos(self): return self._pos
     @pos.setter

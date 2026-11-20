@@ -108,9 +108,10 @@ vi.mock('three', () => {
   }
 
   class PointLight extends Light {
-    constructor(color, intensity, distance) {
+    constructor(color, intensity, distance, decay) {
       super(color, intensity);
       this.distance = distance;
+      this.decay = decay;
       this.isPointLight = true;
     }
   }
@@ -590,6 +591,17 @@ describe('vpython-bridge: processBatch', () => {
     expect(light).toBeDefined();
     expect(light.isDirectionalLight).toBe(true);
     expect(light.intensity).toBe(0.5);
+  });
+
+  it('기본 VPython 점광원은 거리에 따른 감쇠가 없고 밝기 수정에도 같은 환산을 쓴다', () => {
+    processBatch([{ action: 'create', id: 'vp_lamp', type: 'local_light', distance_falloff: false }], scene);
+    const light = getMesh('vp_lamp');
+    expect(light.distance).toBe(0);
+    expect(light.decay).toBe(0);
+    const defaultIntensity = light.intensity;
+    expect(defaultIntensity).toBeGreaterThan(3);
+    processBatch([{ action: 'update', id: 'vp_lamp', intensity: 0.5 }], scene);
+    expect(light.intensity).toBe(defaultIntensity / 2);
   });
 
   it('local_light update로 위치와 intensity를 변경한다', () => {

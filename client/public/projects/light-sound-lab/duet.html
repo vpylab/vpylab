@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>두 행성의 합주 · Two orbital rhythms | VPyLab</title>
+  <style>
+    :root{font:100%/1.65 system-ui,sans-serif;color:#182b30;background:#fafbf6}
+    body{max-width:48rem;margin:2rem auto;padding:0 1rem 3rem}
+    h1,h2,h3{line-height:1.25}h2{margin-top:2rem}a{color:#065c60;text-underline-offset:.2em}
+    pre{overflow:auto;padding:1rem;background:#eff3ec;border-left:.25rem solid #296566;line-height:1.45}
+    nav a{display:inline-block;padding:.5rem;margin-right:.4rem}li,details{margin-block:.65rem}
+    :focus-visible{outline:3px solid #a24c09;outline-offset:3px}
+    @media print{nav,.practice{display:none}pre{white-space:pre-wrap;overflow:visible}details>*{display:block}}
+  </style>
+</head>
+<body><main>
+<nav aria-label="활동 탐색 / Activity navigation"><a href="./index.html">아홉 실험 · All experiments</a><a href="#english" lang="en">English worksheet</a><a href="#model">Python</a></nav>
+<h1>두 행성의 합주 <span lang="en">/ Two orbital rhythms</span></h1>
+<p><a href="./07.mp4">7번 원작 영상 · Original video</a></p>
+<section aria-labelledby="ko"><h2 id="ko">교사용 25분 활동지</h2>
+<p>두 행성은 오른쪽 기준점을 지날 때 각자 한 음을 냅니다. 학습자는 주기와 동시점을 예측하고, 같은 운동을 다른 음악과 화면으로 표현합니다. 종이 한 장 또는 말로 답해도 됩니다.</p>
+<ol>
+<li><b>0–5분 · 예측.</b> 0박에서 함께 출발합니다. 안쪽은 두 박마다, 바깥쪽은 세 박마다 돌아옵니다. 0부터 12까지 두 줄의 박자표에 각 행성의 귀환을 표시하세요. 다음에 함께 도착할 박을 동그라미 치고 이유를 적으세요.</li>
+<li><b>5–11분 · 모델 수정.</b> 아래 실습을 무음으로 한 번 실행하세요. 오른쪽 표식과 장면 아래 글로 귀환을 확인합니다. <code>periods = [2, 4]</code>로 고치기 전에 첫 동시점을 예상하세요. 바꾼 줄, 예상, 관찰한 박을 적으세요.</li>
+<li><b>11–17분 · 작곡과 감상.</b> 주기를 고정하고 두 시안을 만드세요. A에서는 두 리듬이 구별되게, B에서는 합주 순간이 두드러지게 합니다. 음정·음색·강약과 명암·시점·구도에서 각각 한 가지를 고르세요. 짝에게 의도를 말하기 전에 어떤 순간이 두드러졌는지 묻고 한 곳을 수정하세요.</li>
+<li><b>17–25분 · 전이와 설명.</b> 3박과 4박일 때 첫 동시점을 새 박자표로 설명하세요. “나는 ___을 강조하려 했다. 친구는 ___을 알아차렸다. 그래서 ___을 ___으로 바꿨다.”를 완성하세요.</li>
+</ol>
+<p><b>교사 답안.</b> 출발을 제외한 첫 동시점은 (2,3)에서 6박, (2,4)에서 4박, (3,4)에서 12박입니다. 무음·색각 차이·화면읽기 환경에서는 안쪽/바깥쪽 위치, 문자 I/O, 아래 귀환 기록과 박자표를 이용하세요.</p>
+<p><b>학교급.</b> 초등은 교사와 기준점을 가리키며 관찰하고 손뼉이나 그림으로 답합니다. 중등은 모델 한 줄을 고쳐 두 시안과 수정 이유를 제출합니다. 고등은 관측표에서 두 천체의 공전 주기와 단위를 인용해 주기비를 계산하고 모형과 비교합니다. 원궤도·일정한 속도·임의의 반지름과 시간 축척이 비교에 미치는 영향을 설명합니다.</p>
+<p>고등 확장에서는 지구 1.0000174년, 화성 1.8808476년의 항성 공전 주기를 이용하세요. 바깥 주기 ÷ 안쪽 주기를 모형의 3 ÷ 2와 비교한 뒤 공통 배율 하나로 두 운동을 모두 맞출 수 있는지 설명하세요. <a href="https://ssd.jpl.nasa.gov/planets/phys_par.html">NASA/JPL 행성 자료표</a></p>
+<h3>평가 기록</h3><p>네 항목을 각각 0–2점으로 기록하세요. 0은 근거가 없는 경우입니다.</p>
+<ol><li><b>과학적 예측.</b> 1은 박을 예측함, 2는 관찰 전 예측과 공배수의 근거를 제시함.</li>
+<li><b>코드와 결과.</b> 1은 바꾼 값을 찾음, 2는 바꾼 줄과 관찰한 귀환 박을 연결함.</li>
+<li><b>표현 의도.</b> 1은 음악 또는 화면 선택을 명명함, 2는 음악과 시각 선택이 어느 리듬 또는 동시점을 강조했는지 설명함.</li>
+<li><b>감상 후 수정.</b> 1은 동료 의견을 적음, 2는 그 의견에 따라 한 편집을 전후 결과와 연결해 설명함.</li></ol></section>
+<section lang="en" aria-labelledby="english"><h2 id="english">25-minute teacher worksheet</h2>
+<p>Each planet sounds a note when it returns to its marker on the right. Ask learners to predict the returns, then compose two interpretations of the same motion. Accept spoken, drawn or written responses.</p>
+<ol><li><b>0–5 min · Predict.</b> Start together on beat zero. The inner planet returns every two beats and the outer every three. Mark each return on two rows numbered 0–12. Circle the next shared beat and give a reason before running.</li>
+<li><b>5–11 min · Test the model.</b> Run once muted. Follow the right-hand markers and the caption. Predict the next shared beat before changing the line to <code>periods = [2, 4]</code>. Record the edited line, prediction and observed beat.</li>
+<li><b>11–17 min · Compose and listen.</b> Keep the periods fixed. Make version A distinguish the rhythms and version B emphasize their meeting. Choose a pitch, timbre or loudness and a contrast, viewpoint or arrangement. Ask a partner which moment stood out before revealing your intention. Revise one choice.</li>
+<li><b>17–25 min · Transfer and explain.</b> Draw a fresh beat grid for periods three and four. Explain your first coincidence. Finish “I wanted to emphasize ___. My partner noticed ___. I changed ___ to ___ because ___.”</li></ol>
+<p><b>Teacher key.</b> After departure, (2,3) first coincide on beat 6, (2,4) on 4 and (3,4) on 12. The inner/outer positions, I/O captions and return list below support muted use, colour differences and screen-reader review.</p>
+<p><b>By age.</b> Elementary pupils observe with a teacher and point, clap or draw. Middle-school pupils edit a model, make two versions and explain a revision. High-school pupils cite measured orbital periods and units from an observational table, calculate a ratio and compare it with the model. Discuss circular paths, constant speeds and the choice of time and distance scales.</p>
+<p>For the high-school extension, use sidereal periods of 1.0000174 years for Earth and 1.8808476 years for Mars. Compare outer divided by inner with the model’s 3 divided by 2. Can one time scale fit both orbits? <a href="https://ssd.jpl.nasa.gov/planets/phys_par.html">NASA/JPL planetary table</a></p>
+<h3>Assessment record</h3><p>Score each dimension separately. Award 0 when there is no evidence.</p>
+<ol><li><b>Scientific prediction.</b> 1 predicts a beat. 2 predicts before testing and justifies it using common multiples.</li>
+<li><b>Code and outcome.</b> 1 names a changed value. 2 connects the edited line to an observed return beat.</li>
+<li><b>Artistic intent.</b> 1 identifies a musical or visual choice. 2 explains how musical and visual decisions emphasized a rhythm or a coincidence.</li>
+<li><b>Revision after critique.</b> 1 records peer feedback. 2 explains a specific edit in response and compares the two versions.</li></ol></section>
+<section><h2 id="model">공통 시각 모델 · <span lang="en">Shared visual model</span></h2>
+<p>Web VPython 3.2의 새 프로그램에 아래 코드를 붙여 넣으세요. VPyLab에서는 첫 줄이 <code>from vpython import *</code>입니다.</p>
+<p lang="en">Paste this into a new Web VPython 3.2 program. In VPyLab the first line is <code>from vpython import *</code>.</p>
+<pre tabindex="0" aria-label="Web VPython 3.2"><code id="visual">Web VPython 3.2
+periods = [2, 3]
+radii = [1.4, 2.4]
+scene.range = 3.2
+planets = []
+for r in radii:
+    ring(axis=vector(0, 0, 1), radius=r, thickness=0.012)
+    sphere(pos=vector(r, 0, 0), radius=0.07)
+    planets.append(sphere(radius=0.19, color=color.cyan))
+for frame in range(241):
+    rate(20)
+    hits = ""
+    for i in range(2):
+        lap = 20 * periods[i]
+        phase = frame % lap
+        angle = 2 * pi * phase / lap
+        planets[i].pos = radii[i] * vector(cos(angle), sin(angle), 0)
+        if phase == 0:
+            hits = hits + ["I", "O"][i]
+    if hits:
+        scene.caption = str(frame // 20) + " | " + hits
+</code></pre>
+<h3>VPyLab 소리 확장 · <span lang="en">VPyLab sound extension</span></h3>
+<p>Web VPython 3.2에는 소리 재생 API가 없습니다. 이 부분은 VPyLab에서 실행하세요. <code>if phase == 0:</code> 안에 한 줄을 더하세요. 두 음색과 위치를 비교하고, 시점은 <code>scene.forward</code>로 바꿔 보세요.</p>
+<p lang="en">Web VPython 3.2 has no sound playback API. Run this extension in VPyLab. Add this line inside <code>if phase == 0:</code>. Compare the two timbres and positions. Try changing the viewpoint with <code>scene.forward</code>.</p>
+<pre tabindex="0"><code id="sound">            play_note(["C4", "G4"][i], 0.3, type=["sine", "triangle"][i], volume=0.25)</code></pre>
+<nav class="practice" aria-label="실습 / Practice"><a id="ko-run" href="/sandbox?view=run&amp;lang=ko#b64=ZnJvbSB2cHl0aG9uIGltcG9ydCAqCnBlcmlvZHMgPSBbMiwgM10KcmFkaWkgPSBbMS40LCAyLjRdCnNjZW5lLnJhbmdlID0gMy4yCnBsYW5ldHMgPSBbXQpmb3IgciBpbiByYWRpaToKICAgIHJpbmcoYXhpcz12ZWN0b3IoMCwgMCwgMSksIHJhZGl1cz1yLCB0aGlja25lc3M9MC4wMTIpCiAgICBzcGhlcmUocG9zPXZlY3RvcihyLCAwLCAwKSwgcmFkaXVzPTAuMDcpCiAgICBwbGFuZXRzLmFwcGVuZChzcGhlcmUocmFkaXVzPTAuMTksIGNvbG9yPWNvbG9yLmN5YW4pKQpmb3IgZnJhbWUgaW4gcmFuZ2UoMjQxKToKICAgIHJhdGUoMjApCiAgICBoaXRzID0gIiIKICAgIGZvciBpIGluIHJhbmdlKDIpOgogICAgICAgIGxhcCA9IDIwICogcGVyaW9kc1tpXQogICAgICAgIHBoYXNlID0gZnJhbWUgJSBsYXAKICAgICAgICBhbmdsZSA9IDIgKiBwaSAqIHBoYXNlIC8gbGFwCiAgICAgICAgcGxhbmV0c1tpXS5wb3MgPSByYWRpaVtpXSAqIHZlY3Rvcihjb3MoYW5nbGUpLCBzaW4oYW5nbGUpLCAwKQogICAgICAgIGlmIHBoYXNlID09IDA6CiAgICAgICAgICAgIHBsYXlfbm90ZShbIkM0IiwgIkc0Il1baV0sIDAuMywgdHlwZT1bInNpbmUiLCAidHJpYW5nbGUiXVtpXSwgdm9sdW1lPTAuMjUpCiAgICAgICAgICAgIGhpdHMgPSBoaXRzICsgWyJJIiwgIk8iXVtpXQogICAgaWYgaGl0czoKICAgICAgICBzY2VuZS5jYXB0aW9uID0gc3RyKGZyYW1lIC8vIDIwKSArICIgfCAiICsgaGl0cwo">소리 확장 실습</a><a id="en-run" href="/sandbox?view=run&amp;lang=en#b64=ZnJvbSB2cHl0aG9uIGltcG9ydCAqCnBlcmlvZHMgPSBbMiwgM10KcmFkaWkgPSBbMS40LCAyLjRdCnNjZW5lLnJhbmdlID0gMy4yCnBsYW5ldHMgPSBbXQpmb3IgciBpbiByYWRpaToKICAgIHJpbmcoYXhpcz12ZWN0b3IoMCwgMCwgMSksIHJhZGl1cz1yLCB0aGlja25lc3M9MC4wMTIpCiAgICBzcGhlcmUocG9zPXZlY3RvcihyLCAwLCAwKSwgcmFkaXVzPTAuMDcpCiAgICBwbGFuZXRzLmFwcGVuZChzcGhlcmUocmFkaXVzPTAuMTksIGNvbG9yPWNvbG9yLmN5YW4pKQpmb3IgZnJhbWUgaW4gcmFuZ2UoMjQxKToKICAgIHJhdGUoMjApCiAgICBoaXRzID0gIiIKICAgIGZvciBpIGluIHJhbmdlKDIpOgogICAgICAgIGxhcCA9IDIwICogcGVyaW9kc1tpXQogICAgICAgIHBoYXNlID0gZnJhbWUgJSBsYXAKICAgICAgICBhbmdsZSA9IDIgKiBwaSAqIHBoYXNlIC8gbGFwCiAgICAgICAgcGxhbmV0c1tpXS5wb3MgPSByYWRpaVtpXSAqIHZlY3Rvcihjb3MoYW5nbGUpLCBzaW4oYW5nbGUpLCAwKQogICAgICAgIGlmIHBoYXNlID09IDA6CiAgICAgICAgICAgIHBsYXlfbm90ZShbIkM0IiwgIkc0Il1baV0sIDAuMywgdHlwZT1bInNpbmUiLCAidHJpYW5nbGUiXVtpXSwgdm9sdW1lPTAuMjUpCiAgICAgICAgICAgIGhpdHMgPSBoaXRzICsgWyJJIiwgIk8iXVtpXQogICAgaWYgaGl0czoKICAgICAgICBzY2VuZS5jYXB0aW9uID0gc3RyKGZyYW1lIC8vIDIwKSArICIgfCAiICsgaGl0cwo" lang="en">Run the sound extension</a></nav>
+<details><summary>기본 모델의 귀환 기록 · Return transcript for the initial model</summary><p>I = 안쪽 / inner. O = 바깥쪽 / outer. IO = 함께 / together.</p>
+<p>0 IO · 2 I · 3 O · 4 I · 6 IO · 8 I · 9 O · 10 I · 12 IO</p></details>
+</section>
+<section><h2>수업 환경 · <span lang="en">Classroom setup</span></h2>
+<p>휴대전화에서는 영상과 실행으로 관찰하고, 긴 코드 수정에는 키보드를 사용할 수 있습니다. 온라인 편집기는 WebGL과 Python 엔진을 처음에 내려받을 수 있어야 합니다. 소리는 시작 버튼을 누르면 켜집니다. 내려받은 HTML은 CDN 연결이 필요하며 작품에 따라 편집기와 기능이 다릅니다.</p>
+<p lang="en">Phones can play the video and run the model. A keyboard helps with longer edits. The online editor needs WebGL and network access for the first Python load. Tap Start for audio. Downloaded HTML needs CDN access and its feature support depends on the work. The classroom service is <a href="https://vpylab.vercel.app/">vpylab.vercel.app</a>. Practice links on this sheet use the host you opened, including a PR preview.</p>
+</section></main></body></html>
