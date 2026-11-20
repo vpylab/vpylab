@@ -19,10 +19,11 @@ vi.mock('../hooks/usePyodide', async () => {
     window.addEventListener('test-engine-status', notify);
     return () => window.removeEventListener('test-engine-status', notify);
   };
-  return { default: () => {
+  function useTestEngine() {
     const status = useSyncExternalStore(subscribe, () => engine.status);
     return { ...engine, status, isReady: status === 'ready' };
-  } };
+  }
+  return { default: useTestEngine };
 });
 
 const REPO_CODE = 'from vpython import *\nsphere()\n';
