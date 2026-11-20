@@ -1,0 +1,10 @@
+/* 편집기 색 선택 창: VPyLab의 색에는 투명도가 없으므로 투명도 띠를 감춥니다. */
+.monaco-editor .colorpicker-body .strip.opacity-strip {
+  display: none;
+}
+
+/* 색 선택 창이 열리면 같은 자리의 낱말 설명은 감춥니다. 긴 설명 때문에 창이 넓어지면
+   좁은 편집기에서 색상 띠가 화면 밖으로 밀려납니다. */
+.monaco-editor .monaco-hover-content:has(> .colorpicker-widget) > .hover-row {
+  display: none;
+}

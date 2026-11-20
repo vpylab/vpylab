@@ -1508,8 +1508,8 @@ for i, v in enumerate([52, 333, 126, 1400]):
     category: 'colors',
     title: { ko: '색상 팔레트', en: 'Color Palette' },
     description: {
-      ko: 'color.red처럼 이름을 쓰거나 색 성분을 vector(r, g, b)로 지정하세요. 세 성분이 모두 0~1이면 그대로 씁니다. 모두 0~255 사이의 정수이고 하나라도 1보다 크면 세 성분을 255로 나눕니다. 예를 들어 vector(255, 128, 0)은 vector(1, 128/255, 0)과 같은 색입니다. vector(1, 0, 0)은 밝은 빨강이고, 가장 어두운 8비트 빨강은 vector(1/255, 0, 0)입니다.',
-      en: 'Use a name such as color.red or supply vector(r, g, b). Values from 0 to 1 keep their original meaning. If all three are whole numbers from 0 to 255 and any exceeds 1, VPyLab divides them all by 255. For example, vector(255, 128, 0) matches vector(1, 128/255, 0). Use vector(1/255, 0, 0) for the darkest nonzero 8-bit red. vector(1, 0, 0) is full red.',
+      ko: 'color.red처럼 이름을 쓰거나 색 성분을 vector(r, g, b)로 지정하세요. 세 성분이 모두 0~1이면 그대로 씁니다. 모두 0~255 사이의 정수이고 하나라도 1보다 크면 세 성분을 255로 나눕니다. 예를 들어 vector(255, 128, 0)은 vector(1, 128/255, 0)과 같은 색입니다. vector(1, 0, 0)은 밝은 빨강이고, 가장 어두운 8비트 빨강은 vector(1/255, 0, 0)입니다. 편집기에서는 색으로 사용한 vector(r, g, b)와 color.red 앞에 색 네모가 표시됩니다. 네모를 누르면 색 선택 창이 열리고, 고른 색은 0~255 정수로 적힙니다. 색 값에서 마우스 오른쪽 버튼을 눌러 "색에 이름 붙이기"를 고르면 내색 = vector(r, g, b) 한 줄이 만들어지며, 이름을 바로 고쳐 적을 수 있습니다.',
+      en: 'Use a name such as color.red or supply vector(r, g, b). Values from 0 to 1 keep their original meaning. If all three are whole numbers from 0 to 255 and any exceeds 1, VPyLab divides them all by 255. For example, vector(255, 128, 0) matches vector(1, 128/255, 0). Use vector(1/255, 0, 0) for the darkest nonzero 8-bit red. vector(1, 0, 0) is full red. In the editor, a color swatch appears before vector(r, g, b) used as a color and before names such as color.red. Click the swatch to open a color picker. The picked color is written as whole numbers from 0 to 255. Right-click a color value and choose "Name this color" to move it to its own line, my_color = vector(r, g, b), and type the name you want.',
     },
     signature: "color.red, color.green, color.blue, ...",
     params: [
