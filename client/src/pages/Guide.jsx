@@ -36,7 +36,7 @@ export default function Guide() {
 
         <GuideSection id="start" title={ui("어디에서 시작할까요?")}>
           <ul className="list-disc pl-5 space-y-2">
-            <li><Link to="/missions">{ui("트레이닝")}</Link>{ui(": 처음 코딩하는 학생을 위한 코스를 순서대로 연습합니다.")}</li>
+            <li><Link to="/missions">{ui("트레이닝")}</Link>{ui("에서 공 하나를 그리는 것부터 시작해, 클릭에 따라 두 공의 색과 조명과 소리가 달라지는 작품을 만듭니다.")}</li>
             <li><Link to="/sandbox">{ui("만들기")}</Link>{ui(": Python 코드를 직접 쓰고 실행하며 내 프로젝트를 만듭니다.")}</li>
             <li><Link to="/tutorials">{ui("튜토리얼")}</Link>{ui(": 빛·소리·상호작용을 짧게 체험합니다.")}</li>
             <li><Link to="/forge">{ui("대장간")}</Link>{ui(": 슬라이더로 하나의 오브젝트를 만들고 여러 작품에서 재사용합니다.")}</li>

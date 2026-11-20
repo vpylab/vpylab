@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import firstLines from '../data/first-lines-course';
+import twoBallCourse from '../data/two-ball-course';
 import { localizeCourse } from '../i18n/owned-content';
 import Header from '../components/layout/Header';
 import { useI18n } from '../i18n/useI18n';
@@ -12,7 +12,7 @@ const physicalMissionIds = ['PC-1', 'PC-2', 'PC-3'];
 export default function Missions() {
   const { locale: lang } = useI18n();
   const ko = lang === 'ko';
-  const firstCourse = localizeCourse(firstLines, lang);
+  const firstCourse = localizeCourse(twoBallCourse, lang);
   const progress = useAppStore(s => s.missionProgress);
   const next = trainingSteps.find(step => !progress[step.missionId]?.passed);
   const completed = trainingSteps.filter(step => progress[step.missionId]?.passed).length;

@@ -8,7 +8,7 @@ Start with **Which side is day?** in [Nine short light, sound and space experime
 
 ## Where to start
 
-- **Training**: start with the five steps in **My first line of code**. Begin with `sphere()` in a blank editor. Continue with the eight light and sound lessons to learn loops and conditions. Predict a result, run the code, change one thing, and explain what happened. The four optional project lessons cover saving, GitHub, versions, and sharing.
+- **Training**: start with the eight steps in **Two balls that respond to clicks**. Type `sphere()`, color it pink, add a second ball, and adjust their radii and positions. Bind a function to clicks, then add conditions so each ball copies the other’s current color and clicking the background resets both. Move a light and give each ball its own note in the last two steps. Continue with the eight light and sound lessons to learn loops and conditions. Predict a result, run the code, change one thing, and explain what happened. The four optional project lessons cover saving, GitHub, versions, and sharing.
 - **Create**: write and run Python. Use **Run** and **Stop**, including when scheduled sounds continue after the Python body finishes.
 - **Tutorials**: try a feature briefly, then explore a small project with a partner.
 - **Forge**: shape one reusable object with sliders. Make a character, bell, star, heart, dome, cup, or ring.
