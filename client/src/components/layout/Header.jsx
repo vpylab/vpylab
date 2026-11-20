@@ -51,13 +51,14 @@ export default function Header() {
   }, [location.pathname]);
   const active = path => location.pathname === path || location.pathname.startsWith(path + '/')
     || (path === '/missions' && (location.pathname.startsWith('/courses/') || location.pathname.startsWith('/mission/')));
+  const menuDots = { '/missions': '#7b61c3', '/sandbox': '#365bc2', '/tutorials': '#cf832d', '/forge': '#268870', '/gallery': '#b95b7c' };
   const linkStyle = path => ({ color: active(path) ? 'var(--color-accent)' : 'var(--color-text-secondary)' });
   const menuStyle = { backgroundColor: 'var(--color-bg-panel)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-md)' };
   return (
-    <header ref={rootRef} className="sticky top-0 z-50 h-14 shrink-0 w-full min-w-0 flex items-center gap-4 border-b px-5 md:px-8" style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)' }}>
+    <header ref={rootRef} className="vpy-site-header sticky top-0 z-50 h-14 shrink-0 w-full min-w-0 flex items-center gap-4 border-b px-5 md:px-8" style={{ backgroundColor: 'var(--color-bg-panel)', borderColor: 'var(--color-border)' }}>
       <Link to="/" className="no-underline mr-auto shrink-0" aria-label={ui("VPyLab 홈")}><BrandLogo size={26} inverse={!!THEME_META[theme]?.dark} /></Link>
       <nav aria-label={ko ? '주 메뉴' : 'Main navigation'} className="hidden lg:flex items-center gap-4 xl:gap-5 mr-1">
-        {primary.map(item => <Link key={item.path} to={item.path} aria-current={active(item.path) ? 'page' : undefined} className={`no-underline whitespace-nowrap text-sm font-medium py-3 ${item.reference ? 'ml-2 pl-5 border-l' : ''}`} style={{...linkStyle(item.path), borderColor: 'var(--color-border)'}} onMouseEnter={() => { if (item.path === '/sandbox') prewarm(); }}>{item.label}</Link>)}
+        {primary.map(item => <Link key={item.path} to={item.path} aria-current={active(item.path) ? 'page' : undefined} className={`no-underline whitespace-nowrap text-sm font-medium py-3 ${item.reference ? 'ml-2 pl-5 border-l' : ''}`} style={{...linkStyle(item.path), borderColor: 'var(--color-border)', '--nav-dot':menuDots[item.path]}} onMouseEnter={() => { if (item.path === '/sandbox') prewarm(); }}>{menuDots[item.path] && <i className="vpy-nav-dot" aria-hidden="true"/>}{item.label}</Link>)}
       </nav>
       <div className="relative">
         <button ref={moreRef} type="button" aria-expanded={openMenu === 'more'} aria-controls={`${menuId}-more`} onClick={() => setOpenMenu(openMenu === 'more' ? null : 'more')} className="text-sm cursor-pointer border-0 bg-transparent py-2 px-1" style={{ color: 'var(--color-text-secondary)' }}><span className="hidden lg:inline">{ko ? '더 보기' : 'More'}</span><span className="lg:hidden">{ko ? '메뉴' : 'Menu'}</span> <span aria-hidden="true">⌄</span></button>

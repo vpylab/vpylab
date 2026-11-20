@@ -2025,7 +2025,7 @@ const useProjectStore = create((set, get) => ({
    * 기록만 남기기
    * - 최신 코드 행은 덮어쓰지 않습니다.
    * - Supabase에는 현재 코드 스냅샷을 revision으로 남겨 누가 기록했는지 보이게 합니다.
-   * - GitHub 연결 프로젝트라면 docs/voyage/YYYY-MM-DD.md만 갱신합니다.
+   * - GitHub 연결 프로젝트에는 log.md와 기존 날짜별 항해일지를 함께 갱신합니다.
    */
   recordProjectNote: async ({ currentCode = '', message, revisionMessage = '', voyageEntry }) => {
     const fail = (messageText) => {
@@ -2060,6 +2060,7 @@ const useProjectStore = create((set, get) => ({
         source: 'manual',
         projectId: activeProject.id,
         skipParentLookup: true,
+        journal: true,
       }),
       SUPABASE_WRITE_TIMEOUT_MS,
       'VPyLab 기록 저장이 40초 안에 끝나지 않았습니다. 네트워크가 느린 상태입니다. 잠시 후 다시 기록해주세요.',

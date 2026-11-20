@@ -572,6 +572,29 @@ export const useGitHubStore = create((set, get) => {
      * 연 프로젝트에 저장합니다(main.py·index.html·history.md를 한 커밋으로).
      * 결과: saved | conflict | unchanged | error | busy | stale
      */
+    async journalUrl() {
+      const project = get().project;
+      return project ? client().journalUrl(project) : '';
+    },
+
+    async appendJournal(entry) {
+      const { project, account, busy } = get();
+      if (busy) return { status: 'busy' };
+      if (!project?.canPush || !account) return noProject();
+      const blocked = notReady();
+      if (blocked) return blocked;
+      const session = sessionEpoch, epoch = authEpoch;
+      set({ busy:'journal', error:null });
+      try {
+        const result = await client().appendJournal(project, account.login, entry);
+        return session === sessionEpoch ? {status:'saved', ...result} : {status:'stale'};
+      } catch (error) {
+        return session === sessionEpoch ? fail(error, epoch) : {status:'stale'};
+      } finally {
+        if (session === sessionEpoch && get().busy === 'journal') set({busy:''});
+      }
+    },
+
     async commit(code, { message, record } = {}) {
       if (get().busy) return { status: 'busy' };
       if (!get().project) return noProject();

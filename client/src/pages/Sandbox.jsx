@@ -1,3 +1,6 @@
+import { JournalFields } from '../components/journal/JournalForm';
+import { journalAnswers } from '../utils/project-journal';
+import { ServiceMark } from '../components/shared/WorkspaceIdentity';
 import './theater.css';
 import { localizeLessonCode } from '../i18n/owned-content';
 import { DEFAULT_CODE, isStarterCode } from '../data/default-code';
@@ -34,7 +37,6 @@ import { storedGitHubProject } from '../github/tab-session.js';
 import AddonBoundary from '../components/shared/AddonBoundary';
 import { isViewportFullscreen } from '../hooks/useFullscreen';
 import {
-  shouldForceDetailed,
   markDetailedSaved,
   readLastCodeLines,
   writeLastCodeLines,
@@ -152,7 +154,6 @@ export default function Sandbox() {
   const [teamInitialJoinCode, setTeamInitialJoinCode] = useState('');
   const [showProjectGate, setShowProjectGate] = useState(false);
   const [commitModalOpen, setCommitModalOpen] = useState(false);
-  const [commitMustDetailed, setCommitMustDetailed] = useState(false);
   const [commitSaving, setCommitSaving] = useState(false);
   const [commitError, setCommitError] = useState('');
   const [saveConflict, setSaveConflict] = useState(null);
@@ -1335,10 +1336,6 @@ export default function Sandbox() {
         return;
       }
 
-      // 모달 열기 전, "기록 권장 모드" 여부를 결정.
-      // 처음이거나 마지막 기록 후 30분이 지나면 기록 탭을 기본으로 열어줍니다.
-      const force = shouldForceDetailed(activeProject.id, user.id);
-      setCommitMustDetailed(force);
       setCommitError('');
       setCommitModalOpen(true);
       return;
@@ -1373,15 +1370,8 @@ export default function Sandbox() {
     }
 
     const saveType = payload?.saveType === 'record' ? 'record' : 'code';
-    const title = (payload?.title || '').trim();
-    if (!title) {
-      setCommitError(ui("제목을 적어주세요."));
-      return;
-    }
-    if (saveType === 'record' && !(payload.did || '').trim()) {
-      setCommitError(ui("기록 내용은 한 줄 이상 적어주세요."));
-      return;
-    }
+    const title = saveType === 'code' ? (payload?.title || '').trim() || ui("코드 저장") : ui("항해일지");
+    if (saveType === 'record' && !journalAnswers(payload).length) return;
 
     const currentCode = typeof codeOverride === 'string' ? codeOverride : codeRef.current;
     const { localDate, localTime, tzOffset } = nowLocalParts();
@@ -1390,6 +1380,7 @@ export default function Sandbox() {
     const lineDelta = lastLines != null ? codeLines - lastLines : null;
     const recordPayload = {
       kind: 'detailed',
+      help: payload.help, source: payload.source, thought: payload.thought,
       title,
       did: (payload.did || '').trim(),
       blocker: (payload.blocker || '').trim(),
@@ -1403,9 +1394,7 @@ export default function Sandbox() {
     const revisionMessage = saveType === 'record'
       ? [
         ui`기록: ${title}`,
-        recordPayload.did && ui`한 일: ${recordPayload.did}`,
-        recordPayload.blocker && ui`막힌 점: ${recordPayload.blocker}`,
-        recordPayload.next && ui`다음: ${recordPayload.next}`,
+        ...journalAnswers(recordPayload).map(([label,value]) => label + ' — ' + value),
       ].filter(Boolean).join(' | ')
       : title;
 
@@ -1755,9 +1744,10 @@ export default function Sandbox() {
         {(isRunning||audio.playing) && <button onClick={handleStop} className="toolbar-btn --stop">{t('editor.stop')}</button>}
         {recordingSeconds !== null && <button onClick={handleStopRecording} className="toolbar-btn" aria-live="polite" style={{ color: 'var(--color-error)' }}>● {ui`녹화 끝내기 (${recordingSeconds}초)`}</button>}
         <button onClick={handleSave} disabled={!activeProjectCanEdit} className="toolbar-btn" title={ui("현재 코드 저장 (Ctrl/Cmd+S)")}>{activeProjectRole === 'viewer' ? ui("보기 전용") : (saveMsg || ui("저장"))}</button>
-        {DRIVE_EDITOR && <button onClick={() => setDriveDialog('files')} className="toolbar-btn max-w-36 truncate" title={driveFile?.name || ui("내 구글 드라이브")} data-testid="drive-files-button">{driveFile ? driveFile.name : ui("내 드라이브")}</button>}
-        {GITHUB_ADDON && <button onClick={openGitHubProjects} className="toolbar-btn max-w-36 truncate" title={githubProject?.title || ui("GitHub 팀 프로젝트")} data-testid="github-project-button">{githubProject ? githubProject.title : ui("팀 프로젝트")}</button>}
-        {!GITHUB_ADDON && (TEAM_PROJECTS || !DRIVE_EDITOR) && <button onClick={() => { setTeamInitialAction('browse'); setShowTeam(true); }} className="toolbar-btn max-w-36 truncate" title={activeProject?.title || (DRIVE_EDITOR ? ui("GitHub 팀 프로젝트") : ui("프로젝트"))} data-testid="team-project-button">{activeProject ? activeProject.title : DRIVE_EDITOR ? ui("팀 프로젝트") : ui("프로젝트")}</button>}
+        {DRIVE_EDITOR && <button onClick={() => setDriveDialog('files')} className="toolbar-btn max-w-36 truncate" title={driveFile?.name || ui("내 구글 드라이브")} data-testid="drive-files-button"><ServiceMark service="drive"/>{driveFile ? driveFile.name : ui("내 드라이브")}</button>}
+        {TEAM_PROJECTS && activeProject && activeProjectCanEdit && <button className="toolbar-btn" onClick={() => { setCommitError(''); setCommitModalOpen('record'); }}>{ui("항해일지")}</button>}
+        {GITHUB_ADDON && <button onClick={openGitHubProjects} className="toolbar-btn max-w-36 truncate" title={githubProject?.title || ui("GitHub 팀 프로젝트")} data-testid="github-project-button"><ServiceMark service="github"/>{githubProject ? githubProject.title : ui("팀 프로젝트")}</button>}
+        {!GITHUB_ADDON && (TEAM_PROJECTS || !DRIVE_EDITOR) && <button onClick={() => { setTeamInitialAction('browse'); setShowTeam(true); }} className="toolbar-btn max-w-36 truncate" title={activeProject?.title || (DRIVE_EDITOR ? ui("GitHub 팀 프로젝트") : ui("프로젝트"))} data-testid="team-project-button"><ServiceMark service="github"/>{activeProject ? activeProject.title : DRIVE_EDITOR ? ui("팀 프로젝트") : ui("프로젝트")}</button>}
         <div className="relative">
           <button ref={toolsButtonRef} onClick={() => setMobileMore(previous => !previous)} className="toolbar-btn" aria-label={ui("실습 도구")} aria-expanded={mobileMore}>{ui("도구")}<span aria-hidden="true">⌄</span></button>
           {mobileMore && <>
@@ -1982,15 +1972,15 @@ export default function Sandbox() {
 
       {commitModalOpen && (
         <CommitSaveModal
-          key={`${commitModalOpen ? 'open' : 'closed'}-${commitMustDetailed ? 'record' : 'code'}`}
-          open={commitModalOpen}
+          key={commitModalOpen ? 'open' : 'closed'}
+          open={Boolean(commitModalOpen)}
+          initialMode={commitModalOpen === 'record' ? 'record' : 'code'}
           projectTitle={activeProject?.title || ''}
           githubConnected={Boolean(activeProject?.github_repo)}
           saving={commitSaving}
           progressLabel={projectSaveStatus}
           elapsedSeconds={commitElapsed}
           error={ui(commitError)}
-          mustDetailed={commitMustDetailed}
           onSubmit={handleProjectCommit}
           onClose={() => {
             if (commitSaving) return;
@@ -2131,27 +2121,18 @@ function CommitSaveModal({
   githubConnected = false,
   saving,
   progressLabel,
+  initialMode = 'code',
   elapsedSeconds = 0,
   error,
-  mustDetailed = false,
   onSubmit,
   onClose,
 }) {
   const ui = useUiText();
-  const [saveType, setSaveType] = useState(mustDetailed ? 'record' : 'code');
+  const [saveType, setSaveType] = useState(initialMode);
   const [title, setTitle] = useState('');
-  const [did, setDid] = useState('');
-  const [blocker, setBlocker] = useState('');
-  const [next, setNext] = useState('');
-  const [touched, setTouched] = useState(false);
-
+  const [answers, setAnswers] = useState({});
   if (!open) return null;
-
-  const trimmedTitle = title.trim();
-  const trimmedDid = did.trim();
-  const titleMissing = !trimmedTitle;
-  const didMissing = saveType === 'record' && !trimmedDid;
-  const canSubmit = !titleMissing && !didMissing && !saving;
+  const canSubmit = !saving && (saveType === 'code' || journalAnswers(answers).length > 0);
 
   const progressPercent = saving ? Math.min(92, 14 + elapsedSeconds * 4) : 0;
   const waitingMessage = elapsedSeconds >= 20
@@ -2164,19 +2145,7 @@ function CommitSaveModal({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    setTouched(true);
-    if (!canSubmit) return;
-    if (saveType === 'code') {
-      onSubmit({ saveType: 'code', title: trimmedTitle });
-    } else {
-      onSubmit({
-        saveType: 'record',
-        title: trimmedTitle,
-        did: trimmedDid,
-        blocker: blocker.trim(),
-        next: next.trim(),
-      });
-    }
+    if (canSubmit) onSubmit({ saveType, title: title.trim(), ...(saveType === 'record' ? answers : {}) });
   };
 
   const inputStyle = {
@@ -2262,88 +2231,17 @@ function CommitSaveModal({
             }}
             role="tab"
             aria-selected={saveType === 'record'}
-          >{ui("기록 남기기")}</button>
+          >{ui("항해일지")}</button>
         </div>
 
-        {mustDetailed ? (
-          <div
-            className="mb-4 px-3 py-2.5 text-xs leading-relaxed"
-            style={{
-              backgroundColor: 'rgba(74,108,247,0.08)',
-              borderLeft: '3px solid var(--color-accent)',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            <div className="font-bold mb-0.5" style={{ color: 'var(--color-accent)' }}>{ui("잠깐 회고하는 시간이에요")}</div>{ui("오늘 처음이거나 마지막 기록 후 30분이 지났어요. 코드 저장과 별개로 기록을 먼저 남겨두면 이어받기가 훨씬 쉬워집니다.")}</div>
-        ) : null}
-
-        {/* 제목 — 항상 노출, 항상 필수 */}
-        <label className="block">
-          <span className={labelClass} style={labelStyle}>{ui("제목")}<span style={{ color: 'var(--color-error)' }}>*</span>
-          </span>
-          <input
-            autoFocus
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={saveType === 'code' ? ui("예: 카메라 위치 조정 코드 저장") : ui("예: 오늘 역할 정리")}
-            className="w-full border px-3 py-2 text-sm outline-none"
-            style={inputStyle}
-            maxLength={120}
-          />
-          {touched && titleMissing && (
-            <span className="mt-1 block text-[11px]" style={{ color: 'var(--color-error)' }}>{ui("제목은 한 줄이라도 적어주세요.")}</span>
-          )}
-        </label>
-
-        {/* 기록 남기기 추가 필드 */}
-        {saveType === 'record' && (
-          <>
-            <label className="block mt-3">
-              <span className={labelClass} style={labelStyle}>{ui("기록 내용")}<span style={{ color: 'var(--color-error)' }}>*</span>
-              </span>
-              <textarea
-                value={did}
-                onChange={(e) => setDid(e.target.value)}
-                placeholder={ui("예: 민준은 공 움직임을 맡고, 나는 벽 충돌 조건을 확인했다.")}
-                className="w-full border px-3 py-2 text-sm outline-none resize-y"
-                style={{ ...inputStyle, minHeight: 60 }}
-                maxLength={500}
-                rows={2}
-              />
-              {touched && didMissing && (
-                <span className="mt-1 block text-[11px]" style={{ color: 'var(--color-error)' }}>{ui("기록 내용은 한 줄 이상 적어주세요.")}</span>
-              )}
-            </label>
-
-            <label className="block mt-3">
-              <span className={labelClass} style={labelStyle}>{ui("막힌 점")}<span className="font-normal" style={{ color: 'var(--color-text-muted)' }}>{ui("(선택)")}</span>
-              </span>
-              <textarea
-                value={blocker}
-                onChange={(e) => setBlocker(e.target.value)}
-                placeholder={ui("없으면 비워두세요. 있으면 다음 사람이 이어받기 좋아요.")}
-                className="w-full border px-3 py-2 text-sm outline-none resize-y"
-                style={{ ...inputStyle, minHeight: 50 }}
-                maxLength={500}
-                rows={2}
-              />
-            </label>
-
-            <label className="block mt-3">
-              <span className={labelClass} style={labelStyle}>{ui("다음 할 일")}<span className="font-normal" style={{ color: 'var(--color-text-muted)' }}>{ui("(선택)")}</span>
-              </span>
-              <textarea
-                value={next}
-                onChange={(e) => setNext(e.target.value)}
-                placeholder={ui("예: 벽과 반사 효과 추가하기")}
-                className="w-full border px-3 py-2 text-sm outline-none resize-y"
-                style={{ ...inputStyle, minHeight: 50 }}
-                maxLength={500}
-                rows={2}
-              />
-            </label>
-          </>
-        )}
+        {saveType === 'code' ? <label className="block">
+          <span className={labelClass} style={labelStyle}>{ui("오늘 한 일 한 줄 요약 (선택)")}</span>
+          <input autoFocus value={title} onChange={e => setTitle(e.target.value)} maxLength={120}
+            className="w-full border px-3 py-2 text-sm" style={inputStyle} placeholder={ui("예: 카메라 위치 조정 코드 저장")} />
+        </label> : <>
+          <p className="text-xs mb-3">{ui("원하는 항목만 적으세요. 날짜·시각과 작성자가 자동으로 붙습니다.")} {githubConnected && ui("공개 저장소의 기록은 누구나 볼 수 있습니다.")}</p>
+          <JournalFields values={answers} onChange={setAnswers} disabled={saving} />
+        </>}
 
         {error && (
           <p
@@ -2394,7 +2292,7 @@ function CommitSaveModal({
           >{ui("취소")}</button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={!canSubmit}
             className="border-none px-4 py-2 text-sm font-semibold disabled:opacity-60"
             style={{
               backgroundColor: 'var(--color-accent)',

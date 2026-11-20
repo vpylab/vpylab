@@ -1,3 +1,4 @@
+import { WorkspaceIdentity, TonePicker } from '../shared/WorkspaceIdentity';
 import { useUiText } from "../../i18n/ui-text";
 import { useEffect, useState } from 'react';
 import useProjectStore from '../../stores/projectStore';
@@ -305,9 +306,9 @@ export default function TeamProjectsPanel({
   // 미로그인
   if (!user) {
     return (
-      <Overlay onClose={onClose}>
-        <Header title={ui("프로젝트")} onClose={onClose} />
-        <div className="flex-1 flex items-center justify-center" style={{ padding: 48 }}>
+      <Overlay onClose={onClose} compact>
+        <Header title={ui("팀 프로젝트")} onClose={onClose} />
+        <div className="vpy-login-body">
           <EmptyState
             title={ui("로그인이 필요합니다")}
             description={DRIVE_SAVE
@@ -326,7 +327,7 @@ export default function TeamProjectsPanel({
 
   return (
     <Overlay onClose={onClose}>
-      <Header title={ui("프로젝트")} onClose={onClose} />
+      <Header title={ui("팀 프로젝트")} onClose={onClose} />
 
       {githubAuthError && <StatusBanner tone="warning"><p role="alert">{ui(githubAuthError)}</p></StatusBanner>}
       {tokenStatus === 'missing' && (
@@ -548,7 +549,8 @@ export default function TeamProjectsPanel({
 // ========================================
 // 풀스크린 오버레이 컨테이너
 // ========================================
-function Overlay({ children, onClose }) {
+function Overlay({ children, onClose, compact = false }) {
+  const ui = useUiText();
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
@@ -556,7 +558,7 @@ function Overlay({ children, onClose }) {
       onClick={onClose}
     >
       <div
-        className="w-[min(1080px,96vw)] h-[min(720px,92vh)] flex flex-col shadow-2xl"
+        className={`vpy-workspace vpy-class-project ${compact ? 'is-compact' : ''} flex flex-col shadow-2xl`} role="dialog" aria-modal="true" aria-label={ui("팀 프로젝트")}
         style={{
           backgroundColor: 'var(--color-bg-panel)',
           border: '1px solid var(--color-border)',
@@ -574,18 +576,13 @@ function Header({ title, onClose }) {
   const ui = useUiText();
   return (
     <div
-      className="flex items-center justify-between border-b"
+      className="vpy-class-head flex items-center justify-between border-b"
       style={{
         borderColor: 'var(--color-border)',
         padding: '20px 28px',
       }}
     >
-      <div>
-        <h2 className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-          {title}
-        </h2>
-        <p className="text-xs mt-0.5 break-keep" style={{ color: 'var(--color-text-muted)' }}>{ui("생성 · 합류 · 권한 관리")}</p>
-      </div>
+      <WorkspaceIdentity team><h2>{title}</h2></WorkspaceIdentity>
       <button
         onClick={onClose}
         className="h-9 w-9 cursor-pointer border bg-transparent text-lg"
@@ -597,6 +594,7 @@ function Header({ title, onClose }) {
       >
         ×
       </button>
+      <TonePicker />
     </div>
   );
 }
@@ -639,7 +637,7 @@ function ProjectCard({
 
   return (
     <div
-      className="flex flex-col transition-shadow"
+      className="vpy-project-card flex flex-col transition-shadow"
       style={{
         backgroundColor: 'var(--color-bg-panel)',
         border: '1px solid var(--color-border)',

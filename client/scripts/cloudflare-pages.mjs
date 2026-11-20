@@ -49,7 +49,7 @@ export function openEditionCsp(value) {
 const GOOGLE_SIGN_IN = {
   'script-src': ['https://accounts.google.com/gsi/client'],
   'style-src': ['https://accounts.google.com/gsi/style'],
-  'connect-src': ['https://www.googleapis.com', 'https://oauth2.googleapis.com', 'https://accounts.google.com/gsi/'],
+  'connect-src': ['https://www.googleapis.com', 'https://docs.googleapis.com', 'https://oauth2.googleapis.com', 'https://accounts.google.com/gsi/'],
   'frame-src': ['https://accounts.google.com/gsi/'],
 };
 /** CSP 지시문에 출처를 더합니다. 이미 있으면 그대로 두고, 'none'은 뺍니다. */

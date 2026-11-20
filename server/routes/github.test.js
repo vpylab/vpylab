@@ -242,6 +242,8 @@ test('각 학생의 항해 일지가 누적되고 같은 기록의 재전송은 
   assert.equal((await post('/projects/commit', note('note-b', '학생 B'))).status, 200);
   assert.equal((await post('/projects/commit', note('note-b', '학생 B'))).status, 200);
   const diary = files.get(`docs/voyage/${today}.md`);
+  assert.match(files.get('log.md'), /학생 A/);
+  assert.equal(files.get('log.md').split('vpylab-revision:note-b').length - 1, 1);
   assert.match(diary, /학생 A/);
   assert.match(diary, /학생 B/);
   assert.equal(diary.split('vpylab-revision:note-b').length - 1, 1);

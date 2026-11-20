@@ -199,9 +199,10 @@ function buildContentsUrl(owner, repo, path, branch) {
 async function getContentsFile(owner, repo, path, token, branch = 'main') {
   try {
     const res = await ghFetch(buildContentsUrl(owner, repo, path, branch), token);
+    const blob = res.encoding === 'none' ? await ghFetch(`https://api.github.com/repos/${owner}/${repo}/git/blobs/${res.sha}`, token) : res;
     return {
       sha: res.sha,
-      text: Buffer.from(res.content || '', 'base64').toString('utf-8'),
+      text: Buffer.from(blob.content || '', 'base64').toString('utf-8'),
     };
   } catch (e) {
     if (e.status === 404) return null;
@@ -572,8 +573,8 @@ function validateVoyageEntryInput(entry) {
   if (!sanitizeVoyageText(entry.title, 100)) {
     return '항해 일지 제목을 입력해주세요.';
   }
-  if (entry.kind === 'detailed' && !sanitizeVoyageText(entry.did, 500)) {
-    return '자세히 저장에는 "한 일"이 필요합니다.';
+  if (entry.kind === 'detailed' && !['did','blocker','help','source','thought','next'].some(key => sanitizeVoyageText(entry[key], 500))) {
+    return '항해일지에 한 가지 이상 적어주세요.';
   }
   if (!isValidLocalDate(entry.localDate)) {
     return 'voyageEntry.localDate 형식 또는 범위가 올바르지 않습니다.';
@@ -602,6 +603,10 @@ function formatVoyageDetailedBlock(entry) {
   lines.push(`- 작성자: ${author}`);
   if (did) lines.push(`- 한 일: ${did}`);
   if (blocker) lines.push(`- 막힌 점: ${blocker}`);
+  for (const [key, label] of [['help','친구와의 협력'],['source','참고한 자료와 나의 시도'],['thought','느낀 점과 재미있었던 점']]) {
+    const value = sanitizeVoyageText(entry[key], 500);
+    if (value) lines.push('- ' + label + ': ' + value);
+  }
   if (next) lines.push(`- 다음 할 일: ${next}`);
   if (codeLines != null) {
     const delta = lineDelta != null ? ` (${lineDelta >= 0 ? '+' : ''}${lineDelta})` : '';
@@ -1787,9 +1792,16 @@ router.post('/commit', requireSupabaseUser, writeLimiter, requireTeamProjectAcce
           githubToken,
           `📔 voyage: ${finalMsg}`,
           async () => {
-            const enriched = { ...voyageEntry, authorLabel, revisionId };
+            const metadata = req.supabaseUser?.user_metadata;
+            const writer = metadata?.user_name || metadata?.preferred_username || req.supabaseUser?.id?.slice(0, 8) || authorLabel;
+            const enriched = { ...voyageEntry, authorLabel: writer, revisionId };
             const voyageUpdate = await buildVoyageFileUpdate(owner, repo, enriched, githubToken, branch);
-            const files = [voyageUpdate.file];
+            const journal = await getContentsFile(owner, repo, 'log.md', githubToken, branch);
+            const previous = journal?.text ?? '# 항해일지\n\n[이전 날짜별 기록](history.md)';
+            const marker = revisionId ? '<!-- vpylab-revision:' + revisionId + ' -->' : '';
+            const entry = '### ' + enriched.localDate + '\n\n' + formatVoyageDetailedBlock(enriched);
+            const content = marker && previous.includes(marker) ? previous : previous.trimEnd() + '\n\n' + entry + marker + '\n';
+            const files = [voyageUpdate.file, { path:'log.md', content }];
             let indexUpdated = false;
 
             if (voyageUpdate.isNewDay) {

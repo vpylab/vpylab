@@ -95,6 +95,7 @@ const useCodeStore = create((set, get) => ({
     source = 'manual',
     projectId = null,
     skipParentLookup = false,
+    journal = false,
   }) => {
     let parent = null;
     if (!skipParentLookup) {
@@ -118,7 +119,7 @@ const useCodeStore = create((set, get) => ({
         code_id: codeId,
         parent_revision_id: parent?.id || null,
         author_id: userId,
-        message: message.slice(0, 200),  // 너무 긴 메시지 차단
+        message: message.slice(0, journal ? 3600 : 200),
         code_snapshot: code,
         code_size: code.length,
         source,
