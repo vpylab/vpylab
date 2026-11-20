@@ -79,10 +79,10 @@ export default function ForgePreview({model,view,onBell,onCapture,waveTick=0,pla
     const meshes=model.parts.filter(p=>!p.effect).map(p=>getMesh('forge_'+p.name)).filter(Boolean);
     if(!s.place){
       if(!placement)return;
-      const outer=new THREE.Group(),inner=new THREE.Group(),axes=new THREE.AxesHelper(3);
-      outer.add(inner);s.scene.add(outer,axes);s.place={outer,inner,axes};
+      const outer=new THREE.Group(),inner=new THREE.Group(),effects=new THREE.Group(),axes=new THREE.AxesHelper(3);
+      outer.add(inner);s.scene.add(outer,effects,axes);s.place={outer,inner,effects,axes};
     }
-    const {outer,inner,axes}=s.place;
+    const {outer,inner,effects,axes}=s.place;
     axes.visible=!!placement;
     outer.position.set(0,0,0);outer.quaternion.identity();outer.scale.setScalar(1);inner.position.set(0,0,0);
     const tint=new THREE.Color(placement?placement.tint:'#ffffff');
@@ -90,6 +90,9 @@ export default function ForgePreview({model,view,onBell,onCapture,waveTick=0,pla
       (placement?inner:s.scene).add(mesh);
       mesh.traverse(node=>{for(const material of [].concat(node.material||[])){if(!material.color)continue;material.userData.forgeBase??=material.color.clone();material.color.copy(material.userData.forgeBase).multiply(tint);}});
     }
+    // 종의 음파 고리는 묶음에 들어가지 않는 효과입니다. 생성 함수처럼 위치와 크기만 따라가고 돌지는 않습니다.
+    for(const part of model.parts){if(!part.effect)continue;const mesh=getMesh('forge_'+part.name);if(mesh)(placement?effects:s.scene).add(mesh);}
+    effects.position.set(placement?placement.x:0,placement?placement.y:0,placement?placement.z:0);effects.scale.setScalar(placement?placement.scale:1);
     if(!placement)return;
     outer.updateMatrixWorld(true);
     const box=new THREE.Box3();for(const mesh of meshes)box.union(new THREE.Box3().setFromObject(mesh));
