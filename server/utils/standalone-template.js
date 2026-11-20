@@ -3,7 +3,7 @@
  * 학생 코드를 Pyodide + Three.js CDN과 함께 단일 HTML 파일로 생성
  *
  * 포함 기능 (v3):
- * - 3D 객체: sphere, box, cylinder, arrow, cone, ring, local_light, distant_light, compound
+ * - 3D 객체: sphere, box, cylinder, arrow, cone, ring, local_light, distant_light, compound, group
  *   + pyramid, ellipsoid, helix, label/text, curve, points, vertex, triangle, quad, extrusion
  * - vector 확장: .proj, .comp, .diff_angle, .rotate
  * - 객체 메서드: .clone(), .rotate(), .attach_trail(), .clear_trail()
@@ -18,7 +18,7 @@
  *
  * 미지원 (브라우저 IDE에서만 동작):
  * - 2D 그래프 (graph, gcurve, gdots, gvbars, ghbars) — DOM 패널 필요
- * - 마우스·터치 이벤트(scene.mouse 등). 장면에 초점을 둔 키 입력은 지원
+ * - scene.mouse.ray·project(). 키 입력과 click·mousedown·mouseup·mousemove 이벤트, scene.mouse.pos·pick은 지원
  * - scene.pause() / scene.waitfor() / input() — 이벤트·입력 채널 필요
  *   학생 코드가 위 기능을 사용하면 콘솔 경고 후 무시.
  *
@@ -37,6 +37,7 @@ import { createCompoundAppearanceTools } from '../shared/compound-appearance.js'
 import { createCameraSystem } from '../shared/camera-system.js';
 import { createPrimitiveGeometry } from '../shared/primitive-geometry.js';
 import { createPackageImportTools } from '../shared/package-imports.js';
+import { attachPointerInput } from '../shared/pointer-input.js';
 
 import { playSampleVoice } from '../shared/instruments/play-sample.js';
 import { createRoomBus } from '../shared/instruments/room-audio.js';
@@ -138,6 +139,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
   const primitiveGeometry = (${createPrimitiveGeometry.toString()})(THREE);
   const normalizeRenderColors = (${createRenderColorNormalizer.toString()})();
   const compoundAppearance = (${createCompoundAppearanceTools.toString()})(THREE);
+  // 편집기(Viewport3D)와 같은 마우스·손가락 입력 처리(server/shared/pointer-input.js)
+  const attachPointerInput = (${attachPointerInput.toString()});
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
   // === Three.js 씬 셋업 ===
@@ -729,6 +732,12 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     geometry.computeBoundingSphere();
   }
 
+  // group(묶음) 안으로 객체를 옮긴다. 하위 객체의 위치는 묶음 기준 상대 좌표가 된다.
+  function attachToGroup(mesh, groupId) {
+    const parent = groupId ? meshes.get(groupId) : null;
+    if (parent?.userData?.vpType === 'group') parent.add(mesh);
+  }
+
   function processCmd(command) {
     const cmd = normalizeRenderColors(command);
     if (cmd.action === 'widget_create') return widgets.createWidget(cmd);
@@ -899,6 +908,12 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
           }
           break;
         }
+        case 'group': {
+          // 묶음: 하위 객체는 create 명령의 group 값으로 이 묶음 안에 들어온다(위치는 묶음 기준)
+          mat.dispose();
+          mesh = new THREE.Group();
+          break;
+        }
         case 'local_light': {
           const vpLight = cmd.distance_falloff === false;
           const lt = new THREE.PointLight(toColor(cmd.color||[1,1,1]), (cmd.intensity??1)*(vpLight ? Math.PI/0.9 : 1), vpLight ? 0 : 50, vpLight ? 0 : 2);
@@ -913,12 +928,13 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       }
       if (cmd.pos) mesh.position.set(cmd.pos[0], cmd.pos[1], cmd.pos[2]);
       mesh.visible = cmd.visible !== false;
-      mesh.userData = Object.assign(mesh.userData || {}, { vpType: cmd.type });
+      mesh.userData = Object.assign(mesh.userData || {}, { vpType: cmd.type, vpId: cmd.id });
       if (cmd.type === 'arrow') { const a0 = cmd.axis || [1,0,0]; mesh.userData.arrowLen = Math.hypot(...a0) || 1; mesh.userData.shaftwidth = cmd.shaftwidth || 0.1; }
       if (cmd.type === 'helix') { mesh.userData.helixRadius = cmd.radius || 1; mesh.userData.helixCoils = cmd.coils || 5; }
       if (['box','pyramid','ellipsoid'].includes(cmd.type) && (cmd.axis || cmd.up)) { mesh.userData.boxAxis = cmd.axis || [1,0,0]; mesh.userData.boxUp = cmd.up || [0,1,0]; applyBoxOrientation(mesh); }
       scene.add(mesh);
       meshes.set(cmd.id, mesh);
+      attachToGroup(mesh, cmd.group);
       if (cmd.make_trail) createTrail(cmd);
     } else if (cmd.action === 'update') {
       const m = meshes.get(cmd.id); if (!m) return;
@@ -1031,13 +1047,14 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
       const center=cmd.center?new THREE.Vector3(...cmd.center):new THREE.Box3().setFromObject(group).getCenter(new THREE.Vector3());
       group.children.forEach(child=>child.position.sub(center));
       group.position.copy(cmd.pos?new THREE.Vector3(...cmd.pos):center);
-      group.userData={vpType:'compound',boxAxis:cmd.axis||[1,0,0],boxUp:cmd.up||[0,1,0]};
+      group.userData={vpType:'compound',vpId:cmd.id,boxAxis:cmd.axis||[1,0,0],boxUp:cmd.up||[0,1,0]};
       applyBoxOrientation(group);
       compoundAppearance.init(group);
       compoundAppearance.apply(group,cmd);
       group.visible = cmd.visible !== false;
       scene.add(group);
       meshes.set(cmd.id, group);
+      attachToGroup(group, cmd.group);
       if (cmd.make_trail) createTrail(cmd);
     } else if (cmd.action === 'sound') {
       processSoundCmd(cmd);
@@ -1097,10 +1114,52 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
     const canvasElement = renderer.domElement;
     canvasElement.tabIndex = 0;
     canvasElement.setAttribute('aria-label', '3D 장면 / 3D scene');
+    // 편집기처럼 장면이나 페이지 본문에 초점이 있으면 키를 받는다(위젯 입력 칸에 쓰는 글자는 제외).
+    const acceptsKeyboard = () => !document.activeElement || document.activeElement === document.body || document.activeElement === canvasElement;
     for (const name of ['keydown', 'keyup']) {
-      canvasElement.addEventListener(name, event => keyEvent(name, event.key));
+      window.addEventListener(name, event => { if (acceptsKeyboard()) keyEvent(name, event.key); });
     }
     canvasElement.addEventListener('blur', () => keyEvent('blur', ''));
+    window.addEventListener('blur', () => keyEvent('blur', ''));
+
+    // scene.bind('click') 등 마우스 이벤트와 scene.mouse. 고른 물체는 편집기처럼 가장 가까운 VPython 객체다.
+    const mouseEvent = pyodide.globals.get('_mouse_event');
+    const mouseState = pyodide.globals.get('_mouse_state');
+    const eventBound = pyodide.globals.get('_event_bound');
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const groundPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    const planePoint = new THREE.Vector3();
+    const locate = (event) => {
+      const rect = canvasElement.getBoundingClientRect();
+      ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const targets = [];
+      scene.traverseVisible((object) => {
+        if (!object.geometry && !object.isSprite) return;
+        let owner = object;
+        while (owner && !owner.userData?.vpId) owner = owner.parent;
+        if (owner) targets.push(object);
+      });
+      const hits = raycaster.intersectObjects(targets, false);
+      if (hits.length > 0) {
+        let owner = hits[0].object;
+        while (owner && !owner.userData?.vpId) owner = owner.parent;
+        return { pos: hits[0].point.toArray(), pick: owner?.userData?.vpId || null };
+      }
+      if (raycaster.ray.intersectPlane(groundPlane, planePoint)) return { pos: planePoint.toArray(), pick: null };
+      return { pos: null, pick: null };
+    };
+    attachPointerInput(canvasElement, {
+      canvasId: 'scene',
+      locate,
+      isEventBound: (name) => Boolean(eventBound(name)),
+      postEvent: (payload) => mouseEvent(JSON.stringify(payload)),
+      postMouseState: (pos, pick) => mouseState(JSON.stringify({ pos, pick })),
+      nativeZoomEnabled: () => controls.enableZoom,
+      canFit: () => false,
+    });
 
     // 'vpython' 모듈로 등록 — from vpython import * 가 동작하도록
     await pyodide.runPythonAsync(\`
@@ -1225,6 +1284,7 @@ import asyncio
 import re
 import math
 import random as _random_module
+import weakref
 from math import *
 
 _command_buffer = []
@@ -1243,6 +1303,26 @@ def _new_id():
     global _object_counter
     _object_counter += 1
     return f"obj_{_object_counter}"
+
+# 클릭한 도형을 찾는 표: 화면 쪽 id → Python 객체. compound 부품의 id는 완성품을 가리킨다.
+_pick_targets = weakref.WeakValueDictionary()
+
+def _picked_object(pick_id):
+    obj = _pick_targets.get(pick_id) if pick_id else None
+    while obj is not None:
+        owner = _pick_targets.get(obj._id)
+        if owner is None or owner is obj:
+            return obj if getattr(obj, 'visible', True) else None
+        obj = owner
+    return None
+
+def _group_ref(value):
+    """group= 인자를 검사해 group 객체를 돌려준다. None이면 None."""
+    if value is None:
+        return None
+    if not isinstance(value, group):
+        raise TypeError("group= 인자에는 group()으로 만든 객체를 넘겨야 합니다")
+    return value
 
 
 # === vector 클래스 ===
@@ -1464,6 +1544,7 @@ class _GObject:
     def __init__(self, obj_type, **kwargs):
         self._id = _new_id()
         self._type = obj_type
+        self._group = _group_ref(kwargs.pop('group', None))
         self._make_trail = kwargs.pop('make_trail', False)
         self._trail_color = kwargs.pop('trail_color', None)
         _bind_vector(self, 'pos', kwargs.get('pos', vector(0,0,0)), False)
@@ -1473,7 +1554,8 @@ class _GObject:
         self._emissive = kwargs.get('emissive', False)
         self._texture = kwargs.get('texture')
         self._velocity = kwargs.get('velocity', vector(0,0,0))
-        _add_command({
+        _pick_targets[self._id] = self
+        cmd = {
             "action":"create","id":self._id,"type":obj_type,
             "pos":self._pos.to_list(),"color":self._color.to_list(),
             "visible":self._visible,"opacity":self._opacity,
@@ -1482,7 +1564,12 @@ class _GObject:
             **{k:v for k,v in kwargs.items() if k not in ('pos','color','visible','opacity','velocity') and isinstance(v,(int,float,bool,str))},
             **{k:v.to_list() for k,v in kwargs.items() if k not in ('pos','color','visible','opacity','velocity') and isinstance(v,vector)},
             **{k:list(v) for k,v in kwargs.items() if k not in ('pos','color','visible','opacity','velocity') and isinstance(v,(list,tuple))},
-        })
+        }
+        if self._group is not None:
+            # group(묶음)에 속한 객체: pos는 묶음 기준의 상대 위치
+            self._group._objects.append(self)
+            cmd['group'] = self._group._id
+        _add_command(cmd)
     @property
     def texture(self): return self._texture
     @texture.setter
@@ -1685,6 +1772,7 @@ class compound:
     def __init__(self, objects, **kw):
         self._id = _new_id()
         self._objects = list(objects)
+        self._group = _group_ref(kw.pop('group', None))
         _send_commands()
         bounds = json.loads(str(_js_compound_bounds(json.dumps([o._id for o in self._objects]))))
         self._center0 = _coerce_vector(kw.get('origin'), vector(*bounds['center']))
@@ -1712,6 +1800,12 @@ class compound:
         }
         if 'shininess' in kw: cmd['shininess']=self._shininess
         if 'emissive' in kw: cmd['emissive']=bool(kw['emissive'])
+        if self._group is not None:
+            self._group._objects.append(self)
+            cmd['group'] = self._group._id
+        _pick_targets[self._id] = self
+        for part in self._objects:
+            _pick_targets[part._id] = self
         _add_command(cmd)
     @property
     def axis(self): return self._axis
@@ -1874,6 +1968,104 @@ class label:
                       "border": float(kw.get('border', 0))})
 text = label
 
+# === group (객체 묶음, 하위 객체를 나중에 따로 바꿀 수 있다) ===
+# 편집기 vpython-api.py의 group과 같은 뜻이다(명세: GlowScript lib/glow/primitives.js의 group, MIT).
+# - 하위 객체의 pos는 묶음 기준 상대 위치이고 화면 위치는 g.pos를 더한 값이다
+# - g.rotate()와 g.axis 변경은 하위 객체를 하나씩 돌린다. g.up·g.color는 하위 객체 모두에 전한다
+class group:
+    def __init__(self, **kw):
+        self._id = _new_id()
+        self._objects = []
+        self._parent = _group_ref(kw.get('group'))
+        _bind_vector(self, 'pos', _coerce_vector(kw.get('pos'), vector(0,0,0)), False)
+        self._axis = _coerce_vector(kw.get('axis'), vector(1,0,0))
+        self._up = _coerce_vector(kw.get('up'), vector(0,1,0))
+        self._color = _coerce_vector(kw.get('color'), vector(1,1,1))
+        self._visible = bool(kw.get('visible', True))
+        cmd = {"action":"create","id":self._id,"type":"group","pos":self._pos.to_list(),"visible":self._visible}
+        if self._parent is not None:
+            self._parent._objects.append(self)
+            cmd['group'] = self._parent._id
+        _add_command(cmd)
+    @property
+    def objects(self):
+        """묶음에 든 객체 목록(복사본). 객체는 box(group=g)처럼 만들 때 넣는다."""
+        return list(self._objects)
+    def __len__(self):
+        return len(self._objects)
+    def __getitem__(self, index):
+        return self._objects[index]
+    def group_to_world(self, v):
+        return _coerce_vector(v, vector(0,0,0)) + self._pos
+    def world_to_group(self, v):
+        return _coerce_vector(v, vector(0,0,0)) - self._pos
+    @property
+    def pos(self): return self._pos
+    @pos.setter
+    def pos(self, v):
+        _bind_vector(self, 'pos', _coerce_vector(v, vector(0,0,0)))
+    @property
+    def axis(self): return self._axis
+    @axis.setter
+    def axis(self, value):
+        new_axis = _coerce_vector(value, vector(1,0,0))
+        old_axis = self._axis
+        if old_axis.mag > 0 and new_axis.mag > 0:
+            ang = old_axis.diff_angle(new_axis)
+            ax = old_axis.cross(new_axis)
+            if ang > 1e-12 and ax.mag < 1e-12:
+                # 정반대 방향(외적이 0): 옛 축에 수직인 축으로 반 바퀴 돈다
+                ax = old_axis.cross(vector(0,1,0))
+                if ax.mag < 1e-12:
+                    ax = old_axis.cross(vector(1,0,0))
+                ang = math.pi
+            if ang > 1e-12:
+                self._rotate_children(ang, ax, self._pos)
+                self._up = self._up.rotate(ang, axis=ax)
+        self._axis = new_axis
+    @property
+    def up(self): return self._up
+    @up.setter
+    def up(self, value):
+        self._up = _coerce_vector(value, vector(0,1,0))
+        for obj in self._objects:
+            if isinstance(getattr(obj, '_up', None), vector):
+                obj.up = self._up.clone()
+    @property
+    def color(self): return self._color
+    @color.setter
+    def color(self, value):
+        self._color = _coerce_vector(value, vector(1,1,1))
+        for obj in self._objects:
+            if hasattr(obj, 'color'):
+                obj.color = self._color.clone()
+    @property
+    def visible(self): return self._visible
+    @visible.setter
+    def visible(self, value):
+        """묶음 전체를 숨기거나 보인다. 하위 객체 각각의 visible 값은 그대로 둔다."""
+        self._visible = bool(value)
+        _add_command({"action":"update","id":self._id,"visible":self._visible})
+    def _rotate_children(self, angle, axis, origin):
+        rel_origin = _coerce_vector(origin, self._pos) - self._pos
+        for obj in self._objects:
+            if hasattr(obj, 'rotate'):
+                obj.rotate(angle, axis=axis, origin=rel_origin)
+    def rotate(self, angle, axis=None, origin=None):
+        if axis is None:
+            if self._axis.mag > 0:
+                axis = self._axis.clone()
+            else:
+                axis = vector(0,1,0)
+        axis = _coerce_vector(axis, vector(0,1,0))
+        if origin is None:
+            origin = self._pos
+        else:
+            origin = _coerce_vector(origin, self._pos)
+        self._rotate_children(angle, axis, origin)
+        self._axis = self._axis.rotate(angle, axis=axis)
+        self._up = self._up.rotate(angle, axis=axis)
+
 def _coerce_vector(value, default=None):
     """vector, list, tuple을 vector로 맞춘다."""
     if isinstance(value, vector):
@@ -1921,6 +2113,7 @@ class _PointList:
 
     def __init__(self, *args, **kwargs):
         self._id = _new_id()
+        self._group = _group_ref(kwargs.pop('group', None))
         self._color = _coerce_vector(kwargs.get('color'), color.white)
         self._radius = float(kwargs.get('radius', 0))
         self._visible = bool(kwargs.get('visible', True))
@@ -1954,6 +2147,10 @@ class _PointList:
             "radii": list(self._radius_list),
         }
         cmd.update(self._extra_create(kwargs))
+        if self._group is not None:
+            self._group._objects.append(self)
+            cmd['group'] = self._group._id
+        _pick_targets[self._id] = self
         _add_command(cmd)
 
     def _extra_create(self, kwargs):
@@ -2544,10 +2741,7 @@ class _Scene:
                 handlers.remove(fn)
     @property
     def mouse(self):
-        class _M:
-            pos=vector(0,0,0)
-            pick=None
-        return _M()
+        return _mouse_now
 
 scene = _Scene()
 frame = compound
@@ -2558,8 +2752,43 @@ def _unsupported_warn(name):
     print(f"[{name}] standalone HTML export에서는 이 기능이 지원되지 않습니다.")
 
 from types import SimpleNamespace as _SimpleNamespace
-_key_handlers = {"keydown": [], "keyup": []}
+_key_handlers = {"keydown": [], "keyup": [], "click": [], "mousedown": [], "mouseup": [], "mousemove": []}
 _pressed_keys = set()
+_mouse_now = _SimpleNamespace(pos=vector(0,0,0), pick=None)
+
+def _vpython_key(key):
+    """브라우저 키 이름을 편집기와 같은 VPython 키 이름으로 바꾼다."""
+    special = {
+        'ArrowLeft': 'left', 'ArrowRight': 'right', 'ArrowUp': 'up', 'ArrowDown': 'down',
+        'Enter': chr(10), 'Backspace': 'backspace', 'Delete': 'delete', 'Escape': 'esc',
+        'Shift': 'shift', 'Control': 'ctrl', 'Alt': 'alt', 'Tab': 'tab',
+        'CapsLock': 'caps lock', 'PageUp': 'pageup', 'PageDown': 'pagedown',
+        'Home': 'home', 'End': 'end', 'Insert': 'insert', 'Pause': 'break',
+    }
+    if isinstance(key, str) and len(key) in (2, 3) and key[0] == 'F' and key[1:].isdigit():
+        return key.lower()
+    return special.get(key, key)
+
+def _event_bound(name):
+    return bool(_key_handlers.get(name))
+
+def _mouse_state(payload):
+    data = json.loads(str(payload))
+    if data.get('pos'):
+        _mouse_now.pos = vector(*data['pos'])
+    _mouse_now.pick = _picked_object(data.get('pick'))
+
+def _mouse_event(payload):
+    data = json.loads(str(payload))
+    name = data.get('name')
+    pos = data.get('pos')
+    event = _SimpleNamespace(event=name, pos=vector(*pos) if pos else vector(0,0,0),
+                             pick=_picked_object(data.get('pick')), key=None, canvas=scene)
+    if 'clientX' in data:
+        event.clientX = data['clientX']
+        event.clientY = data['clientY']
+    for handler in list(_key_handlers.get(name, [])):
+        _dispatch(handler, event)
 
 def keysdown():
     return list(_pressed_keys)
@@ -2580,12 +2809,14 @@ def _key_event(name, key):
     if name == "blur":
         _pressed_keys.clear()
         return
+    raw_key = key
+    key = _vpython_key(raw_key)
     if name == "keydown":
         _pressed_keys.add(key)
     else:
         _pressed_keys.discard(key)
     for handler in list(_key_handlers.get(name, [])):
-        _dispatch(handler, _SimpleNamespace(key=key, event=name, canvas=scene))
+        _dispatch(handler, _SimpleNamespace(key=key, raw_key=raw_key, event=name, canvas=scene, pos=vector(0,0,0), pick=None))
 
 _widget_instances = {}
 _widget_values = {}
