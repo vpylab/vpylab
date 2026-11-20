@@ -347,7 +347,7 @@ class _GrayColor(vector):
 
 
 class _ColorPalette:
-    """30색 팔레트 — 속성(.red)과 이름 접근(['빨']) 모두 지원"""
+    """이름과 번호로 읽는 30색 팔레트."""
 
     # --- 기본 색 (기존 호환) ---
     red       = vector(1, 0, 0)
@@ -382,6 +382,13 @@ class _ColorPalette:
     maroon    = vector(0.5, 0, 0)
     teal      = vector(0, 0.5, 0.5)
     ivory     = vector(1, 1, 0.94)
+
+    # 출력과 번호 조회는 같은 대표 이름을 씁니다. 다른 별칭은 추첨 확률에 영향을 주지 않습니다.
+    _color_names = (
+        '빨강', '초록', '파랑', '노랑', '청록', '자홍', '주황', '흰색', '검정', '회색',
+        '보라', '분홍', '갈색', '금색', '은색', '남색', '하늘색', '연두', '올리브', '산호',
+        '연어', '보랏빛', '남보라', '베이지', '민트', '복숭아', '라벤더', '적갈', '틸', '상아',
+    )
 
     # 한글 → 영어 매핑
     _name_map = {
@@ -437,8 +444,17 @@ class _ColorPalette:
         h, sat, v = colorsys.rgb_to_hsv(*channels)
         return vector(h, sat, v)
 
+    def __str__(self):
+        return ', '.join(self._color_names)
+
+    def __len__(self):
+        return len(self._color_names)
+
     def __getitem__(self, key):
-        """color['빨'], color['red'] 모두 지원"""
+        if isinstance(key, slice):
+            return [self[name] for name in self._color_names[key]]
+        if not isinstance(key, str):
+            key = self._color_names[key]
         # 한글 이름 → 영어로 변환
         if key in self._name_map:
             return getattr(self, self._name_map[key])
