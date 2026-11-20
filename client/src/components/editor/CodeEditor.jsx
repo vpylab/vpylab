@@ -9,6 +9,7 @@ import { claimWordTip, rememberWord } from '../../utils/word-help';
 import useAuthStore from '../../stores/authStore';
 import TypingWordTip from '../learning/TypingWordTip';
 import { registerPythonHelp, pythonContext, completionChoices } from './python-completions';
+import { registerColorHelp } from './color-picker';
 
 // Monaco Web Worker 설정 — 누락 시 "MonacoEnvironment.getWorker" 오류 발생
 self.MonacoEnvironment = {
@@ -91,7 +92,7 @@ export default function CodeEditor({ code, onChange, fontSize = 14, readOnly = f
         value={code ?? getDefaultCode(locale)}
         onChange={onChange}
         onMount={handleMount}
-        beforeMount={instance=>registerPythonHelp(instance,()=>useAppStore.getState().locale||'ko')}
+        beforeMount={instance=>{const getLocale=()=>useAppStore.getState().locale||'ko';registerPythonHelp(instance,getLocale);registerColorHelp(instance,getLocale);}}
         options={{
           readOnly,
           fontSize,
