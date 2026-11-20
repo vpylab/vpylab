@@ -45,7 +45,6 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
   const send = (name, hit) => postEvent({ canvas_id: canvasId, name, ...hit });
   const updateMouse = (event) => {
     const hit = { ...locate(event), clientX: event.clientX, clientY: event.clientY };
-    lastHit = hit;
     if (hit.pos) {
       postMouseState(hit.pos, hit.pick, canvasId);
     }
@@ -76,6 +75,7 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
     if (bound('mousedown') && bound('mouseup')) element.setPointerCapture?.(event.pointerId);
     element.focus?.({ preventScroll: true });
     const hit = updateMouse(event);
+    lastHit = hit;
     if (bound('mousedown')) send('mousedown', hit);
   };
   const onPointerUp = (event) => {
@@ -111,6 +111,10 @@ export function attachPointerInput(element, { canvasId, locate, isEventBound, po
     if (!isPrimary(event)) return;
     // scene.mouse.pos는 늘 갱신합니다(폴링용).
     const hit = updateMouse(event);
+    if (event.pointerId === activePointerId) {
+      // 빈 하늘에서도 화면 좌표는 따라가되, 취소에 쓸 3D 교점과 물체는 함께 보존합니다.
+      lastHit = hit.pos ? hit : { ...lastHit, clientX: hit.clientX, clientY: hit.clientY };
+    }
     if (bound('mousemove')) send('mousemove', hit);
   };
   const onDblClick = (event) => {
