@@ -380,6 +380,7 @@ while True:
         scene.userspin = outer
         scene.userzoom = outer
         scene.userpan = outer
+        sunlight.intensity = 3
         for shape in station:
             shape.visible = mode in [horizon_mode, rise_mode]
         marker_dome.visible = outer
@@ -407,7 +408,9 @@ while True:
         scene.ambient = color.gray(.12 * min(1, max(0, (sun_alt+6)/16)))
         scene.background = daylight_color(sun_alt)
         # 낮하늘의 산란광 때문에 달의 명암 대비가 약해집니다.
-        moon.opacity = 1 - .70*min(1,max(0,(sun_alt+6)/16))
+        daylight = min(1,max(0,(sun_alt+6)/16))
+        moon.opacity = 1 - .80*daylight
+        sunlight.intensity = 3 + 18*daylight
         sun.color = vector(1, .65, .28) + min(1,max(0,sun_alt/12))*vector(0,.35,.72)
         moon.pos, moon.visible = sky_disc(moon_sight, altitude, .2724, .2724, east, north, up)
         sun.pos, sun.visible = sky_disc(solar_sight, sun_alt, 109.1, .4, east, north, up)
