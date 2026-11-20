@@ -737,7 +737,8 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
           break;
         }
         case 'local_light': {
-          const lt = new THREE.PointLight(toColor(cmd.color||[1,1,1]), cmd.intensity??1, 50);
+          const vpLight = cmd.distance_falloff === false;
+          const lt = new THREE.PointLight(toColor(cmd.color||[1,1,1]), (cmd.intensity??1)*(vpLight ? Math.PI/0.9 : 1), vpLight ? 0 : 50, vpLight ? 0 : 2);
           if(cmd.pos) lt.position.set(...cmd.pos); scene.add(lt); meshes.set(cmd.id, lt); return;
         }
         case 'distant_light': {
@@ -765,7 +766,7 @@ export function generateStandaloneHTML(code, title = 'VPyLab', options = {}, tra
         else if (m.isGroup) m.traverse(c => { if(c.material) updateMaterialColor(c.material, toColor(cmd.color)); });
         else if (m.material) updateMaterialColor(m.material, toColor(cmd.color));
       }
-      if (cmd.intensity !== undefined && m.isLight) m.intensity = cmd.intensity;
+      if (cmd.intensity !== undefined && m.isLight) m.intensity = cmd.intensity * (m.isPointLight && m.decay === 0 ? Math.PI/0.9 : 1);
       if (cmd.direction !== undefined && m.isDirectionalLight) m.position.set(-cmd.direction[0]*10,-cmd.direction[1]*10,-cmd.direction[2]*10);
       if (cmd.visible !== undefined) m.visible = cmd.visible;
       if (cmd.opacity !== undefined) {
@@ -1885,7 +1886,7 @@ class local_light:
         self._pos = kw.get('pos', vector(0,0,0))
         self._color = kw.get('color', color.white)
         self._intensity = kw.get('intensity', 1.0)
-        _add_command({"action":"create","id":self._id,"type":"local_light","pos":self._pos.to_list(),"color":self._color.to_list(),"intensity":self._intensity})
+        _add_command({"action":"create","id":self._id,"type":"local_light","distance_falloff":"intensity" in kw,"pos":self._pos.to_list(),"color":self._color.to_list(),"intensity":self._intensity})
     @property
     def pos(self): return self._pos
     @pos.setter

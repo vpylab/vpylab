@@ -2509,6 +2509,7 @@ class local_light(_VectorOwner):
             "action": "create",
             "id": self._id,
             "type": "local_light",
+            "distance_falloff": "intensity" in kwargs,
             "pos": self._pos.to_list(),
             "color": self._color.to_list(),
             "intensity": self._intensity,
