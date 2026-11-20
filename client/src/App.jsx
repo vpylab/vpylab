@@ -79,6 +79,12 @@ function AppContent() {
   );
 }
 
+// 직접 실습을 여는 순간부터 화면과 Python을 함께 준비합니다. 화면에서도 같은 Worker를 사용합니다.
+function preparePractice() {
+  prewarm();
+  return null;
+}
+
 const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<AppContent />}>
     <Route path="/" element={<Home />} />
@@ -87,10 +93,10 @@ const router = createBrowserRouter(createRoutesFromElements(
     <Route path="/courses" element={<Courses />} />
     <Route path="/courses/:courseId" element={<Courses />} />
     <Route path="/courses/:courseId/:lessonId" element={<Courses />} />
-    <Route path="/sandbox" element={<Sandbox />} />
+    <Route path="/sandbox" loader={preparePractice} element={<Sandbox />} />
     <Route path="/examples" element={<Examples />} />
     <Route path="/missions" element={<Missions />} />
-    <Route path="/mission/:missionId" element={<MissionPlay />} />
+    <Route path="/mission/:missionId" loader={preparePractice} element={<MissionPlay />} />
     <Route path="/docs" element={<Docs />} />
     <Route path="/forge" element={<Forge />} />
     <Route path="/guide" element={<Guide />} />

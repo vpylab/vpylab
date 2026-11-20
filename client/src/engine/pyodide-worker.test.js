@@ -129,8 +129,32 @@ describe('실제 Worker 스크립트의 출력 제한과 샌드박스', () => {
     await self.onmessage({ data: { type: 'init', vpythonApi: '# API' } });
     expect(importScripts).toHaveBeenCalledTimes(1);
     expect(importScripts).toHaveBeenCalledWith('https://vpylab.vercel.app/pyodide/v0.27.0/pyodide.js');
-    expect(self.loadPyodide).toHaveBeenCalledWith({ indexURL: 'https://vpylab.vercel.app/pyodide/v0.27.0/' });
+    expect(self.loadPyodide).toHaveBeenCalledWith({ indexURL: 'https://vpylab.vercel.app/pyodide/v0.27.0/', stdLibURL: 'https://vpylab.vercel.app/pyodide/v0.27.0/python_stdlib.compiled-v1.zip' });
     expect(self.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'ready', source: 'https://vpylab.vercel.app/pyodide/v0.27.0/', version: '0.27.0' }));
+  });
+
+  it.each([
+    ['일반 연결', {}, false, ['python_stdlib.compiled-v1.zip']],
+    ['데이터 절약', { saveData: true }, false, ['python_stdlib.zip']],
+    ['느린 연결', { effectiveType: '3g' }, false, ['python_stdlib.zip']],
+    ['낮은 대역폭', { downlink: 2 }, false, ['python_stdlib.zip']],
+    ['새 파일이 없는 이전 캐시', {}, true, ['python_stdlib.compiled-v1.zip', 'python_stdlib.zip']],
+    ['컴파일된 파일만 있는 오프라인', { saveData: true }, true, ['python_stdlib.zip', 'python_stdlib.compiled-v1.zip']],
+  ])('%s에서 한 엔진으로 사용 가능한 표준 라이브러리를 읽는다', async (_label, connection, missing, names) => {
+    const { self, python } = createWorkerContext({ location: 'https://vpylab.vercel.app/assets/worker.js' });
+    self.navigator = { connection };
+    const fetch = self.fetch;
+    fetch.mockResolvedValue({ ok: true });
+    if (missing) fetch.mockRejectedValueOnce(new TypeError('offline'));
+    self.loadPyodide.mockImplementationOnce(async ({ stdLibURL }) => {
+      expect((await self.fetch(stdLibURL)).ok).toBe(true);
+      return python;
+    });
+    await self.onmessage({ data: { type: 'init', vpythonApi: '# API' } });
+    expect(fetch.mock.calls.map(([url]) => new URL(url).pathname.split('/').pop())).toEqual(names);
+    expect(self.loadPyodide).toHaveBeenCalledTimes(1);
+    expect(self.postMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'ready', stdlib: names.at(-1) }));
+    await expect(self.fetch('https://example.com')).rejects.toThrow();
   });
 
   it('같은 출처에 파일이 없으면 한 번만 시도하고 CDN으로 넘어간다', async () => {
@@ -220,8 +244,8 @@ describe('실제 Worker 스크립트의 트레이스백 구조화', () => {
   it('학생 코드에는 파일 이름을 붙이고, 가장 안쪽 학생 프레임의 줄 번호를 보낸다', async () => {
     const { self, python } = createWorkerContext();
     await self.onmessage({ data: { type: 'init', vpythonApi: '# API' } });
-    const apiCall = python.runPythonAsync.mock.calls.find(([code]) => code === '# API');
-    expect(apiCall[1]).toEqual({ filename: '<vpython-api>' });
+    expect(python.globals.set).toHaveBeenCalledWith('__vpylab_api_source__', '# API');
+    expect(python.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining("compile(__vpylab_api_source__, '<vpython-api>', 'exec')"));
     python.runPythonAsync.mockImplementation(async (code) => {
       if (!isStudentRun(code)) return;
       throw pythonError('KeyError', [

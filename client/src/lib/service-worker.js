@@ -23,10 +23,10 @@ export function registerServiceWorker() {
 }
 
 /** Worker가 핵심 파일을 받은 출처를 알려주면 Service Worker 캐시에 빠진 파일을 채웁니다. */
-export function warmPyodideCache(base) {
+export function warmPyodideCache(base, stdlib) {
   if (!canUseServiceWorker() || typeof base !== 'string') return;
   navigator.serviceWorker.ready.then((registration) => {
-    registration.active?.postMessage({ type: 'WARM_PYODIDE', base });
+    registration.active?.postMessage({ type: 'WARM_PYODIDE', base, stdlib });
   }).catch(() => {});
 }
 

@@ -30,6 +30,7 @@ const PYODIDE_CACHE = 'vpylab-pyodide';
 // 예전 버전이 만든 'vpylab-fonts' 캐시는 KNOWN_CACHES에 없으므로 activate 때 지워집니다.
 const KNOWN_CACHES = new Set([APP_CACHE, PYODIDE_CACHE]);
 
+const COMPILED_STDLIB = 'python_stdlib.compiled-v1.zip';
 const PYODIDE_CORE = ['pyodide.js', 'pyodide.asm.js', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json'];
 
 function isPyodideUrl(url) {
@@ -108,7 +109,7 @@ self.addEventListener('activate', (event) => {
     const pyodide = await caches.open(PYODIDE_CACHE);
     for (const request of await pyodide.keys()) {
       const url = new URL(request.url);
-      const isCore = PYODIDE_CORE.some((name) => url.pathname.endsWith(`/${name}`));
+      const isCore = url.pathname.endsWith('/' + COMPILED_STDLIB) || PYODIDE_CORE.some((name) => url.pathname.endsWith(`/${name}`));
       if (isCore && !url.pathname.includes(PYODIDE_VERSION) && !url.pathname.includes(`pyodide@${PYODIDE_VERSION}`)) await pyodide.delete(request);
     }
     await self.clients.claim();
@@ -146,8 +147,10 @@ self.addEventListener('message', (event) => {
       try { base = new URL(data.base); } catch { return; }
       if (!isPyodideUrl(base)) return;
       const cache = await caches.open(PYODIDE_CACHE);
+      const compiled = base.origin === self.location.origin && data.stdlib === COMPILED_STDLIB;
       for (const name of PYODIDE_CORE) {
-        const url = new URL(name, base).href;
+        const file = compiled && name === 'python_stdlib.zip' ? COMPILED_STDLIB : name;
+        const url = new URL(file, base).href;
         if (await cache.match(url, { ignoreVary: true })) continue;
         try {
           const response = await fetch(url, { credentials: 'same-origin' });
